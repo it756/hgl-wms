@@ -14,6 +14,12 @@ import {
   Scale,
   CheckCircle,
   FileSpreadsheet,
+  TrendingUp,
+  Hourglass,
+  Percent,
+  Layers,
+  ShieldCheck,
+  Truck,
 } from "lucide-react";
 
 interface LineItem {
@@ -279,7 +285,7 @@ export default function SupplierGRNPage() {
           <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
             <span>Inbound Logistics</span>
             <span className="text-slate-300">/</span>
-            <span className="text-[#005c55]">New Supplier GRN</span>
+            <span className="text-primary">New Supplier GRN</span>
           </div>
           <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
             Record Supplier GRN
@@ -288,6 +294,77 @@ export default function SupplierGRNPage() {
             Record external supplier deliveries, capture unit price logs and queue for finance
             approval thresholds.
           </p>
+        </div>
+
+        {/* Gorgeous Bento KPIs Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 transition-all duration-300 hover:border-primary">
+            <div className="w-12 h-12 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-primary">
+              <Truck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                Inbound Today
+              </p>
+              <h3 className="font-extrabold text-[#1E293B] text-lg font-sans leading-none">
+                14 Receipts
+              </h3>
+              <p className="text-[10px] text-teal-650 font-black flex items-center gap-1 mt-1 uppercase">
+                <TrendingUp className="w-3 h-3" /> +2 critical cargo
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 transition-all duration-300 hover:border-primary">
+            <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+              <Scale className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                Queued Volume
+              </p>
+              <h3 className="font-extrabold text-[#1E293B] text-lg leading-none font-mono">
+                $112,850
+              </h3>
+              <p className="text-[10px] text-amber-700 font-bold flex items-center gap-1 mt-1 uppercase">
+                <Hourglass className="w-3 h-3 animate-spin duration-3000" /> Awaiting signoff
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 transition-all duration-300 hover:border-primary">
+            <div className="w-12 h-12 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600">
+              <Percent className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                Audit Discrepancies
+              </p>
+              <h3 className="font-extrabold text-[#1E293B] text-lg leading-none font-mono">
+                0.00%
+              </h3>
+              <p className="text-[10px] text-green-650 font-black flex items-center gap-1 mt-1 uppercase">
+                🎯 absolute zero error
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-[#9CF2E8]/40 shadow-sm flex items-center gap-4 transition-all duration-300 hover:border-primary">
+            <div className="w-12 h-12 rounded-lg bg-[#E6F4F1] border border-teal-100 flex items-center justify-center text-primary">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                Inspection Rating
+              </p>
+              <h3 className="font-extrabold text-primary text-lg font-sans leading-none">
+                100% Approved
+              </h3>
+              <p className="text-[10px] text-primary/80 font-bold flex items-center gap-1 mt-1 uppercase">
+                🛡 full qa pass logs
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Global Notifications */}
