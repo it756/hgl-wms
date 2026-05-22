@@ -196,7 +196,7 @@ export default function LoginPage() {
               </div>
 
               {/* Quick Demo Pre-fills */}
-              <div className="relative mt-2">
+              {/* <div className="relative mt-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
                   <div className="w-full border-t border-outline-variant"></div>
                 </div>
@@ -217,7 +217,7 @@ export default function LoginPage() {
                     <span className="text-slate-500 font-mono text-[9px] truncate">{u.email}</span>
                   </button>
                 ))}
-              </div>
+              </div> */}
             </form>
           </div>
         </div>
