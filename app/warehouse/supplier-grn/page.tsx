@@ -106,7 +106,6 @@ export default function SupplierGRNPage() {
   // Form state
   const [supplier, setSupplier] = useState("");
   const [invoiceRef, setInvoiceRef] = useState("");
-  const [invoiceAmount, setInvoiceAmount] = useState("");
   const [dateReceived, setDateReceived] = useState(new Date().toISOString().split("T")[0]);
   const [sbuId, setSbuId] = useState("");
   const [sbus, setSbus] = useState<SbuOption[]>([]);
@@ -255,7 +254,6 @@ export default function SupplierGRNPage() {
       if (!res.ok) throw new Error(data.error);
       setSupplier(data.supplier_name ?? "");
       setInvoiceRef(data.supplier_invoice_reference ?? "");
-      setInvoiceAmount(data.invoice_amount != null ? String(data.invoice_amount) : "");
       setDateReceived(data.date_received ?? new Date().toISOString().split("T")[0]);
       setSbuId(data.sbu_id ?? "");
       const loadedLines: LineItem[] = (data.supplier_grn_line_items ?? []).map((li: any) => ({
@@ -294,7 +292,7 @@ export default function SupplierGRNPage() {
     const payload = {
       supplier_name: supplier,
       supplier_invoice_reference: invoiceRef || undefined,
-      invoice_amount: invoiceAmount ? Number(invoiceAmount) : undefined,
+      invoice_amount: totalVal > 0 ? totalVal : undefined,
       date_received: dateReceived,
       sbu_id: sbuId || undefined,
       items: lines.map((l) => ({
@@ -334,7 +332,6 @@ export default function SupplierGRNPage() {
     setEditingGrnId(null);
     setSupplier("");
     setInvoiceRef("");
-    setInvoiceAmount("");
     setSbuId("");
     setLines([
       {
@@ -678,20 +675,16 @@ export default function SupplierGRNPage() {
                     />
                   </div>
 
-                  {/* Invoice Amount */}
+                  {/* Invoice Amount — auto-calculated from line items */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Invoice Amount (ZMW)
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={invoiceAmount}
-                      onChange={(e) => setInvoiceAmount(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs font-mono focus:ring-1 focus:ring-primary focus:outline-none"
-                    />
+                    <div className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs text-slate-700 font-bold flex items-center justify-between">
+                      <span>{totalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Auto</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium">Calculated from product line totals</p>
                   </div>
 
                   {/* Date Received */}

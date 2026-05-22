@@ -31,6 +31,7 @@ export async function PATCH(req: Request) {
   const { id } = body;
   if (!id) return NextResponse.json({ error: "Missing notification id" }, { status: 400 });
 
-  await markNotificationRead(id, user.id);
+  const role = (user.user_metadata as any)?.role ?? undefined;
+  await markNotificationRead(id, user.id, role);
   return NextResponse.json({ success: true });
 }

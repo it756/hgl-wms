@@ -103,27 +103,9 @@ export async function POST(req: Request) {
       initialStatus = "PENDING_BU_APPROVAL";
       requiresFinanceApproval = true;
     } else {
-      // BU_MANAGER: threshold-based routing
-      const { data: settingsRow } = await supabaseAdmin
-        .from("app_settings")
-        .select("value")
-        .eq("key", "finance_approval_threshold")
-        .single();
-      const globalThreshold = parseFloat((settingsRow as any)?.value ?? "1000");
-
-      const { data: sbuSettings } = await supabaseAdmin
-        .from("sbu_settings")
-        .select("finance_approval_threshold")
-        .eq("sbu_id", sbu_id)
-        .single();
-      const threshold =
-        (sbuSettings as any)?.finance_approval_threshold != null
-          ? parseFloat((sbuSettings as any).finance_approval_threshold)
-          : globalThreshold;
-
-      requiresFinanceApproval =
-        estimated_value != null && estimated_value >= threshold;
-      initialStatus = requiresFinanceApproval ? "PENDING_APPROVAL" : "PENDING";
+      // BU_MANAGER: always requires Finance approval before warehouse can issue
+      initialStatus = "PENDING_APPROVAL";
+      requiresFinanceApproval = true;
     }
 
     const { data: trData, error: trError } = await supabaseAdmin

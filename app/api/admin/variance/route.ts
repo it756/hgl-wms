@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     .from("transfer_requests")
     .select(
       `id, reference_number, sbu_id, created_at, updated_at,
-       grns ( id, has_variance, created_at,
+       grns ( id, has_variance, condition_notes, created_at,
          grn_line_items ( product_id, issued_quantity, quantity_received, variance_notes ) )`,
     )
     .eq("status", "COMPLETED_WITH_VARIANCE")

@@ -20,7 +20,12 @@ import {
   TrendingUp,
   Activity,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Upload,
+  Download,
+  FileText,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
 
 interface UserRow {
@@ -79,7 +84,105 @@ export default function UsersPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
+  // CSV import state
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [csvRows, setCsvRows] = useState<{
+    full_name: string;
+    email: string;
+    password: string;
+    role: string;
+    sbu_code: string;
+    _error?: string;
+  }[]>([]);
+  const [csvParseError, setCsvParseError] = useState<string | null>(null);
+  const [csvImportLoading, setCsvImportLoading] = useState(false);
+  const [csvResults, setCsvResults] = useState<
+    { email: string; success: boolean; id?: string; error?: string }[]
+  >([]);
+
   const token = () => localStorage.getItem("access_token") ?? "";
+
+  function downloadCsvTemplate() {
+    const a = document.createElement("a");
+    a.href = "/bulk_users_template.csv";
+    a.download = "bulk_users_template.csv";
+    a.click();
+  }
+
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    setCsvParseError(null);
+    setCsvResults([]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
+      if (lines.length < 2) {
+        setCsvParseError("CSV must have a header row and at least one data row.");
+        setCsvRows([]);
+        return;
+      }
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const required = ["email", "password", "role"];
+      const missing = required.filter((r) => !headers.includes(r));
+      if (missing.length > 0) {
+        setCsvParseError(`CSV is missing required columns: ${missing.join(", ")}`);
+        setCsvRows([]);
+        return;
+      }
+      const idx = (col: string) => headers.indexOf(col);
+      const parsed = lines.slice(1).map((line) => {
+        // Handle quoted fields
+        const cols = line.match(/(?:"[^"]*"|[^,])+/g)?.map((c) =>
+          c.replace(/^"|"$/g, "").trim()
+        ) ?? [];
+        const role = (cols[idx("role")] ?? "").toUpperCase();
+        const validRoles = ["BU_MANAGER", "WAREHOUSE_MANAGER", "UNIT_STAFF", "FINANCE_MANAGER", "ADMIN"];
+        let _error: string | undefined;
+        if (!cols[idx("email")]) _error = "Missing email";
+        else if (!cols[idx("password")]) _error = "Missing password";
+        else if (!validRoles.includes(role)) _error = `Invalid role: ${cols[idx("role")]}`;
+        return {
+          full_name: cols[idx("full_name")] ?? "",
+          email: cols[idx("email")] ?? "",
+          password: cols[idx("password")] ?? "",
+          role,
+          sbu_code: cols[idx("sbu_code")] ?? "",
+          _error,
+        };
+      });
+      setCsvRows(parsed);
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleCsvImport() {
+    setCsvImportLoading(true);
+    setCsvResults([]);
+    try {
+      const users = csvRows.filter((r) => !r._error).map(({ full_name, email, password, role, sbu_code }) => ({
+        full_name: full_name || undefined,
+        email,
+        password,
+        role,
+        sbu_code: sbu_code || undefined,
+      }));
+      const res = await fetch("/api/admin/users/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ users }),
+      });
+      const data = await res.json();
+      if (!res.ok && !data.results) throw new Error(data.error);
+      setCsvResults(data.results ?? []);
+      load();
+    } catch (e: any) {
+      setCsvParseError(e.message);
+    } finally {
+      setCsvImportLoading(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -189,13 +292,22 @@ export default function UsersPage() {
             <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">Corporate Users</h1>
             <p className="text-xs text-slate-500 mt-0.5 font-medium">Provision accounts, adjust operational permissions, and associate users with SBUs.</p>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="self-start md:self-auto px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm font-sans"
-          >
-            <UserPlus className="w-4 h-4" />
-            Invite New Staff
-          </button>
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              onClick={() => { setShowCsvImport(!showCsvImport); setShowForm(false); }}
+              className="px-4 py-2.5 border border-[#005c55] text-[#005c55] hover:bg-[#005c55]/5 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 font-sans"
+            >
+              <Upload className="w-4 h-4" />
+              Import CSV
+            </button>
+            <button
+              onClick={() => { setShowForm(!showForm); setShowCsvImport(false); }}
+              className="px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm font-sans"
+            >
+              <UserPlus className="w-4 h-4" />
+              Invite New Staff
+            </button>
+          </div>
         </div>
 
         {/* Global Error Banner */}
@@ -237,6 +349,150 @@ export default function UsersPage() {
             </div>
           </div>
         </section>
+
+        {/* CSV Bulk Import Panel */}
+        {showCsvImport && (
+          <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <FileText className="w-5 h-5 text-teal-600 shrink-0" />
+                <h2 className="font-extrabold text-[#1E293B] text-sm">Bulk Import Staff via CSV</h2>
+              </div>
+              <button
+                onClick={downloadCsvTemplate}
+                className="flex items-center gap-1 text-[11px] text-[#005c55] font-bold hover:underline cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" /> Download Template
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium -mt-2">
+              Upload a CSV with columns: <span className="font-mono text-slate-600">full_name, email, password, role, sbu_code</span>.
+              &nbsp;Roles: BU_MANAGER, WAREHOUSE_MANAGER, UNIT_STAFF, FINANCE_MANAGER, ADMIN.
+            </p>
+
+            {csvParseError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-3.5 py-2 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {csvParseError}
+              </div>
+            )}
+
+            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-[#005c55] rounded-xl py-8 cursor-pointer transition-colors bg-slate-50/40">
+              <Upload className="w-7 h-7 text-slate-300" />
+              <span className="text-xs font-bold text-slate-400">Click to upload CSV file</span>
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvFile} />
+            </label>
+
+            {/* Preview table */}
+            {csvRows.length > 0 && csvResults.length === 0 && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Preview — {csvRows.length} row{csvRows.length !== 1 ? "s" : ""}
+                    {csvRows.some((r) => r._error) && (
+                      <span className="ml-2 text-rose-600">
+                        ({csvRows.filter((r) => r._error).length} invalid, will be skipped)
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    disabled={csvImportLoading || csvRows.filter((r) => !r._error).length === 0}
+                    onClick={handleCsvImport}
+                    className="px-4 py-2 bg-[#005c55] hover:bg-[#004740] disabled:opacity-55 text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    {csvImportLoading ? (
+                      <span className="animate-spin rounded-full h-3.5 w-3.5 border-t-2 border-white" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    Import {csvRows.filter((r) => !r._error).length} Users
+                  </button>
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-slate-100">
+                  <table className="min-w-full text-[11px] font-medium">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">#</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Name</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Email</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Role</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">SBU Code</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {csvRows.map((row, i) => (
+                        <tr key={i} className={row._error ? "bg-rose-50/40" : "hover:bg-slate-50/40"}>
+                          <td className="px-3 py-2 text-slate-400 font-mono">{i + 1}</td>
+                          <td className="px-3 py-2 text-slate-700 font-semibold">{row.full_name || <span className="italic text-slate-300">—</span>}</td>
+                          <td className="px-3 py-2 text-slate-600 font-mono">{row.email}</td>
+                          <td className="px-3 py-2">
+                            <span className="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-bold">{row.role}</span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-500 font-mono">{row.sbu_code || "—"}</td>
+                          <td className="px-3 py-2">
+                            {row._error ? (
+                              <span className="text-rose-600 font-bold text-[10px] flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" /> {row._error}
+                              </span>
+                            ) : (
+                              <span className="text-teal-600 font-bold text-[10px]">Ready</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Import results */}
+            {csvResults.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Results — {csvResults.filter((r) => r.success).length} created,&nbsp;
+                  {csvResults.filter((r) => !r.success).length} failed
+                </span>
+                <div className="overflow-x-auto rounded-lg border border-slate-100">
+                  <table className="min-w-full text-[11px] font-medium">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Email</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {csvResults.map((r, i) => (
+                        <tr key={i} className={r.success ? "hover:bg-slate-50/40" : "bg-rose-50/40"}>
+                          <td className="px-3 py-2 text-slate-600 font-mono">{r.email}</td>
+                          <td className="px-3 py-2">
+                            {r.success ? (
+                              <span className="text-teal-600 font-bold text-[10px] flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Created
+                              </span>
+                            ) : (
+                              <span className="text-rose-600 font-bold text-[10px] flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" /> {r.error}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => { setShowCsvImport(false); setCsvRows([]); setCsvResults([]); setCsvParseError(null); }}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-1"
+                  >
+                    <X className="w-3.5 h-3.5" /> Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Create user wizard inside an advanced form panel */}
         {showForm && (

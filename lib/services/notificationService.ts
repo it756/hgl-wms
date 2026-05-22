@@ -35,13 +35,23 @@ export async function createNotification(input: NotifyInput): Promise<Notificati
   return data as Notification;
 }
 
-/** Mark a notification as read for a given user */
-export async function markNotificationRead(notificationId: string, userId: string): Promise<void> {
+/** Mark a notification as read for a given user.
+ * Handles both direct (user_id) and role-broadcast (user_role) notifications.
+ */
+export async function markNotificationRead(
+  notificationId: string,
+  userId: string,
+  role?: string,
+): Promise<void> {
+  const filter = role
+    ? `user_id.eq.${userId},user_role.eq.${role}`
+    : `user_id.eq.${userId}`;
+
   const { error } = await supabaseAdmin
     .from("notifications")
     .update({ is_read: true })
     .eq("id", notificationId)
-    .eq("user_id", userId);
+    .or(filter);
 
   if (error) throw error;
 }

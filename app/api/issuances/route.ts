@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc("process_issuance", {
       p_transfer_request_id: transfer_request_id,
       p_issued_by: user.id,
-      p_items: JSON.stringify(items),
+      p_items: items,
       p_issue_date: issue_date || new Date().toISOString(),
       p_logistics_notes: logistics_notes || null,
     });

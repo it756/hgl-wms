@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
-import {
-  supabaseAdmin,
-  getUserFromAuthHeader,
-} from "../../../lib/supabaseServer";
+import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { sendEmail } from "../../../lib/email";
 
 export async function POST(req: Request) {
   try {
     const user = await getUserFromAuthHeader(req);
-    if (!user)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const role = (user.user_metadata as any)?.role || "";
-    if (role !== "UNIT_STAFF")
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (role !== "UNIT_STAFF") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json();
     const { transfer_request_id, date_received, items, condition_notes } = body;
@@ -49,12 +44,15 @@ export async function POST(req: Request) {
     const lineInserts = items.map((i: any) => ({
       grn_id: grnId,
       product_id: i.product_id,
+      issued_quantity: i.issued_quantity,
       quantity_received: i.quantity_received,
     }));
-    const { error: liError } = await supabaseAdmin
-      .from("grn_line_items")
-      .insert(lineInserts);
-    if (liError) throw liError;
+    const { error: liError } = await supabaseAdmin.from("grn_line_items").insert(lineInserts);
+    if (liError) {
+      // Roll back the orphaned GRN header so we don't leave empty GRN records
+      await supabaseAdmin.from("grns").delete().eq("id", grnId);
+      throw liError;
+    }
 
     // update transfer status
     const newStatus = hasVariance ? "COMPLETED_WITH_VARIANCE" : "COMPLETED";
@@ -65,16 +63,14 @@ export async function POST(req: Request) {
 
     // notify warehouse manager on variance
     if (hasVariance) {
-      await supabaseAdmin
-        .from("notifications")
-        .insert([
-          {
-            related_entity_id: transfer_request_id,
-            type: "grn_variance",
-            message: "GRN reported a variance",
-            user_role: "WAREHOUSE_MANAGER",
-          },
-        ]);
+      await supabaseAdmin.from("notifications").insert([
+        {
+          related_entity_id: transfer_request_id,
+          type: "grn_variance",
+          message: "GRN reported a variance",
+          user_role: "WAREHOUSE_MANAGER",
+        },
+      ]);
       const wmEmail = process.env.WAREHOUSE_MANAGER_EMAIL;
       if (wmEmail) {
         try {
@@ -92,9 +88,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ grnId, status: newStatus }, { status: 201 });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json(
-      { error: err.message || "Internal" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });
   }
 }

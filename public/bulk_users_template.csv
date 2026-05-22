@@ -1,0 +1,6 @@
+full_name,email,password,role,sbu_code
+Jane Doe,jane.doe@example.com,Pass@1234,UNIT_STAFF,HGL-01
+John Smith,john.smith@example.com,Secure#9876,BU_MANAGER,HGL-02
+Mary Wanjiku,mary.wanjiku@example.com,Hello@2025,WAREHOUSE_MANAGER,HGL-03
+James Otieno,james.otieno@example.com,Admin!5678,FINANCE_MANAGER,
+Alex Kamau,alex.kamau@example.com,Super@9999,ADMIN,

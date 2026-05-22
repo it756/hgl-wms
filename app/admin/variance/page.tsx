@@ -28,7 +28,7 @@ interface GRNLineItem {
 interface GRNRow {
   id: string;
   has_variance: boolean;
-  variance_notes: string | null;
+  condition_notes: string | null;
   created_at: string;
   grn_line_items: GRNLineItem[];
 }
@@ -80,63 +80,7 @@ export default function VariancePage() {
       }
       setTransfers(data || []);
     } catch (e: any) {
-      console.warn("API load failed, fallback configured:", e.message);
-      // Fallback with high-fidelity mockup data for seamless previewing & operation
-      const mockData: VarianceTransfer[] = [
-        {
-          id: "tr-9801",
-          reference_number: "TR-2026-00412",
-          sbu_id: "Kericho Primary Factory SBU",
-          created_at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-          updated_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
-          grns: [
-            {
-              id: "grn-8021",
-              has_variance: true,
-              variance_notes: "Damaged outer cartons during transit. Recount showed shortfalls.",
-              created_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-              grn_line_items: [
-                {
-                  product_id: "PROD-BP1-TEA-KERICHO",
-                  issued_quantity: 500,
-                  quantity_received: 480,
-                  variance_notes: "20 kg bags damaged and discarded at cargo bay.",
-                },
-                {
-                  product_id: "PROD-PF1-PACKETS",
-                  issued_quantity: 200,
-                  quantity_received: 200,
-                  variance_notes: null,
-                },
-              ],
-            },
-          ],
-        },
-        {
-          id: "tr-9802",
-          reference_number: "TR-2026-00431",
-          sbu_id: "Corporate Headquarters SBU",
-          created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
-          updated_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-          grns: [
-            {
-              id: "grn-8022",
-              has_variance: true,
-              variance_notes: "Excess unit packets found within bundle wrap.",
-              created_at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-              grn_line_items: [
-                {
-                  product_id: "PROD-EARL-GREY-BOXES",
-                  issued_quantity: 150,
-                  quantity_received: 155,
-                  variance_notes: "Overage of 5 units packed in factory seal.",
-                },
-              ],
-            },
-          ],
-        },
-      ];
-      setTransfers(mockData);
+      setError(e.message || "Failed to load variance data.");
     } finally {
       setLoading(false);
     }
@@ -176,11 +120,7 @@ export default function VariancePage() {
       setResNotes("");
       load();
     } catch (e: any) {
-      // Offline/simulation support
-      setSuccessMsg("Success: Discrepancy reconciled. Adjustment audit log logged.");
-      setTransfers((prev) => prev.filter((t) => t.id !== resolving));
-      setResolving(null);
-      setResNotes("");
+      setResError(e.message || "Failed to submit resolution.");
     } finally {
       setResLoading(false);
       setTimeout(() => setSuccessMsg(null), 5000);
@@ -326,7 +266,7 @@ export default function VariancePage() {
                     <div className="flex flex-col gap-3">
                       <div className="bg-amber-50/45 p-3 rounded-lg border border-amber-100 text-[11px] text-amber-900 font-medium leading-relaxed">
                         <strong>Dispatched Note:</strong>{" "}
-                        {grn.variance_notes || "Quantity deviation detected at intake node."}
+                        {grn.condition_notes || "Quantity deviation detected at intake node."}
                       </div>
 
                       <div className="overflow-x-auto border border-slate-100 rounded-lg">
