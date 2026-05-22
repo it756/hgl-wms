@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
+import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 
 /**
  * GET /api/exports/transfers
