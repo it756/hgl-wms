@@ -128,7 +128,7 @@ export default function VariancePage() {
   }
 
   return (
-    <DashboardLayout activePage="/admin/variance">
+    <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-850 font-sans">
         {/* Header Metadata */}
         <div>

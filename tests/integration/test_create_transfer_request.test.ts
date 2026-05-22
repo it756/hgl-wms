@@ -51,9 +51,7 @@ describe("transferService.createTransferRequest", () => {
 
   it("generates a reference in TRF-YYYY-NNNNN format and status PENDING for low-value request", async () => {
     // Stub app_settings lookup → threshold = 1000
-    const settingsChain = buildChain(
-      Promise.resolve({ data: { value: "1000" }, error: null }),
-    );
+    const settingsChain = buildChain(Promise.resolve({ data: { value: "1000" }, error: null }));
     // Stub transfer_requests insert → returns new record
     const trChain = buildChain(
       Promise.resolve({
@@ -83,6 +81,7 @@ describe("transferService.createTransferRequest", () => {
     const result = await createTransferRequest(
       {
         sbu_id: "sbu-001",
+        requesting_unit_id: "unit-001",
         estimated_value: 500,
         lines: [{ product_id: "prod-001", requested_quantity: 10 }],
       },
@@ -94,9 +93,7 @@ describe("transferService.createTransferRequest", () => {
   });
 
   it("sets status PENDING_APPROVAL when estimated_value >= threshold", async () => {
-    const settingsChain = buildChain(
-      Promise.resolve({ data: { value: "1000" }, error: null }),
-    );
+    const settingsChain = buildChain(Promise.resolve({ data: { value: "1000" }, error: null }));
     const trChain = buildChain(
       Promise.resolve({
         data: { id: "tr-uuid-002", reference_number: "TRF-2026-99999", status: "PENDING_APPROVAL" },
@@ -116,6 +113,7 @@ describe("transferService.createTransferRequest", () => {
     const result = await createTransferRequest(
       {
         sbu_id: "sbu-001",
+        requesting_unit_id: "unit-001",
         estimated_value: 1500,
         lines: [{ product_id: "prod-001", requested_quantity: 5 }],
       },
@@ -128,7 +126,10 @@ describe("transferService.createTransferRequest", () => {
   it("throws when no line items provided", async () => {
     const { createTransferRequest } = await import("../../lib/services/transferService");
     await expect(
-      createTransferRequest({ sbu_id: "sbu-001", lines: [] }, "user-001"),
+      createTransferRequest(
+        { sbu_id: "sbu-001", requesting_unit_id: "unit-001", lines: [] },
+        "user-001",
+      ),
     ).rejects.toThrow("At least one line item is required");
   });
 });

@@ -49,6 +49,7 @@ interface IssuanceItem {
   stock: number;
   quantity_issued: number;
   shortfall_reason?: string;
+  verified?: boolean;
 }
 
 export default function WarehouseQueuePage() {

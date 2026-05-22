@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { 
-  Download, 
-  Calendar, 
-  ArrowRightLeft, 
-  Building, 
-  Database, 
-  FileText, 
-  CheckCircle2, 
+import {
+  Download,
+  Calendar,
+  ArrowRightLeft,
+  Building,
+  Database,
+  FileText,
+  CheckCircle2,
   XCircle,
-  Clock
+  Clock,
 } from "lucide-react";
 
 interface ExportCard {
@@ -26,30 +26,32 @@ const EXPORTS: ExportCard[] = [
   {
     id: "transfers",
     title: "Transfer Requests Ledger",
-    description: "Export all raw internal stock transfers with associated status and value valuations.",
+    description:
+      "Export all raw internal stock transfers with associated status and value valuations.",
     endpoint: "/api/exports/transfers",
-    countMock: 142
+    countMock: 142,
   },
   {
     id: "grns",
     title: "Standard GRN Receipts",
     description: "Export standard goods received notes with recorded bulk inventory variances.",
     endpoint: "/api/exports/grns",
-    countMock: 89
+    countMock: 89,
   },
   {
     id: "supplier-grns",
     title: "Supplier GRN Invoices",
     description: "Export supplier invoice matches, total sums, and finance compliance approvals.",
     endpoint: "/api/exports/supplier-grns",
-    countMock: 61
+    countMock: 61,
   },
   {
     id: "audit",
     title: "Immutable System Audit Trails",
-    description: "Export full chronological records of internal security and stock transaction actions.",
+    description:
+      "Export full chronological records of internal security and stock transaction actions.",
     endpoint: "/api/exports/audit",
-    countMock: 1540
+    countMock: 1540,
   },
 ];
 
@@ -59,7 +61,8 @@ export default function ExportsPage() {
   const [toasts, setToasts] = useState<string[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  const token = () => (typeof window !== "undefined" ? localStorage.getItem("access_token") ?? "" : "");
+  const token = () =>
+    typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
 
   function showToast(id: string) {
     setToasts((prev) => [...prev, id]);
@@ -88,7 +91,8 @@ export default function ExportsPage() {
       showToast(card.id);
     } catch {
       // Simulation offline bounds
-      const csvContent = "data:text/csv;charset=utf-8,ID,Reference,Date,Status,Value\n1,TR-2026-00412,2026-02-18,PENDING_FINANCE_APPROVAL,125000\n2,TR-2026-00431,2026-02-17,PENDING_FINANCE_APPROVAL,380400";
+      const csvContent =
+        "data:text/csv;charset=utf-8,ID,Reference,Date,Status,Value\n1,TR-2026-00412,2026-02-18,PENDING_FINANCE_APPROVAL,125000\n2,TR-2026-00431,2026-02-17,PENDING_FINANCE_APPROVAL,380400";
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
@@ -103,9 +107,8 @@ export default function ExportsPage() {
   }
 
   return (
-    <DashboardLayout activePage="/admin/exports">
+    <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-850">
-        
         {/* Header section */}
         <div>
           <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
@@ -113,9 +116,12 @@ export default function ExportsPage() {
             <span className="text-slate-300">/</span>
             <span className="text-primary font-extrabold">Data Exports</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">Corporate Data Exports</h1>
+          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
+            Corporate Data Exports
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Generate and request secure ledger CSV exports for external accounting, audits, and physical reconciliation.
+            Generate and request secure ledger CSV exports for external accounting, audits, and
+            physical reconciliation.
           </p>
         </div>
 
@@ -123,7 +129,10 @@ export default function ExportsPage() {
         {toasts.length > 0 && (
           <div className="bg-[#E6F4F1] border border-teal-200 text-teal-850 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0" />
-            <span>Success: Captured segment from ledger & securely transmitted CSV attachment down to browser.</span>
+            <span>
+              Success: Captured segment from ledger & securely transmitted CSV attachment down to
+              browser.
+            </span>
           </div>
         )}
 
@@ -134,7 +143,9 @@ export default function ExportsPage() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Start Date</label>
+              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                Start Date
+              </label>
               <input
                 type="date"
                 value={from}
@@ -143,7 +154,9 @@ export default function ExportsPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">End Date</label>
+              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                End Date
+              </label>
               <input
                 type="date"
                 value={to}
@@ -167,8 +180,10 @@ export default function ExportsPage() {
             const isSpinning = downloading === card.id;
 
             return (
-              <div key={card.id} className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm flex flex-col gap-4 relative justify-between">
-                
+              <div
+                key={card.id}
+                className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm flex flex-col gap-4 relative justify-between"
+              >
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-primary mt-0.5 shrink-0">
                     {getIcon()}
@@ -204,19 +219,17 @@ export default function ExportsPage() {
                       </>
                     )}
                   </button>
-                  
+
                   {toasts.includes(card.id) && (
                     <p className="text-teal-650 font-bold font-sans text-[10px] uppercase text-center mt-1 flex items-center justify-center gap-1">
                       ✓ SEGMENT DOWNLOAD INITIATED SUCCESSFULLY
                     </p>
                   )}
                 </div>
-
               </div>
             );
           })}
         </div>
-
       </div>
     </DashboardLayout>
   );

@@ -31,6 +31,7 @@ export interface TransferRequest {
 }
 
 export interface TransferRequestCreateInput {
+  sbu_id: string;
   requesting_unit_id: string;
   required_date?: string;
   notes?: string;

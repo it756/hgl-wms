@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { 
-  Calendar, 
-  User, 
-  Filter, 
-  Database, 
-  RotateCcw, 
-  FileText, 
-  Eye, 
-  ShieldAlert, 
+import {
+  Calendar,
+  User,
+  Filter,
+  Database,
+  RotateCcw,
+  FileText,
+  Eye,
+  ShieldAlert,
   Clock,
   Plus,
-  Search
+  Search,
 } from "lucide-react";
 
 interface AuditLog {
@@ -40,8 +40,8 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
       estimated_value: 125000,
       item_count: 2,
       origin: "Main Hub Alpha",
-      destination: "Western Grid Power Station"
-    }
+      destination: "Western Grid Power Station",
+    },
   },
   {
     id: "aud-x102",
@@ -56,8 +56,8 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
       entered_amount: 1450000,
       calculated_items_total: 1350000,
       variance_detected: 100000,
-      severity: "CRITICAL_WARNING"
-    }
+      severity: "CRITICAL_WARNING",
+    },
   },
   {
     id: "aud-x103",
@@ -70,8 +70,8 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
       target_user_uid: "u-usr-882",
       target_user_name: "John Doe (Temporary Contractor)",
       reason: "Contract period termination",
-      security_ticket: "SEC-26-88"
-    }
+      security_ticket: "SEC-26-88",
+    },
   },
   {
     id: "aud-x104",
@@ -82,12 +82,12 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
     created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
     details: {
       sku: "TECH-MN-099",
-      product_name: "27\" UltraWide Displays",
+      product_name: '27" UltraWide Displays',
       old_unit_cost: 29500,
       new_unit_cost: 32000,
       currency: "ZMW",
-      sbu_name: "Logistics Core Hub SBU"
-    }
+      sbu_name: "Logistics Core Hub SBU",
+    },
   },
   {
     id: "aud-x105",
@@ -100,22 +100,22 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
       sku: "HTS-99-BLUE",
       quantity_decremented: 50,
       reason: "Transfer dispatch verification TR-2026-00412",
-      new_balance: 320
-    }
-  }
+      new_balance: 320,
+    },
+  },
 ];
 
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters
   const [entityType, setEntityType] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Details Modal
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
@@ -128,7 +128,7 @@ export default function AuditLogPage() {
       if (entityType) params.set("entity_type", entityType);
       if (from) params.set("from", from);
       if (to) params.set("to", to);
-      
+
       const res = await fetch(`/api/audit?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -154,17 +154,17 @@ export default function AuditLogPage() {
     fetchLogs();
   }, []);
 
-  const filteredLogs = logs.filter(log => 
-    log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.entity_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.performed_by?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (log.entity_id && log.entity_id.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredLogs = logs.filter(
+    (log) =>
+      log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.entity_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.performed_by?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.entity_id && log.entity_id.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   return (
-    <DashboardLayout activePage="/admin/audit">
+    <DashboardLayout>
       <div className="flex flex-col gap-6 text-[#1E293B]">
-        
         {/* Header Section */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider">
@@ -174,32 +174,41 @@ export default function AuditLogPage() {
           </div>
           <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">System Audit Trail</h1>
           <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Monitor real-time system changes, database entities state logs, warehouse operation events, and user activities.
+            Monitor real-time system changes, database entities state logs, warehouse operation
+            events, and user activities.
           </p>
         </div>
 
         {/* Audit Analytics KPI Stats */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Recorded Operations</h3>
+            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+              Recorded Operations
+            </h3>
             <p className="text-2xl font-extrabold text-slate-800 font-mono">0{logs.length}</p>
             <span className="text-[10px] text-teal-600 font-bold">Encrypted ledger events</span>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Security Events</h3>
+            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+              Security Events
+            </h3>
             <p className="text-2xl font-extrabold text-rose-600 font-mono">01</p>
             <span className="text-[10px] text-rose-500 font-bold">1 accounts modified</span>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Active Entities</h3>
+            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+              Active Entities
+            </h3>
             <p className="text-2xl font-extrabold text-slate-800 font-mono">05</p>
             <span className="text-[10px] text-slate-400 font-bold">Distinct logical nodes</span>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Compliance Rating</h3>
+            <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+              Compliance Rating
+            </h3>
             <p className="text-2xl font-extrabold text-primary font-mono">100%</p>
             <span className="text-[10px] text-slate-400 font-bold">Verified & Crypt-signed</span>
           </div>
@@ -290,12 +299,16 @@ export default function AuditLogPage() {
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-2.5">
               <span className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#005c55]"></span>
-              <p className="text-xs font-bold font-mono tracking-wider">RETRIEVING ENCRYPTED AUDIT RECORDS...</p>
+              <p className="text-xs font-bold font-mono tracking-wider">
+                RETRIEVING ENCRYPTED AUDIT RECORDS...
+              </p>
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center text-slate-400 gap-2">
               <Database className="w-8 h-8 text-slate-200" />
-              <p className="font-extrabold text-xs font-mono uppercase text-slate-405">No auditable actions stored matching search criteria.</p>
+              <p className="font-extrabold text-xs font-mono uppercase text-slate-405">
+                No auditable actions stored matching search criteria.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto text-[#1E293B]">
@@ -318,7 +331,7 @@ export default function AuditLogPage() {
                         <Clock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                         {new Date(log.created_at).toLocaleString("en-KE", {
                           dateStyle: "short",
-                          timeStyle: "medium"
+                          timeStyle: "medium",
                         })}
                       </td>
                       <td className="px-6 py-3.5 font-bold uppercase text-slate-600 tracking-wide text-[10px]">
@@ -341,7 +354,9 @@ export default function AuditLogPage() {
                             {log.performed_by}
                           </span>
                         ) : (
-                          <span className="text-teal-650 font-bold bg-[#E6F4F1] px-1 py-0.5 rounded text-[10px] uppercase">SYSTEM</span>
+                          <span className="text-teal-650 font-bold bg-[#E6F4F1] px-1 py-0.5 rounded text-[10px] uppercase">
+                            SYSTEM
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-3.5 text-xs text-slate-400 font-mono max-w-xs truncate">
@@ -371,8 +386,12 @@ export default function AuditLogPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl border border-slate-150 flex flex-col max-h-[85vh] overflow-hidden text-[#1E293B]">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-teal-650 bg-[#E6F4F1] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Trace Details</span>
-                <h3 className="font-extrabold text-slate-800 text-base mt-1">Audit Entry Payload View</h3>
+                <span className="text-[10px] text-teal-650 bg-[#E6F4F1] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  Trace Details
+                </span>
+                <h3 className="font-extrabold text-slate-800 text-base mt-1">
+                  Audit Entry Payload View
+                </h3>
               </div>
               <button
                 onClick={() => setSelectedLog(null)}
@@ -381,25 +400,38 @@ export default function AuditLogPage() {
                 Close
               </button>
             </div>
-            
+
             <div className="p-5 overflow-y-auto flex flex-col gap-4 font-mono text-xs text-slate-700">
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 border border-slate-150 rounded-lg">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Log UID</span>
+                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    Log UID
+                  </span>
                   <span className="text-slate-705 font-semibold">{selectedLog.id}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Created At</span>
-                  <span className="text-slate-705 font-semibold">{new Date(selectedLog.created_at).toString()}</span>
+                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    Created At
+                  </span>
+                  <span className="text-slate-705 font-semibold">
+                    {new Date(selectedLog.created_at).toString()}
+                  </span>
                 </div>
                 <div className="flex flex-col gap-0.5 mt-2">
-                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Action Vector</span>
-                  <span className="text-[#005c55] font-extrabold uppercase text-[11px]">{selectedLog.action}</span>
+                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    Action Vector
+                  </span>
+                  <span className="text-[#005c55] font-extrabold uppercase text-[11px]">
+                    {selectedLog.action}
+                  </span>
                 </div>
                 <div className="flex flex-col gap-0.5 mt-2">
-                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Entity & Target ID</span>
-                  <span className="text-slate-750 font-bold uppercase text-[11px]">{selectedLog.entity_type} ({selectedLog.entity_id || "null"})</span>
+                  <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    Entity & Target ID
+                  </span>
+                  <span className="text-slate-750 font-bold uppercase text-[11px]">
+                    {selectedLog.entity_type} ({selectedLog.entity_id || "null"})
+                  </span>
                 </div>
               </div>
 

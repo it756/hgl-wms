@@ -1,4 +1,4 @@
-import { sendEmail } from "../email";
+import { sendEmail } from "../../email";
 
 export function transferRequestSubmittedHtml(reference: string, raisedBy: string): string {
   return `

@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { 
-  Sliders, 
-  Coins, 
-  Clock, 
-  Bell, 
-  ShieldCheck, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  Sliders,
+  Coins,
+  Clock,
+  Bell,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
   Loader2,
   Mail,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
 } from "lucide-react";
 
 interface Settings {
@@ -31,7 +31,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
-  const token = () => (typeof window !== "undefined" ? localStorage.getItem("access_token") ?? "" : "");
+  const token = () =>
+    typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
 
   async function load() {
     setLoading(true);
@@ -75,9 +76,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <DashboardLayout activePage="/admin/settings">
+    <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-850 font-sans">
-        
         {/* Header Block */}
         <div>
           <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
@@ -85,9 +85,12 @@ export default function SettingsPage() {
             <span className="text-slate-300">/</span>
             <span className="text-primary font-extrabold">System Settings</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">System Configuration</h1>
+          <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
+            System Configuration
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Manage financial threshold gates, configure automated worker alerts, and set default compliance limits.
+            Manage financial threshold gates, configure automated worker alerts, and set default
+            compliance limits.
           </p>
         </div>
 
@@ -101,14 +104,14 @@ export default function SettingsPage() {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-2">
             <Loader2 className="animate-spin rounded-full h-8 w-8 text-primary" />
-            <p className="text-xs font-bold font-mono tracking-wider">LOADING ENVIRONMENT CONSTANTS...</p>
+            <p className="text-xs font-bold font-mono tracking-wider">
+              LOADING ENVIRONMENT CONSTANTS...
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            
             {/* Column 1 & 2: Main Settings Panel */}
             <div className="lg:col-span-2 flex flex-col gap-6">
-              
               {/* Finance Approvals Section */}
               <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col gap-4">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -117,15 +120,21 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h2 className="font-extrabold text-sm text-[#1E293B]">Finance Control Gates</h2>
-                    <p className="text-[10px] text-slate-400 font-medium">Configure thresholds that trigger mandatory higher execution signs.</p>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Configure thresholds that trigger mandatory higher execution signs.
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1 max-w-sm">
-                    <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Approval Cut-off Threshold (ZMW)</label>
+                    <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                      Approval Cut-off Threshold (ZMW)
+                    </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold font-mono">ZMW</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold font-mono">
+                        ZMW
+                      </span>
                       <input
                         type="number"
                         value={settings.finance_approval_threshold ?? ""}
@@ -138,17 +147,26 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="flex flex-col gap-1.5 pt-1">
-                    <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Enforcement Scope</label>
+                    <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                      Enforcement Scope
+                    </label>
                     <div className="flex gap-4">
                       {["global", "per_sbu"].map((v) => (
-                        <label key={v} className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-100/70 transition-all select-none col-span-1">
+                        <label
+                          key={v}
+                          className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-100/70 transition-all select-none col-span-1"
+                        >
                           <input
                             type="radio"
                             checked={settings.finance_approval_scope === v}
-                            onChange={() => setSettings((s) => ({ ...s, finance_approval_scope: v }))}
+                            onChange={() =>
+                              setSettings((s) => ({ ...s, finance_approval_scope: v }))
+                            }
                             className="text-primary focus:ring-primary h-3.5 w-3.5 border-slate-300"
                           />
-                          <span>{v === "global" ? "Global Account Audit" : "Distinct SBU Audits"}</span>
+                          <span>
+                            {v === "global" ? "Global Account Audit" : "Distinct SBU Audits"}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -191,12 +209,16 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h2 className="font-extrabold text-sm text-[#1E293B]">Session Governance</h2>
-                    <p className="text-[10px] text-slate-400 font-medium">Automatic idle expiration timers to enforce physical security.</p>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Automatic idle expiration timers to enforce physical security.
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1 max-w-sm">
-                  <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Token Validity Limit (Minutes)</label>
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                    Token Validity Limit (Minutes)
+                  </label>
                   <div className="relative">
                     <input
                       type="number"
@@ -206,7 +228,9 @@ export default function SettingsPage() {
                       }
                       className="w-full pr-16 pl-4 py-2 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-slate-800"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold uppercase font-sans">Min</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold uppercase font-sans">
+                      Min
+                    </span>
                   </div>
                 </div>
 
@@ -242,18 +266,30 @@ export default function SettingsPage() {
                     <Bell className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="font-extrabold text-sm text-[#1E293B]">Automated Worker Notifications</h2>
-                    <p className="text-[10px] text-slate-400 font-medium">Toggle background message triggers across communication pipelines.</p>
+                    <h2 className="font-extrabold text-sm text-[#1E293B]">
+                      Automated Worker Notifications
+                    </h2>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Toggle background message triggers across communication pipelines.
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   {[
-                    { key: "low_stock_alert_enabled" as keyof Settings, label: "Immediate SKU shortfalls warnings", desc: "Triggers notifications to procurement supervisors on warehouse checkout limits." },
-                    { key: "email_notifications_enabled" as keyof Settings, label: "Compliance Transaction Dispatch Receipts", desc: "Dispatches verification emails to SBU officers and finance controllers instantly." },
+                    {
+                      key: "low_stock_alert_enabled" as keyof Settings,
+                      label: "Immediate SKU shortfalls warnings",
+                      desc: "Triggers notifications to procurement supervisors on warehouse checkout limits.",
+                    },
+                    {
+                      key: "email_notifications_enabled" as keyof Settings,
+                      label: "Compliance Transaction Dispatch Receipts",
+                      desc: "Dispatches verification emails to SBU officers and finance controllers instantly.",
+                    },
                   ].map(({ key, label, desc }) => (
-                    <div 
-                      key={key} 
+                    <div
+                      key={key}
                       onClick={() =>
                         setSettings((s) => ({ ...s, [key]: s[key] === "true" ? "false" : "true" }))
                       }
@@ -268,7 +304,9 @@ export default function SettingsPage() {
                       </button>
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-[#1E293B]">{label}</span>
-                        <span className="text-[10px] text-slate-400 font-medium mt-0.5 leading-relaxed">{desc}</span>
+                        <span className="text-[10px] text-slate-400 font-medium mt-0.5 leading-relaxed">
+                          {desc}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -301,7 +339,6 @@ export default function SettingsPage() {
                   )}
                 </div>
               </section>
-
             </div>
 
             {/* Column 3: Summary Sidebar */}
@@ -310,22 +347,22 @@ export default function SettingsPage() {
                 <ShieldCheck className="w-4 h-4 text-emerald-600" /> Compliance Checklist
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
-                Changing rules modifies environment behaviors. Make sure to consult the corporate WMS standard operating procedure prior to updating parameters.
+                Changing rules modifies environment behaviors. Make sure to consult the corporate
+                WMS standard operating procedure prior to updating parameters.
               </p>
-              
+
               <div className="border-t border-slate-200 pt-4 flex flex-col gap-2.5 text-[11px] font-medium text-slate-700">
                 <span className="flex items-center gap-1.5 text-emerald-700 font-bold uppercase tracking-wider text-[9px] bg-emerald-50 px-2 py-1 rounded">
                   ✓ Active configuration validated
                 </span>
                 <p className="mt-1 leading-relaxed text-slate-500 font-semibold">
-                  Any settings modification results in a high-priority audit vector trace generated inside the secure system ledger instantly.
+                  Any settings modification results in a high-priority audit vector trace generated
+                  inside the secure system ledger instantly.
                 </p>
               </div>
             </div>
-
           </div>
         )}
-
       </div>
     </DashboardLayout>
   );
