@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
@@ -40,6 +40,14 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function RequestsListPage() {
+  return (
+    <Suspense>
+      <RequestsListContent />
+    </Suspense>
+  );
+}
+
+function RequestsListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const created = searchParams.get("created");
