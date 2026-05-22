@@ -28,6 +28,33 @@ export async function createTransferRequest(
     throw new Error("At least one line item is required");
   }
 
+  // Validate that each requested quantity does not exceed available stock
+  const productIds = input.lines.map((l) => l.product_id);
+  const { data: products, error: stockError } = await supabaseAdmin
+    .from("products")
+    .select("id, name, stock_quantity")
+    .in("id", productIds);
+  if (stockError) throw stockError;
+
+  const stockMap = new Map<string, { name: string; stock_quantity: number }>(
+    (products ?? []).map((p: any) => [p.id, { name: p.name, stock_quantity: p.stock_quantity }]),
+  );
+
+  for (const line of input.lines) {
+    const product = stockMap.get(line.product_id);
+    if (!product) {
+      throw new Error(`Product ${line.product_id} not found.`);
+    }
+    if (line.requested_quantity <= 0) {
+      throw new Error(`Requested quantity for "${product.name}" must be greater than zero.`);
+    }
+    if (line.requested_quantity > product.stock_quantity) {
+      throw new Error(
+        `Insufficient stock for "${product.name}": requested ${line.requested_quantity}, available ${product.stock_quantity}.`,
+      );
+    }
+  }
+
   const threshold = await getFinanceThreshold();
   const estimatedValue = input.estimated_value ?? 0;
   const requiresFinanceApproval = estimatedValue >= threshold;

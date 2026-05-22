@@ -1,4 +1,5 @@
 export type TransferRequestStatus =
+  | "PENDING_BU_APPROVAL"
   | "PENDING"
   | "PENDING_APPROVAL"
   | "APPROVED_FOR_ISSUE"
@@ -11,6 +12,7 @@ export interface TransferRequest {
   id: string;
   reference_number: string;
   sbu_id: string;
+  requesting_unit_id: string;
   raised_by: string;
   status: TransferRequestStatus;
   required_date: string | null;
@@ -20,13 +22,16 @@ export interface TransferRequest {
   approved_by: string | null;
   approved_at: string | null;
   finance_approval_notes: string | null;
+  bu_approved_by: string | null;
+  bu_approved_at: string | null;
+  bu_approval_notes: string | null;
   warehouse_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface TransferRequestCreateInput {
-  sbu_id: string;
+  requesting_unit_id: string;
   required_date?: string;
   notes?: string;
   estimated_value?: number;

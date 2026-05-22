@@ -18,6 +18,18 @@ export async function getUserFromAuthHeader(req: Request) {
   if (!token) return null;
 
   const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error) throw error;
+  if (error) {
+    const msg = error.message || "";
+    // Treat expired / invalid JWT as unauthenticated rather than a server error
+    if (
+      msg.includes("token is expired") ||
+      msg.includes("invalid JWT") ||
+      msg.includes("unable to parse or verify signature") ||
+      msg.includes("invalid claims")
+    ) {
+      return null;
+    }
+    throw error;
+  }
   return data.user;
 }

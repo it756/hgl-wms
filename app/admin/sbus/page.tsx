@@ -309,7 +309,7 @@ export default function SBUsPage() {
                         <td className="px-6 py-3.5">
                           {isEditingThisSBU ? (
                             <div className="relative max-w-xs flex items-center gap-1.5">
-                              <span className="text-[10px] text-slate-400 font-bold">KES</span>
+                              <span className="text-[10px] text-slate-400 font-bold">ZMW</span>
                               <input
                                 type="number"
                                 value={editThreshold}
@@ -320,7 +320,7 @@ export default function SBUsPage() {
                             </div>
                           ) : s.finance_approval_threshold != null ? (
                             <span className="font-mono text-[#0D9488] font-bold">
-                              KES {s.finance_approval_threshold.toLocaleString()}
+                            K {s.finance_approval_threshold.toLocaleString()}
                             </span>
                           ) : (
                             <span className="text-slate-400 font-semibold italic text-[11px]">

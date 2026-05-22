@@ -24,6 +24,22 @@ CREATE TABLE IF NOT EXISTS public.sbus (
 COMMENT ON TABLE public.sbus IS 'Strategic Business Units that can raise transfer requests.';
 
 -- ─────────────────────────────────────────────
+-- TABLE: sbu_units (sub-units / departments within an SBU)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.sbu_units (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL,
+  code        text NOT NULL,
+  sbu_id      uuid NOT NULL REFERENCES public.sbus(id) ON DELETE CASCADE,
+  is_active   boolean NOT NULL DEFAULT true,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (sbu_id, code)
+);
+CREATE INDEX IF NOT EXISTS idx_sbu_units_sbu_id ON public.sbu_units(sbu_id);
+COMMENT ON TABLE public.sbu_units IS 'Sub-units / departments within an SBU. Staff are assigned to a unit; transfer requests originate from a unit.';
+
+-- ─────────────────────────────────────────────
 -- TABLE: profiles (extends auth.users)
 -- Role: BU_MANAGER | WAREHOUSE_MANAGER | UNIT_STAFF | FINANCE_MANAGER | ADMIN
 -- ─────────────────────────────────────────────
@@ -34,11 +50,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
                   'BU_MANAGER','WAREHOUSE_MANAGER','UNIT_STAFF','FINANCE_MANAGER','ADMIN'
                 )),
   sbu_id        uuid REFERENCES public.sbus(id),
+  unit_id       uuid REFERENCES public.sbu_units(id),
   is_active     boolean NOT NULL DEFAULT true,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
-COMMENT ON TABLE public.profiles IS 'Application user profiles with roles and SBU assignments.';
+CREATE INDEX IF NOT EXISTS idx_profiles_unit_id ON public.profiles(unit_id);
+COMMENT ON TABLE public.profiles IS 'Application user profiles with roles, SBU, and unit assignments.';
 
 -- ─────────────────────────────────────────────
 -- TABLE: products
@@ -102,6 +120,7 @@ CREATE TABLE IF NOT EXISTS public.transfer_requests (
   required_date               date,
   notes                       text,
   estimated_value             numeric(12,2),
+  requesting_unit_id          uuid NOT NULL REFERENCES public.sbu_units(id),
   requires_finance_approval   boolean NOT NULL DEFAULT false,
   approved_by                 uuid REFERENCES auth.users(id),
   approved_at                 timestamptz,

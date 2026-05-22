@@ -9,11 +9,39 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const search = url.searchParams.get("search") ?? "";
   const activeOnly = url.searchParams.get("active_only") !== "false";
+  const sbuId = url.searchParams.get("sbu_id") ?? "";
 
   let query = supabaseAdmin.from("products").select("*").order("name", { ascending: true });
 
   if (activeOnly) query = query.eq("is_active", true);
   if (search) query = query.ilike("name", `%${search}%`);
+
+  if (sbuId) {
+    // Find all transfer requests for this SBU, then get the product IDs from their line items
+    const { data: requests } = await supabaseAdmin
+      .from("transfer_requests")
+      .select("id")
+      .eq("sbu_id", sbuId);
+
+    const requestIds = (requests ?? []).map((r) => r.id);
+
+    if (requestIds.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    const { data: lineItems } = await supabaseAdmin
+      .from("transfer_line_items")
+      .select("product_id")
+      .in("transfer_request_id", requestIds);
+
+    const productIds = [...new Set((lineItems ?? []).map((li) => li.product_id))];
+
+    if (productIds.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    query = query.in("id", productIds);
+  }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

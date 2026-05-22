@@ -12,7 +12,8 @@ import {
   Eye, 
   ShieldAlert, 
   Clock,
-  Plus
+  Plus,
+  Search
 } from "lucide-react";
 
 interface AuditLog {
@@ -84,7 +85,7 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
       product_name: "27\" UltraWide Displays",
       old_unit_cost: 29500,
       new_unit_cost: 32000,
-      currency: "KES",
+      currency: "ZMW",
       sbu_name: "Logistics Core Hub SBU"
     }
   },

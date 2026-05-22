@@ -2,18 +2,28 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  AlertTriangle, 
-  Power, 
-  ArrowUpRight, 
+import { useCurrency } from "@/lib/hooks/useCurrency";
+import {
+  Package,
+  Plus,
+  Search,
+  AlertTriangle,
+  Power,
+  ArrowUpRight,
   ArrowDownRight,
   CheckCircle,
   XCircle,
-  Activity
+  Activity,
+  Building2,
+  ArrowLeftRight,
+  RefreshCw,
 } from "lucide-react";
+
+interface SBU {
+  id: string;
+  name: string;
+  code: string;
+}
 
 interface Product {
   id: string;
@@ -31,6 +41,8 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sbus, setSbus] = useState<SBU[]>([]);
+  const [sbuFilter, setSbuFilter] = useState("");
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
@@ -54,10 +66,12 @@ export default function ProductsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/admin/products?active_only=false${search ? `&search=${encodeURIComponent(search)}` : ""}`,
-        { headers: { Authorization: `Bearer ${token()}` } },
-      );
+      const params = new URLSearchParams({ active_only: "false" });
+      if (search) params.set("search", search);
+      if (sbuFilter) params.set("sbu_id", sbuFilter);
+      const res = await fetch(`/api/admin/products?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setProducts(data);
@@ -69,8 +83,23 @@ export default function ProductsPage() {
   }
 
   useEffect(() => {
+    async function loadSbus() {
+      try {
+        const res = await fetch("/api/admin/sbus", {
+          headers: { Authorization: `Bearer ${token()}` },
+        });
+        if (res.ok) setSbus(await res.json());
+      } catch {
+        /* non-critical */
+      }
+    }
+    loadSbus();
     load();
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [sbuFilter]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -147,8 +176,9 @@ export default function ProductsPage() {
 
   // Compute product stats
   const totalQty = products.reduce((sum, p) => sum + p.stock_quantity, 0);
-  const totalValue = products.reduce((sum, p) => sum + (p.stock_quantity * (p.unit_cost || 0)), 0);
+  const totalValue = products.reduce((sum, p) => sum + p.stock_quantity * (p.unit_cost || 0), 0);
   const lowStockCount = products.filter(lowStock).length;
+  const { currency, rate, fetching: rateFetching, rateError, toggleCurrency, fmt } = useCurrency();
 
   return (
     <DashboardLayout>
@@ -161,46 +191,107 @@ export default function ProductsPage() {
               <span className="text-slate-300">/</span>
               <span className="text-[#005c55]">Catalogue</span>
             </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">Corporate Catalogue</h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">Verify stock holdings, regulate low thresholds, and adjust inventory quantities directly.</p>
+            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
+              Corporate Catalogue
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+              Verify stock holdings, regulate low thresholds, and adjust inventory quantities
+              directly.
+            </p>
           </div>
-          <button
-            onClick={() => setShowCreate(!showCreate)}
-            className="self-start md:self-auto px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Add New Product
-          </button>
+          <div className="flex flex-col items-end gap-1 self-start md:self-auto">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleCurrency}
+                disabled={rateFetching}
+                title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
+              >
+                {rateFetching ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                )}
+                {rateFetching
+                  ? "Fetching rate…"
+                  : currency === "ZMW"
+                    ? "View in USD"
+                    : "View in ZMW"}
+              </button>
+              <button
+                onClick={() => setShowCreate(!showCreate)}
+                className="px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Product
+              </button>
+            </div>
+            {currency === "USD" && rate != null && (
+              <a
+                href="https://open.er-api.com/v6/latest/ZMW"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
+              >
+                1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
+              </a>
+            )}
+            {rateError && <p className="text-[10px] text-amber-600 font-semibold">{rateError}</p>}
+          </div>
         </div>
 
         {/* KPI Dashboard */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Master SKU count</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Master SKU count
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-[#1E293B] font-mono">{String(products.length).padStart(2, '0')}</span>
-              <span className="text-[10px] text-[#005c55] bg-[#E6F4F1] border border-teal-150 rounded-full px-1.5 py-0.5 font-bold uppercase">Ready</span>
+              <span className="text-3xl font-extrabold text-[#1E293B] font-mono">
+                {String(products.length).padStart(2, "0")}
+              </span>
+              <span className="text-[10px] text-[#005c55] bg-[#E6F4F1] border border-teal-150 rounded-full px-1.5 py-0.5 font-bold uppercase">
+                Ready
+              </span>
             </div>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Total Stock Holdings</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Total Stock Holdings
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-slate-800 font-mono">{totalQty.toLocaleString()}</span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Units</span>
+              <span className="text-3xl font-extrabold text-slate-800 font-mono">
+                {totalQty.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">
+                Units
+              </span>
             </div>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Shortfall Thresholds</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Shortfall Thresholds
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-amber-600 font-mono">{String(lowStockCount).padStart(2, '0')}</span>
-              <span className="text-[10px] text-amber-700 bg-amber-55/60 border border-amber-100 rounded-full px-1.5 py-0.5 font-bold uppercase">Low Stock</span>
+              <span className="text-3xl font-extrabold text-amber-600 font-mono">
+                {String(lowStockCount).padStart(2, "0")}
+              </span>
+              <span className="text-[10px] text-amber-700 bg-amber-55/60 border border-amber-100 rounded-full px-1.5 py-0.5 font-bold uppercase">
+                Low Stock
+              </span>
             </div>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Estimated Value</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Estimated Value
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-2xl font-extrabold text-[#0D9488] font-mono">KES {totalValue.toLocaleString()}</span>
-              <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wide">Valued</span>
+              <span className="text-2xl font-extrabold text-[#0D9488] font-mono">
+                {fmt(totalValue)}
+              </span>
+              <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wide">
+                Valued
+              </span>
             </div>
           </div>
         </section>
@@ -214,7 +305,9 @@ export default function ProductsPage() {
             </h3>
             <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Product Title</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Product Title
+                </label>
                 <input
                   required
                   placeholder="e.g. Broken Pekoe 1 Tea (Fancy Grade)"
@@ -224,7 +317,9 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Identifier SKU</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Identifier SKU
+                </label>
                 <input
                   required
                   placeholder="e.g. BP1-KG"
@@ -234,7 +329,9 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Unit of Measure (UoM)</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Unit of Measure (UoM)
+                </label>
                 <input
                   placeholder="e.g. kg / bags"
                   value={newUom}
@@ -243,7 +340,9 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Unit Cost Default (KES)</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Unit Cost Default (ZMW)
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -254,7 +353,9 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Low Stock Safety Floor</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Low Stock Safety Floor
+                </label>
                 <input
                   type="number"
                   placeholder="e.g. 50"
@@ -264,7 +365,9 @@ export default function ProductsPage() {
                 />
               </div>
               {createError && (
-                <p className="text-rose-600 text-xs font-semibold font-mono uppercase mt-1 md:col-span-3">{createError}</p>
+                <p className="text-rose-600 text-xs font-semibold font-mono uppercase mt-1 md:col-span-3">
+                  {createError}
+                </p>
               )}
               <div className="md:col-span-3 flex justify-end gap-2 border-t border-slate-100 pt-4 mt-1">
                 <button
@@ -289,8 +392,8 @@ export default function ProductsPage() {
         <div className="bg-white border border-slate-200/95 rounded-xl shadow-sm flex flex-col overflow-hidden mt-6">
           {/* Action header bar */}
           <div className="p-4 border-b border-slate-100/50 bg-slate-50/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2 w-full max-w-sm">
-              <div className="relative flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
@@ -298,19 +401,53 @@ export default function ProductsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && load()}
-                  className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-semibold text-slate-800"
+                  className="w-56 pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-semibold text-slate-800"
                 />
               </div>
-              <button 
+              {sbus.length > 0 && (
+                <div className="relative flex items-center gap-1.5">
+                  <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  <select
+                    value={sbuFilter}
+                    onChange={(e) => setSbuFilter(e.target.value)}
+                    className="pl-8 pr-6 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-semibold text-slate-700 appearance-none cursor-pointer"
+                  >
+                    <option value="">All SBUs</option>
+                    {sbus.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <button
                 onClick={load}
                 className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-[11px] font-bold rounded-lg cursor-pointer transition-all"
               >
                 Search
               </button>
+              {sbuFilter && (
+                <button
+                  onClick={() => {
+                    setSbuFilter("");
+                  }}
+                  className="px-3 py-1.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold rounded-lg cursor-pointer transition-all"
+                >
+                  Clear SBU
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold font-mono">
               <Activity className="w-3.5 h-3.5 text-[#005c55]" />
-              <span>ACTIVE SKUs: {products.filter(p => p.is_active).length}</span>
+              {sbuFilter ? (
+                <span>
+                  {sbus.find((s) => s.id === sbuFilter)?.code ?? "SBU"} —{" "}
+                  {products.filter((p) => p.is_active).length} ACTIVE SKUs
+                </span>
+              ) : (
+                <span>ACTIVE SKUs: {products.filter((p) => p.is_active).length}</span>
+              )}
             </div>
           </div>
 
@@ -321,7 +458,9 @@ export default function ProductsPage() {
             </div>
           ) : products.length === 0 ? (
             <div className="py-16 text-center text-slate-400 font-semibold text-xs font-mono uppercase">
-              No matching products found in register.
+              {sbuFilter
+                ? `No products found for ${sbus.find((s) => s.id === sbuFilter)?.name ?? "this SBU"}.`
+                : "No matching products found in register."}
             </div>
           ) : (
             <div className="overflow-x-auto text-[#1E293B]">
@@ -345,32 +484,42 @@ export default function ProductsPage() {
                       <tr key={p.id} className="hover:bg-slate-50/40 transition-colors">
                         <td className="px-6 py-3.5 font-mono text-slate-705 font-bold">{p.sku}</td>
                         <td className="px-6 py-3.5">
-                          <span className="font-extrabold text-slate-800 text-sm block">{p.name}</span>
+                          <span className="font-extrabold text-slate-800 text-sm block">
+                            {p.name}
+                          </span>
                           {isLow && (
                             <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 font-bold uppercase mt-0.5">
                               <AlertTriangle className="w-3 h-3 shrink-0" /> Restock urgent
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-3.5 text-slate-500 font-bold uppercase">{p.unit_of_measure}</td>
+                        <td className="px-6 py-3.5 text-slate-500 font-bold uppercase">
+                          {p.unit_of_measure}
+                        </td>
                         <td className="px-6 py-3.5">
-                          <span className={`text-base font-extrabold font-mono ${isLow ? "text-amber-500 font-bold" : "text-slate-800"}`}>
+                          <span
+                            className={`text-base font-extrabold font-mono ${isLow ? "text-amber-500 font-bold" : "text-slate-800"}`}
+                          >
                             {p.stock_quantity.toLocaleString()}
                           </span>
                         </td>
-                        <td className="px-6 py-3.5 font-mono text-slate-500 font-semibold">{p.low_stock_threshold}</td>
+                        <td className="px-6 py-3.5 font-mono text-slate-500 font-semibold">
+                          {p.low_stock_threshold}
+                        </td>
                         <td className="px-6 py-3.5 font-mono text-[#0D9488] font-bold">
-                          {p.unit_cost != null ? `KES ${p.unit_cost.toLocaleString()}` : "—"}
+                          {fmt(p.unit_cost)}
                         </td>
                         <td className="px-6 py-3.5">
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase ${
-                              p.is_active 
-                                ? "bg-teal-50 border border-teal-200 text-teal-800" 
+                              p.is_active
+                                ? "bg-teal-50 border border-teal-200 text-teal-800"
                                 : "bg-slate-100 border border-slate-200 text-slate-600"
                             }`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${p.is_active ? "bg-teal-600" : "bg-slate-400"}`}></span>
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${p.is_active ? "bg-teal-600" : "bg-slate-400"}`}
+                            ></span>
                             {p.is_active ? "Active" : "Inactive"}
                           </span>
                         </td>
@@ -391,8 +540,8 @@ export default function ProductsPage() {
                             <button
                               onClick={() => toggleActive(p)}
                               className={`p-1 px-2 border rounded-md transition-all flex items-center gap-1 text-[11px] cursor-pointer ${
-                                p.is_active 
-                                  ? "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100" 
+                                p.is_active
+                                  ? "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
                                   : "bg-teal-50 border-teal-200 text-[#005c55] hover:bg-teal-100"
                               }`}
                             >
@@ -414,7 +563,10 @@ export default function ProductsPage() {
       {/* Stock adjustment modal */}
       {adjustProduct && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <form onSubmit={submitAdjust} className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md border border-slate-150 flex flex-col gap-4">
+          <form
+            onSubmit={submitAdjust}
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md border border-slate-150 flex flex-col gap-4"
+          >
             <div>
               <div className="flex items-center gap-1 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">
                 <span>Catalogue Manager</span>
@@ -422,23 +574,34 @@ export default function ProductsPage() {
                 <span>Adjustment</span>
               </div>
               <h2 className="font-extrabold text-[#1E293B] text-lg">Adjust Live Balances</h2>
-              <p className="text-xs text-slate-500 mt-1 font-semibold">SKU Node: <strong className="text-slate-800 font-mono text-[13px]">{adjustProduct.name} ({adjustProduct.sku})</strong></p>
+              <p className="text-xs text-slate-500 mt-1 font-semibold">
+                SKU Node:{" "}
+                <strong className="text-slate-800 font-mono text-[13px]">
+                  {adjustProduct.name} ({adjustProduct.sku})
+                </strong>
+              </p>
             </div>
 
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-500 uppercase tracking-wider text-[10px]">Current Recorded Level:</span>
-              <span className="font-mono text-base font-extrabold text-slate-800">{adjustProduct.stock_quantity.toLocaleString()} {adjustProduct.unit_of_measure}</span>
+              <span className="text-slate-500 uppercase tracking-wider text-[10px]">
+                Current Recorded Level:
+              </span>
+              <span className="font-mono text-base font-extrabold text-slate-800">
+                {adjustProduct.stock_quantity.toLocaleString()} {adjustProduct.unit_of_measure}
+              </span>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Adjustment Vector</span>
+              <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                Adjustment Vector
+              </span>
               <div className="grid grid-cols-2 gap-3.5">
                 <button
                   type="button"
                   onClick={() => setAdjustType("add")}
                   className={`py-2 px-4 border rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    adjustType === "add" 
-                      ? "bg-teal-50 border-[#0D9488] text-[#0D9488]" 
+                    adjustType === "add"
+                      ? "bg-teal-50 border-[#0D9488] text-[#0D9488]"
                       : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                   }`}
                 >
@@ -448,8 +611,8 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => setAdjustType("remove")}
                   className={`py-2 px-4 border rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    adjustType === "remove" 
-                      ? "bg-rose-50 border-rose-500 text-rose-700" 
+                    adjustType === "remove"
+                      ? "bg-rose-50 border-rose-500 text-rose-700"
                       : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                   }`}
                 >
@@ -459,7 +622,9 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Adjustment Stock Quantity</label>
+              <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                Adjustment Stock Quantity
+              </label>
               <input
                 required
                 type="number"
@@ -472,7 +637,9 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Mandatory Auditable Reason</label>
+              <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                Mandatory Auditable Reason
+              </label>
               <input
                 required
                 placeholder="e.g. Annual stocktake discrepancy audit"
@@ -483,7 +650,9 @@ export default function ProductsPage() {
             </div>
 
             {adjustError && (
-              <p className="text-rose-600 font-semibold font-mono uppercase text-[10px]">{adjustError}</p>
+              <p className="text-rose-600 font-semibold font-mono uppercase text-[10px]">
+                {adjustError}
+              </p>
             )}
 
             <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-1">

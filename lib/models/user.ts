@@ -11,6 +11,7 @@ export interface User {
   full_name: string | null;
   role: UserRole;
   sbu_id: string | null;
+  unit_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

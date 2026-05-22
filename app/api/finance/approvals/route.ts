@@ -195,22 +195,56 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [transfersResult, grnsResult] = await Promise.all([
-    supabaseAdmin
-      .from("transfer_requests")
-      .select("*, transfer_line_items(*)")
-      .eq("status", "PENDING_APPROVAL")
-      .order("created_at", { ascending: false }),
-    supabaseAdmin
-      .from("supplier_grns")
-      .select("*, supplier_grn_line_items(*)")
-      .eq("status", "AWAITING_FINANCE_APPROVAL")
-      .order("created_at", { ascending: false }),
-  ]);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [transfersResult, grnsResult, approvedTodayResult, rejectedTodayResult] = await Promise.all(
+    [
+      supabaseAdmin
+        .from("transfer_requests")
+        .select("*, sbus(id, name), transfer_line_items(*, products(id, name, sku, unit_cost))")
+        .eq("status", "PENDING_APPROVAL")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("supplier_grns")
+        .select("*, supplier_grn_line_items(*, products(id, name, sku))")
+        .eq("status", "AWAITING_FINANCE_APPROVAL")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("transfer_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "APPROVED_FOR_ISSUE")
+        .gte("approved_at", todayStart.toISOString()),
+      supabaseAdmin
+        .from("transfer_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "CANCELLED")
+        .gte("updated_at", todayStart.toISOString()),
+    ],
+  );
+
+  // Enrich transfer requests with requester full_name from profiles
+  const transfers = transfersResult.data ?? [];
+  const raisedByIds = [...new Set(transfers.map((t: any) => t.raised_by).filter(Boolean))];
+  let profileMap: Record<string, string> = {};
+  if (raisedByIds.length > 0) {
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", raisedByIds);
+    if (profiles) {
+      profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name ?? ""]));
+    }
+  }
+  const enrichedTransfers = transfers.map((t: any) => ({
+    ...t,
+    requester_name: profileMap[t.raised_by] ?? null,
+  }));
 
   return NextResponse.json({
-    transfer_requests: transfersResult.data ?? [],
+    transfer_requests: enrichedTransfers,
     supplier_grns: grnsResult.data ?? [],
+    approved_today: approvedTodayResult.count ?? 0,
+    rejected_today: rejectedTodayResult.count ?? 0,
   });
 }
-

@@ -51,81 +51,6 @@ interface IssuanceItem {
   shortfall_reason?: string;
 }
 
-// Fallback Mock Data matching the screenshot perfectly for demo purposes if live data is empty
-const MOCK_REQUESTS: PendingRequest[] = [
-  {
-    id: "trf-2026-00042",
-    reference_number: "TRF-2026-00042",
-    status: "APPROVED_FOR_ISSUE",
-    sbu_id: "sbu-finance-north",
-    sbu_name: "Finance & Administration (North Wing)",
-    required_date: "2026-10-16",
-    created_at: "2026-10-14",
-    estimated_value: 14250.0,
-    transfer_line_items: [
-      {
-        product_id: "prod-1",
-        product_name: "Precision Steel Gaskets (20mm)",
-        sku: "PSG-2026-X8",
-        requested_quantity: 450,
-        stock_qty: 1200,
-      },
-      {
-        product_id: "prod-2",
-        product_name: "High-Torque Hydraulic Seals",
-        sku: "HTS-99-BLUE",
-        requested_quantity: 120,
-        stock_qty: 85,
-      },
-      {
-        product_id: "prod-3",
-        product_name: "Industrial Lithium Grease (5kg)",
-        sku: "LUB-LG5-WMS",
-        requested_quantity: 15,
-        stock_qty: 12,
-      },
-    ],
-  },
-  {
-    id: "trf-2026-00043",
-    reference_number: "TRF-2026-00043",
-    status: "PENDING",
-    sbu_id: "sbu-retail-hub",
-    sbu_name: "Operations & Retail Hub A",
-    required_date: "2026-10-20",
-    created_at: "2026-10-15",
-    estimated_value: 840.0,
-    transfer_line_items: [
-      {
-        product_id: "prod-4",
-        product_name: "Reinforced Drive Belt (v4)",
-        sku: "HVS-9912-P",
-        requested_quantity: 20,
-        stock_qty: 420,
-      },
-    ],
-  },
-  {
-    id: "trf-2026-00044",
-    reference_number: "TRF-2026-00044",
-    status: "ISSUED",
-    sbu_id: "sbu-fleet",
-    sbu_name: "Fleet & Transport SBU",
-    required_date: "2026-10-12",
-    created_at: "2026-10-12",
-    estimated_value: 4120.0,
-    transfer_line_items: [
-      {
-        product_id: "prod-3",
-        product_name: "Industrial Lithium Grease (5kg)",
-        sku: "LUB-LG5-WMS",
-        requested_quantity: 45,
-        stock_qty: 12,
-      },
-    ],
-  },
-];
-
 export default function WarehouseQueuePage() {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,31 +81,26 @@ export default function WarehouseQueuePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      if (data && data.length > 0) {
-        // Enforce mock details on line items if they don't have product details
-        const enriched = data.map((r: any) => ({
-          ...r,
-          sbu_name: r.sbu?.name || `SBU Group ${r.sbu_id}`,
-          estimated_value:
-            r.estimated_value ||
-            r.transfer_line_items?.reduce(
-              (sum: number, i: any) => sum + i.requested_quantity * (i.product?.unit_cost || 15),
-              0,
-            ) ||
-            570,
-          transfer_line_items: r.transfer_line_items.map((line: any) => ({
-            ...line,
-            product_name: line.product?.name || `Product Code ${line.product_id}`,
-            sku: line.product?.sku || `SKU-${line.product_id}`,
-            stock_qty: line.product?.stock_quantity ?? 100,
-          })),
-        }));
-        setRequests(enriched);
-      } else {
-        setRequests(MOCK_REQUESTS);
-      }
+      const enriched = (data ?? []).map((r: any) => ({
+        ...r,
+        sbu_name: r.sbus?.name ?? r.sbu_id,
+        estimated_value:
+          r.estimated_value ??
+          r.transfer_line_items?.reduce(
+            (sum: number, i: any) => sum + i.requested_quantity * (i.products?.unit_cost ?? 0),
+            0,
+          ) ??
+          0,
+        transfer_line_items: (r.transfer_line_items ?? []).map((line: any) => ({
+          ...line,
+          product_name: line.products?.name ?? `Product ${line.product_id}`,
+          sku: line.products?.sku ?? "",
+          stock_qty: line.products?.stock_quantity ?? 0,
+        })),
+      }));
+      setRequests(enriched);
     } catch (err: any) {
-      setRequests(MOCK_REQUESTS);
+      setError(err.message || "Failed to load queue");
     } finally {
       setLoading(false);
     }
@@ -216,9 +136,7 @@ export default function WarehouseQueuePage() {
         };
       }),
     );
-    setLogisticsNotes(
-      "Specify any special handling instructions or vehicle details for the dispatch team...",
-    );
+    setLogisticsNotes("");
     setSuccessMsg(null);
     setError(null);
   }
@@ -293,11 +211,7 @@ export default function WarehouseQueuePage() {
         body: JSON.stringify({
           transfer_request_id: issuingId,
           items: payloadItems,
-          logistics_notes:
-            logisticsNotes !==
-            "Specify any special handling instructions or vehicle details for the dispatch team..."
-              ? logisticsNotes
-              : undefined,
+          logistics_notes: logisticsNotes.trim() || undefined,
         }),
       });
       const data = res.ok ? await res.json() : null;
@@ -308,13 +222,7 @@ export default function WarehouseQueuePage() {
       setIssuanceItems([]);
       await loadQueue();
     } catch (err: any) {
-      setSuccessMsg(
-        `[SIMULATION] Issuance recorded successfully for ${activeRequest?.reference_number}`,
-      );
-      setRequests((prev) => prev.map((r) => (r.id === issuingId ? { ...r, status: "ISSUED" } : r)));
-      setIssuingId(null);
-      setActiveRequest(null);
-      setIssuanceItems([]);
+      setError(err.message || "Failed to record issuance. Please try again.");
     } finally {
       setSubmitting(false);
     }

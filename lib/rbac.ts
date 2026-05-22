@@ -42,5 +42,18 @@ export function isAdmin(user: any): boolean {
   return hasRole(user, "ADMIN");
 }
 
-export default { hasRole, hasAnyRole, userSbuId, userRole, isUserInSbu, isFinanceManager, isAdmin };
+/** Returns true if the user has the BU Manager role */
+export function isBuManager(user: any): boolean {
+  return hasRole(user, "BU_MANAGER");
+}
 
+export default {
+  hasRole,
+  hasAnyRole,
+  userSbuId,
+  userRole,
+  isUserInSbu,
+  isFinanceManager,
+  isAdmin,
+  isBuManager,
+};

@@ -16,13 +16,23 @@ interface Product {
   name: string;
   sku: string;
   uom: string;
+  unit_cost: number | null;
+}
+
+interface SBUUnit {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
 }
 
 export default function NewTransferRequestPage() {
   const router = useRouter();
   const [sbuId, setSbuId] = useState("");
+  const [requestingUnitId, setRequestingUnitId] = useState("");
+  const [units, setUnits] = useState<SBUUnit[]>([]);
+  const [unitsError, setUnitsError] = useState<string | null>(null);
   const [requiredDate, setRequiredDate] = useState("");
-  const [estimatedValue, setEstimatedValue] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineItem[]>([{ product_id: "", requested_quantity: 1 }]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,26 +40,49 @@ export default function NewTransferRequestPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    // Attempt to prefetch products list from backend for beautiful dropdown
-    async function loadProducts() {
+    async function loadProductsAndUnits() {
+      const token = localStorage.getItem("access_token");
+      const role = localStorage.getItem("user_role") ?? "";
+
+      // Pre-fill SBU from localStorage
+      setSbuId(localStorage.getItem("user_sbu_id") ?? "");
+
+      // For UNIT_STAFF, auto-fill their assigned unit
+      if (role === "UNIT_STAFF") {
+        const unitId = localStorage.getItem("user_unit_id") ?? "";
+        if (unitId) setRequestingUnitId(unitId);
+      }
+
       try {
-        const token = localStorage.getItem("access_token");
-        const res = await fetch("/api/admin/products", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setProducts(data || []);
+        const [prodRes, unitsRes] = await Promise.all([
+          fetch("/api/admin/products", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("/api/bu/units", { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (prodRes.ok) setProducts((await prodRes.json()) || []);
+        if (unitsRes.ok) {
+          setUnits((await unitsRes.json()) || []);
+        } else {
+          let errMsg = "Could not load units.";
+          try {
+            const d = await unitsRes.json();
+            errMsg = d.error || errMsg;
+          } catch {
+            // response wasn't JSON (e.g. an HTML 404 page — restart dev server)
+          }
+          setUnitsError(errMsg);
         }
       } catch (err) {
-        console.error("Products catalogue prefetch failed", err);
+        console.error("Data prefetch failed", err);
       }
     }
-    loadProducts();
-    // Default form sbu hook
-    const userSbu = localStorage.getItem("user_sbu") || "";
-    setSbuId(localStorage.getItem("user_sbu_id") || "3e4df6aa-0000-0000-0000-000000000000");
+    loadProductsAndUnits();
   }, []);
+
+  const estimatedValue = lines.reduce((sum, line) => {
+    const product = products.find((p) => p.id === line.product_id);
+    const cost = product?.unit_cost ?? 0;
+    return sum + cost * line.requested_quantity;
+  }, 0);
 
   function addLine() {
     setLines((prev) => [...prev, { product_id: "", requested_quantity: 1 }]);
@@ -67,6 +100,11 @@ export default function NewTransferRequestPage() {
     e.preventDefault();
     setError(null);
 
+    if (!requestingUnitId) {
+      setError("Please select the requesting unit before submitting.");
+      return;
+    }
+
     if (lines.some((l) => !l.product_id || l.requested_quantity < 1)) {
       setError("All line items must have a valid product selected and quantity ≥ 1.");
       return;
@@ -82,9 +120,9 @@ export default function NewTransferRequestPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          sbu_id: sbuId,
+          requesting_unit_id: requestingUnitId,
           required_date: requiredDate || undefined,
-          estimated_value: estimatedValue ? Number(estimatedValue) : undefined,
+          estimated_value: estimatedValue > 0 ? estimatedValue : undefined,
           notes: notes || undefined,
           lines,
         }),
@@ -105,12 +143,20 @@ export default function NewTransferRequestPage() {
         {/* Breadcrumbs & Title */}
         <div>
           <nav className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Link className="hover:text-primary transition-all" href="/requests">Requests</Link>
+            <Link className="hover:text-primary transition-all" href="/requests">
+              Requests
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-on-surface font-extrabold text-primary">New Transfer Request</span>
+            <span className="text-on-surface font-extrabold text-primary">
+              New Transfer Request
+            </span>
           </nav>
-          <h2 className="text-2xl font-extrabold text-on-surface font-sans">New Transfer Request</h2>
-          <p className="text-xs text-slate-500 mt-1">Initiate internal stock movement between sub-units or warehouses.</p>
+          <h2 className="text-2xl font-extrabold text-on-surface font-sans">
+            New Transfer Request
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Initiate internal stock movement between sub-units or warehouses.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -121,9 +167,40 @@ export default function NewTransferRequestPage() {
                 Request Parameters
               </h3>
 
+              {/* Requesting Unit */}
+              <div className="flex flex-col gap-1.5">
+                <label
+                  className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                  htmlFor="requesting_unit"
+                >
+                  Requesting Unit <span className="text-rose-500">*</span>
+                </label>
+                {unitsError ? (
+                  <p className="text-xs text-rose-600 font-semibold">{unitsError}</p>
+                ) : (
+                  <select
+                    id="requesting_unit"
+                    required
+                    value={requestingUnitId}
+                    onChange={(e) => setRequestingUnitId(e.target.value)}
+                    className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer font-semibold text-slate-700"
+                  >
+                    <option value="">Select Unit...</option>
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.code})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
               {/* Required Date */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="required_date">
+                <label
+                  className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                  htmlFor="required_date"
+                >
                   Required Date
                 </label>
                 <input
@@ -135,29 +212,29 @@ export default function NewTransferRequestPage() {
                 />
               </div>
 
-              {/* Estimated Value */}
+              {/* Estimated Value (auto-calculated) */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="estimated_value">
-                  Estimated Value (KES)
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Total Value (ZMW)
                 </label>
-                <input
-                  id="estimated_value"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={estimatedValue}
-                  onChange={(e) => setEstimatedValue(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-sans font-semibold placeholder:text-outline-variant"
-                  placeholder="0.00"
-                />
+                <div className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-slate-50 font-mono font-bold text-slate-700 select-none">
+                  {estimatedValue.toLocaleString("en-ZM", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
                 <p className="text-[10px] text-slate-400 leading-normal font-semibold">
-                  Transfers at or above the configured SBU monthly thresholds require Finance approval.
+                  Auto-calculated from line item quantities &times; unit costs. Transfers at or
+                  above the configured SBU monthly thresholds require Finance approval.
                 </p>
               </div>
 
               {/* Notes */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="notes">
+                <label
+                  className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                  htmlFor="notes"
+                >
                   Notes / Justification
                 </label>
                 <textarea
@@ -175,7 +252,9 @@ export default function NewTransferRequestPage() {
             <div className="bg-sky-50/50 border border-sky-200 rounded-xl p-5 shadow-sm text-sky-900 flex flex-col gap-2.5">
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-sky-700" />
-                <h4 className="font-extrabold text-xs uppercase tracking-wider text-sky-800">Transfer Policy</h4>
+                <h4 className="font-extrabold text-xs uppercase tracking-wider text-sky-800">
+                  Transfer Policy
+                </h4>
               </div>
               <ul className="text-xs list-disc pl-4 space-y-1.5 text-sky-950 font-medium">
                 <li>All internal transfers must be balanced within 48 hours.</li>
@@ -202,9 +281,14 @@ export default function NewTransferRequestPage() {
             </div>
 
             {lines.map((line, i) => (
-              <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50/40 border border-slate-100 rounded-xl p-4 relative group">
+              <div
+                key={i}
+                className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50/40 border border-slate-100 rounded-xl p-4 relative group"
+              >
                 <div className="sm:col-span-8 flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Product</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                    Product
+                  </label>
                   <select
                     required
                     value={line.product_id}
@@ -212,11 +296,17 @@ export default function NewTransferRequestPage() {
                     className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer font-semibold text-slate-700"
                   >
                     <option value="">Select Product...</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.sku}) — {p.uom}
-                      </option>
-                    ))}
+                    {products
+                      .filter(
+                        (p) =>
+                          p.id === line.product_id ||
+                          !lines.some((l, j) => j !== i && l.product_id === p.id),
+                      )
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.sku}) — {p.uom}
+                        </option>
+                      ))}
                     {products.length === 0 && (
                       <option value="demo_id">Sample Industrial Compressor (UOM: Unit)</option>
                     )}
@@ -224,7 +314,9 @@ export default function NewTransferRequestPage() {
                 </div>
 
                 <div className="sm:col-span-3 flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Qty</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                    Qty
+                  </label>
                   <input
                     type="number"
                     required
@@ -285,4 +377,3 @@ export default function NewTransferRequestPage() {
     </DashboardLayout>
   );
 }
-

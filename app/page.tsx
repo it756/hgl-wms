@@ -66,10 +66,12 @@ export default function LoginPage() {
       const name = user.user_metadata?.full_name || "User Account";
       const sbuName = user.user_metadata?.sbu_name || "Assigned SBU";
 
+      const sbuId = (user.user_metadata as any)?.sbu_id || "";
       localStorage.setItem("access_token", session.access_token);
       localStorage.setItem("user_role", role);
       localStorage.setItem("user_name", name);
       localStorage.setItem("user_sbu", sbuName);
+      localStorage.setItem("user_sbu_id", sbuId);
 
       // Routing
       if (role === "ADMIN") {

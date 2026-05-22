@@ -23,7 +23,11 @@ import {
   AlertTriangle,
   Building,
   CheckCircle,
-  FileText
+  FileText,
+  LayoutDashboard,
+  RotateCcw,
+  PackageCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -44,27 +48,47 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // Read cached metadata or session
-    const role = localStorage.getItem("user_role") || "UNIT_STAFF";
-    const name = localStorage.getItem("user_name") || "Alexander Wright";
-    const sbu = localStorage.getItem("user_sbu") || "Finance & Admin SBU";
+    // Listen for auth state changes (token expiry, sign-out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+        if (event === "SIGNED_OUT") {
+          localStorage.clear();
+          router.push("/");
+        }
+      }
+    });
 
-    setUserRole(role);
-    setUserName(name);
-    setSbuName(sbu);
+    // Verify session is still valid on mount
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!session && localStorage.getItem("access_token") && localStorage.getItem("access_token") !== "demo-token-123456") {
+        // Real session is gone — sign out and redirect
+        localStorage.clear();
+        router.push("/");
+        return;
+      }
 
-    // Dynamic unread count
-    fetchNotifications();
+      // Read cached metadata or session
+      const role = localStorage.getItem("user_role") || "UNIT_STAFF";
+      const name = localStorage.getItem("user_name") || "Alexander Wright";
+      const sbu = localStorage.getItem("user_sbu") || "Finance & Admin SBU";
 
-    // Verify token exists, but let's be loose for seamless demo of UI if no token preset
-    const token = localStorage.getItem("access_token");
-    if (!token && pathname !== "/" && pathname !== "/forgot-password") {
-       // fallback values for realistic previews
-       localStorage.setItem("user_role", role);
-       localStorage.setItem("user_name", name);
-       localStorage.setItem("user_sbu", sbu);
-    }
-    setLoading(false);
+      setUserRole(role);
+      setUserName(name);
+      setSbuName(sbu);
+
+      // Dynamic unread count
+      fetchNotifications();
+
+      const token = localStorage.getItem("access_token");
+      if (!token && pathname !== "/" && pathname !== "/forgot-password") {
+        localStorage.setItem("user_role", role);
+        localStorage.setItem("user_name", name);
+        localStorage.setItem("user_sbu", sbu);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, [pathname]);
 
   async function fetchNotifications() {
@@ -73,9 +97,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       if (!token) {
         // dummy mock notifications if no live backend response
         setNotifications([
-          { id: 1, type: "critical", title: "Critical Stock Alert", message: "SKU: HZ-9902-X has dropped below safety levels.", time: "10:42 AM", read: false },
-          { id: 2, type: "delay", title: "Outbound Delay Detected", message: "Carrier SwiftLogistics reported a break-down.", time: "09:15 AM", read: false },
-          { id: 3, type: "system", title: "System Maintenance Completed", message: "The Warehouse Optimization Engine v4.2.1 is now live.", time: "Yesterday", read: true },
+          {
+            id: 1,
+            type: "critical",
+            title: "Critical Stock Alert",
+            message: "SKU: HZ-9902-X has dropped below safety levels.",
+            time: "10:42 AM",
+            read: false,
+          },
+          {
+            id: 2,
+            type: "delay",
+            title: "Outbound Delay Detected",
+            message: "Carrier SwiftLogistics reported a break-down.",
+            time: "09:15 AM",
+            read: false,
+          },
+          {
+            id: 3,
+            type: "system",
+            title: "System Maintenance Completed",
+            message: "The Warehouse Optimization Engine v4.2.1 is now live.",
+            time: "Yesterday",
+            read: true,
+          },
         ]);
         setUnreadCount(2);
         return;
@@ -117,14 +162,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return [
           { href: "/requests", label: "My Transfers", icon: ArrowLeftRight },
           { href: "/requests/new", label: "New Request", icon: Plus },
+          { href: "/bu/queue", label: "BU Approval Queue", icon: ClipboardList },
+          { href: "/requests/units", label: "Units & Staff", icon: Users },
+          { href: "/returns/approvals", label: "Returns Approval", icon: ClipboardCheck },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
         ];
       case "WAREHOUSE_MANAGER":
         return [
+          { href: "/warehouse", label: "Dashboard", icon: LayoutDashboard },
           { href: "/warehouse/queue", label: "Warehouse Queue", icon: ClipboardList },
           { href: "/warehouse/supplier-grn", label: "Supplier GRN Queue", icon: FileText },
-          { href: "/grn/submit", label: "Receive GRN", icon: CheckCircle },
+          { href: "/warehouse/returns", label: "Returns Incoming", icon: PackageCheck },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
+          { href: "/admin/variance", label: "Variance Resolution", icon: AlertTriangle },
         ];
       case "FINANCE_MANAGER":
         return [
@@ -135,6 +185,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return [
           { href: "/requests", label: "My Transfers", icon: ArrowLeftRight },
           { href: "/requests/new", label: "New Request", icon: Plus },
+          { href: "/grn/submit", label: "Receive GRN", icon: CheckCircle },
+          { href: "/returns", label: "My Returns", icon: RotateCcw },
+          { href: "/returns/new", label: "New Return", icon: Plus },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
         ];
     }
@@ -157,7 +210,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Brand identity */}
         <div className="h-16 px-6 border-b border-white/10 flex items-center gap-2.5">
           <Warehouse className="text-primary text-teal-400 w-7 h-7" />
-          <span className="font-extrabold text-xl tracking-tight text-white font-sans uppercase">Harvest WMS</span>
+          <span className="font-extrabold text-xl tracking-tight text-white font-sans uppercase">
+            Harvest WMS
+          </span>
         </div>
 
         {/* Navigation */}
@@ -236,17 +291,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="absolute right-0 top-12 w-80 bg-white border border-outline-variant rounded-xl shadow-lg z-50 p-4">
                   <div className="flex justify-between items-center pb-2 border-b border-outline-variant mb-3">
                     <h3 className="font-bold text-sm text-on-surface">Recent Alerts</h3>
-                    <Link href="/notifications" className="text-xs text-primary font-bold hover:underline" onClick={() => setNotificationsOpen(false)}>
+                    <Link
+                      href="/notifications"
+                      className="text-xs text-primary font-bold hover:underline"
+                      onClick={() => setNotificationsOpen(false)}
+                    >
                       All Alerts ({unreadCount})
                     </Link>
                   </div>
                   <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
                     {notifications.map((n) => (
-                      <div key={n.id} className="p-2 bg-slate-50 border border-slate-100 rounded-lg flex flex-col gap-1">
+                      <div
+                        key={n.id}
+                        className="p-2 bg-slate-50 border border-slate-100 rounded-lg flex flex-col gap-1"
+                      >
                         <div className="flex justify-between items-center">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                            n.type === "critical" ? "bg-red-50 text-red-700" : "bg-blue-50 text-sky-700"
-                          }`}>{n.title}</span>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                              n.type === "critical"
+                                ? "bg-red-50 text-red-700"
+                                : "bg-blue-50 text-sky-700"
+                            }`}
+                          >
+                            {n.title}
+                          </span>
                           <span className="text-[10px] text-slate-400 font-mono">{n.time}</span>
                         </div>
                         <p className="text-xs text-slate-600 line-clamp-2">{n.message}</p>
@@ -266,16 +334,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold border-2 border-primary font-mono text-sm shadow-sm select-none">
-                {userName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                {userName
+                  .split(" ")
+                  .map((w) => w[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
               </div>
             </div>
           </div>
         </header>
 
         {/* Actual Dynamic Workspace */}
-        <main className="flex-1 p-5 md:p-8 max-w-[1400px] w-full mx-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-5 md:p-8 max-w-[1400px] w-full mx-auto">{children}</main>
       </div>
 
       {/* Mobile Drawer Slide-out */}

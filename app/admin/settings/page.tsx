@@ -123,9 +123,9 @@ export default function SettingsPage() {
 
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1 max-w-sm">
-                    <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Approval Cut-off Threshold (KES)</label>
+                    <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Approval Cut-off Threshold (ZMW)</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold font-mono">KES</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold font-mono">ZMW</span>
                       <input
                         type="number"
                         value={settings.finance_approval_threshold ?? ""}
