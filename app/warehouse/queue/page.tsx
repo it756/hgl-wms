@@ -21,7 +21,9 @@ import {
   ArrowDown,
   FileText,
   Workflow,
+  Paperclip,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface PendingRequest {
   id: string;
@@ -62,6 +64,10 @@ export default function WarehouseQueuePage() {
   const [logisticsNotes, setLogisticsNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [issuedRecord, setIssuedRecord] = useState<{
+    issuanceId: string;
+    referenceNumber: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<
     "ALL" | "PENDING_APPROVAL" | "APPROVED_FOR_ISSUE" | "ISSUED_TODAY"
   >("ALL");
@@ -217,7 +223,11 @@ export default function WarehouseQueuePage() {
       });
       const data = res.ok ? await res.json() : null;
       if (!res.ok) throw new Error(data?.error || "Failed to record issuance");
+      const issuanceId: string | null = data?.issuanceId ?? null;
       setSuccessMsg(`Issuance recorded successfully for ${activeRequest?.reference_number}`);
+      if (issuanceId) {
+        setIssuedRecord({ issuanceId, referenceNumber: activeRequest?.reference_number ?? "" });
+      }
       setIssuingId(null);
       setActiveRequest(null);
       setIssuanceItems([]);
@@ -355,6 +365,42 @@ export default function WarehouseQueuePage() {
           <div className="bg-[#E6F4F1] border border-teal-200 text-teal-900 rounded-xl px-4 py-3.5 text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-in fade-in duration-300">
             <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0" />
             <span>{successMsg}</span>
+          </div>
+        )}
+
+        {/* Post-issuance document upload panel */}
+        {issuedRecord && (
+          <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 bg-[#eff4ff] flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-primary" />
+                Attach Dispatch Documents
+                <span className="font-mono text-primary">{issuedRecord.referenceNumber}</span>
+              </h2>
+              <button
+                onClick={() => {
+                  setIssuedRecord(null);
+                  setSuccessMsg(null);
+                }}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 border border-slate-200 rounded-lg transition"
+              >
+                Done
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-xs text-slate-500 mb-4">
+                Optionally attach the dispatch note, delivery note, or any supporting documents for
+                this issuance.
+              </p>
+              <DocumentUpload
+                transactionType="issuance"
+                transactionId={issuedRecord.issuanceId}
+                canDelete={false}
+                token={
+                  typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : ""
+                }
+              />
+            </div>
           </div>
         )}
         {error && (

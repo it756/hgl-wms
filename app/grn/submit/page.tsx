@@ -14,7 +14,9 @@ import {
   ShieldCheck,
   ChevronRight,
   ClipboardList,
+  Paperclip,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface IssuedTransfer {
   id: string;
@@ -48,6 +50,10 @@ export default function SubmitGRNPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submittedGrn, setSubmittedGrn] = useState<{
+    grnId: string;
+    referenceNumber: string;
+  } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -118,9 +124,16 @@ export default function SubmitGRNPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "GRN submission failed");
+      const grnId: string | null = data?.grnId ?? null;
       setSuccess(
-        `GRN ${data.reference_number || "GRN-2023-4552"} submitted. Transfer is now marked as completed.`,
+        `GRN submitted. Transfer is now marked as ${data.status?.replace(/_/g, " ") ?? "completed"}.`,
       );
+      if (grnId) {
+        setSubmittedGrn({
+          grnId,
+          referenceNumber: transfers.find((t) => t.id === selectedId)?.reference_number ?? "",
+        });
+      }
       setSelectedId(null);
       setGrnItems([]);
       setTransfers((prev) => prev.filter((t) => t.id !== selectedId));
@@ -157,6 +170,39 @@ export default function SubmitGRNPage() {
             <div>
               <p className="font-extrabold text-slate-900 leading-normal">Verification Complete</p>
               <p className="text-slate-650 font-medium text-xs mt-0.5">{success}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Post-GRN document upload */}
+        {submittedGrn && (
+          <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 bg-[#eff4ff] flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-primary" />
+                Attach GRN Documents
+                <span className="font-mono text-primary">{submittedGrn.referenceNumber}</span>
+              </h2>
+              <button
+                onClick={() => setSubmittedGrn(null)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 border border-slate-200 rounded-lg transition"
+              >
+                Done
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-xs text-slate-500 mb-4">
+                Optionally attach the signed delivery note, condition report, or any supporting
+                documents for this GRN.
+              </p>
+              <DocumentUpload
+                transactionType="grn"
+                transactionId={submittedGrn.grnId}
+                canDelete={false}
+                token={
+                  typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : ""
+                }
+              />
             </div>
           </div>
         )}

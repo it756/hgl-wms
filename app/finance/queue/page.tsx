@@ -22,7 +22,9 @@ import {
   TrendingDown,
   RefreshCw,
   ArrowLeftRight,
+  Paperclip,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface PendingItem {
   id: string;
@@ -605,6 +607,28 @@ export default function FinanceQueuePage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Attached documents (read-only — only shown for supplier GRNs) */}
+                {activeTab === "grns" && (
+                  <div className="flex flex-col gap-1.5">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <Paperclip className="w-3 h-3" /> Attached Documents
+                    </h4>
+                    <div className="border border-slate-100 rounded-lg px-3 py-2 bg-slate-50">
+                      <DocumentUpload
+                        transactionType="supplier_grn"
+                        transactionId={selectedItem.id}
+                        canDelete={false}
+                        readOnly={true}
+                        token={
+                          typeof window !== "undefined"
+                            ? (localStorage.getItem("access_token") ?? "")
+                            : ""
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Verification Resolution input box */}
                 <div className="flex flex-col gap-1.5 pt-1">

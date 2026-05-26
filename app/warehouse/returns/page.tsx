@@ -10,7 +10,9 @@ import {
   AlertCircle,
   RotateCcw,
   Building,
+  Paperclip,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface ReturnLineItem {
   id: string;
@@ -241,6 +243,29 @@ export default function WarehouseReturnsPage() {
                       </span>
                     </div>
                   ))}
+                </div>
+
+                {/* Attached documents */}
+                <div className="border border-slate-100 rounded-lg overflow-hidden">
+                  <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-1.5">
+                    <Paperclip className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                      Documents
+                    </span>
+                  </div>
+                  <div className="px-4 py-3">
+                    <DocumentUpload
+                      transactionType="return_request"
+                      transactionId={r.id}
+                      canDelete={false}
+                      readOnly={true}
+                      token={
+                        typeof window !== "undefined"
+                          ? (localStorage.getItem("access_token") ?? "")
+                          : ""
+                      }
+                    />
+                  </div>
                 </div>
 
                 {/* Confirm receipt */}

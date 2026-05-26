@@ -15,7 +15,9 @@ import {
   ArrowLeftRight,
   RefreshCw,
   Pencil,
+  Paperclip,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 const EDITABLE_STATUSES = ["PENDING", "PENDING_APPROVAL", "PENDING_BU_APPROVAL"];
 
@@ -398,6 +400,28 @@ export default function TransferRequestDetailPage() {
                   </table>
                 </div>
               )}
+            </div>
+
+            {/* Documents */}
+            <div className="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-outline-variant bg-[#eff4ff]">
+                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-primary" />
+                  Documents
+                </h2>
+              </div>
+              <div className="p-6">
+                <DocumentUpload
+                  transactionType="transfer_request"
+                  transactionId={request.id}
+                  canDelete={EDITABLE_STATUSES.includes(request.status)}
+                  token={
+                    typeof window !== "undefined"
+                      ? (localStorage.getItem("access_token") ?? "")
+                      : ""
+                  }
+                />
+              </div>
             </div>
           </>
         ) : null}

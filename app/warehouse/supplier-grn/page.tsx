@@ -27,7 +27,9 @@ import {
   RefreshCw,
   ArrowLeftRight,
   Edit2,
+  Paperclip,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface LineItem {
   product_id: string;
@@ -126,6 +128,10 @@ export default function SupplierGRNPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [submittedGrn, setSubmittedGrn] = useState<{
+    grnId: string;
+    referenceNumber: string;
+  } | null>(null);
   const { currency, rate, fetching: rateFetching, rateError, toggleCurrency, fmt } = useCurrency();
 
   const token = () =>
@@ -265,7 +271,21 @@ export default function SupplierGRNPage() {
         unit_cost: li.unit_cost ?? 0,
         total_cost: li.quantity_received * (li.unit_cost ?? 0),
       }));
-      setLines(loadedLines.length ? loadedLines : [{ product_id: "", product_name: "", sku: "", unit_of_measure: "EA", quantity_received: 1, unit_cost: 0, total_cost: 0 }]);
+      setLines(
+        loadedLines.length
+          ? loadedLines
+          : [
+              {
+                product_id: "",
+                product_name: "",
+                sku: "",
+                unit_of_measure: "EA",
+                quantity_received: 1,
+                unit_cost: 0,
+                total_cost: 0,
+              },
+            ],
+      );
       setProductSearch(loadedLines.map((l) => l.product_name));
       setProductOptions(loadedLines.map(() => []));
       setEditingGrnId(grnId);
@@ -320,7 +340,12 @@ export default function SupplierGRNPage() {
       );
       resetForm();
       await loadGrns();
-      setView("list");
+      if (!isEdit && data.id) {
+        setSubmittedGrn({ grnId: data.id, referenceNumber: data.reference_number ?? "" });
+        // Stay on form view to show document upload panel
+      } else {
+        setView("list");
+      }
     } catch (err: any) {
       setError(err.message || "Submission failed. Please try again.");
     } finally {
@@ -366,11 +391,19 @@ export default function SupplierGRNPage() {
               <span>Inbound Logistics</span>
               <span className="text-slate-300">/</span>
               <span className="text-primary">
-                {view === "list" ? "Supplier GRN Queue" : editingGrnId ? "Edit Supplier GRN" : "New Supplier GRN"}
+                {view === "list"
+                  ? "Supplier GRN Queue"
+                  : editingGrnId
+                    ? "Edit Supplier GRN"
+                    : "New Supplier GRN"}
               </span>
             </div>
             <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-              {view === "list" ? "Supplier GRN Queue" : editingGrnId ? "Edit Supplier GRN" : "Record Supplier GRN"}
+              {view === "list"
+                ? "Supplier GRN Queue"
+                : editingGrnId
+                  ? "Edit Supplier GRN"
+                  : "Record Supplier GRN"}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5 font-medium">
               {view === "list"
@@ -510,6 +543,43 @@ export default function SupplierGRNPage() {
           <div className="bg-[#E6F4F1] border border-teal-200 text-teal-850 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />
             <span>{success}</span>
+          </div>
+        )}
+
+        {/* Post-creation document upload panel */}
+        {submittedGrn && view === "form" && (
+          <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 bg-[#eff4ff] flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-primary" />
+                Attach Supplier Documents
+                <span className="font-mono text-primary">{submittedGrn.referenceNumber}</span>
+              </h2>
+              <button
+                onClick={() => {
+                  setSubmittedGrn(null);
+                  setSuccess(null);
+                  setView("list");
+                }}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 border border-slate-200 rounded-lg transition"
+              >
+                Done
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-xs text-slate-500 mb-4">
+                Optionally attach the supplier invoice, delivery note, packing list, or any
+                supporting documents for this GRN.
+              </p>
+              <DocumentUpload
+                transactionType="supplier_grn"
+                transactionId={submittedGrn.grnId}
+                canDelete={true}
+                token={
+                  typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : ""
+                }
+              />
+            </div>
           </div>
         )}
         {error && (
@@ -681,10 +751,19 @@ export default function SupplierGRNPage() {
                       Invoice Amount (ZMW)
                     </label>
                     <div className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs text-slate-700 font-bold flex items-center justify-between">
-                      <span>{totalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Auto</span>
+                      <span>
+                        {totalVal.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Auto
+                      </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium">Calculated from product line totals</p>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Calculated from product line totals
+                    </p>
                   </div>
 
                   {/* Date Received */}
@@ -883,7 +962,13 @@ export default function SupplierGRNPage() {
                     className="px-5 py-2 bg-primary hover:bg-primary/90 rounded-lg text-white text-xs font-bold cursor-pointer transition flex items-center gap-1.5 disabled:opacity-50"
                   >
                     <CheckCircle className="w-4 h-4" />
-                    {loading ? (editingGrnId ? "Updating..." : "Submitting...") : editingGrnId ? "Update Supplier GRN" : "Submit Supplier GRN"}
+                    {loading
+                      ? editingGrnId
+                        ? "Updating..."
+                        : "Submitting..."
+                      : editingGrnId
+                        ? "Update Supplier GRN"
+                        : "Submit Supplier GRN"}
                   </button>
                 </div>
               </div>

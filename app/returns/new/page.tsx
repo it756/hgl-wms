@@ -11,7 +11,9 @@ import {
   RotateCcw,
   Info,
   ClipboardList,
+  Paperclip,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface CompletedTransfer {
   id: string;
@@ -44,6 +46,10 @@ export default function NewReturnPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [submittedReturn, setSubmittedReturn] = useState<{
+    returnId: string;
+    referenceNumber: string;
+  } | null>(null);
 
   const token = () =>
     typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
@@ -133,6 +139,9 @@ export default function NewReturnPage() {
       setSuccess(
         `Return request ${data.reference_number} submitted successfully. Awaiting BU Manager approval.`,
       );
+      if (data.id) {
+        setSubmittedReturn({ returnId: data.id, referenceNumber: data.reference_number ?? "" });
+      }
       setSelectedTransfer(null);
       setLineItems([]);
       setReason("");
@@ -158,7 +167,8 @@ export default function NewReturnPage() {
             Raise a Return Request
           </h1>
           <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Select a completed transfer, specify items and quantities to return, and provide a reason. Your BU Manager will review and approve before the warehouse receives the goods.
+            Select a completed transfer, specify items and quantities to return, and provide a
+            reason. Your BU Manager will review and approve before the warehouse receives the goods.
           </p>
         </div>
 
@@ -169,6 +179,38 @@ export default function NewReturnPage() {
             <div>
               <p className="font-extrabold text-slate-900">Return Submitted</p>
               <p className="text-xs font-medium mt-0.5">{success}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Post-submission document upload */}
+        {submittedReturn && (
+          <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 bg-[#eff4ff] flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-primary" />
+                Attach Return Documents
+                <span className="font-mono text-primary">{submittedReturn.referenceNumber}</span>
+              </h2>
+              <button
+                onClick={() => setSubmittedReturn(null)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 border border-slate-200 rounded-lg transition"
+              >
+                Done
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-xs text-slate-500 mb-4">
+                Optionally attach a return note, photos of items, or any other supporting documents.
+              </p>
+              <DocumentUpload
+                transactionType="return_request"
+                transactionId={submittedReturn.returnId}
+                canDelete={true}
+                token={
+                  typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : ""
+                }
+              />
             </div>
           </div>
         )}
@@ -277,7 +319,9 @@ export default function NewReturnPage() {
                   <tbody>
                     {lineItems.map((item, idx) => (
                       <tr key={item.product_id} className="border-b border-slate-50 last:border-0">
-                        <td className="py-3 pr-4 font-semibold text-slate-800">{item.product_name}</td>
+                        <td className="py-3 pr-4 font-semibold text-slate-800">
+                          {item.product_name}
+                        </td>
                         <td className="py-3 pr-4 font-mono text-xs text-slate-500">{item.sku}</td>
                         <td className="py-3 pr-4 text-center text-slate-600 font-bold">
                           {item.issued_quantity}
