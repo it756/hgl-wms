@@ -67,10 +67,21 @@ export async function POST(req: Request) {
     stock_quantity,
     low_stock_threshold,
     unit_cost,
+    warehouse_location,
   } = body;
 
   if (!name || !sku) {
     return NextResponse.json({ error: "name and sku are required" }, { status: 400 });
+  }
+
+  if (!warehouse_location || !/^[A-Z][12]$/.test(warehouse_location)) {
+    return NextResponse.json(
+      {
+        error:
+          "warehouse_location is required and must be a letter A-Z followed by 1 or 2 (e.g. A1, B2)",
+      },
+      { status: 400 },
+    );
   }
 
   const { data, error } = await supabaseAdmin
@@ -83,6 +94,7 @@ export async function POST(req: Request) {
       stock_quantity: stock_quantity ?? 0,
       low_stock_threshold: low_stock_threshold ?? 0,
       unit_cost: unit_cost ?? null,
+      warehouse_location,
       is_active: true,
     })
     .select()

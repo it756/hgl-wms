@@ -62,8 +62,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   // Regular product field update
-  const { name, sku, description, unit_of_measure, low_stock_threshold, unit_cost, is_active } =
-    body;
+  const {
+    name,
+    sku,
+    description,
+    unit_of_measure,
+    low_stock_threshold,
+    unit_cost,
+    is_active,
+    warehouse_location,
+  } = body;
+
+  if (warehouse_location !== undefined && !/^[A-Z][12]$/.test(warehouse_location)) {
+    return NextResponse.json(
+      { error: "warehouse_location must be a letter A-Z followed by 1 or 2 (e.g. A1, B2)" },
+      { status: 400 },
+    );
+  }
+
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (name !== undefined) updates.name = name;
   if (sku !== undefined) updates.sku = sku;
@@ -72,6 +88,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (low_stock_threshold !== undefined) updates.low_stock_threshold = low_stock_threshold;
   if (unit_cost !== undefined) updates.unit_cost = unit_cost;
   if (is_active !== undefined) updates.is_active = is_active;
+  if (warehouse_location !== undefined) updates.warehouse_location = warehouse_location;
 
   const { data, error } = await supabaseAdmin
     .from("products")

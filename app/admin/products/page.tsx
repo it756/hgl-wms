@@ -34,6 +34,7 @@ interface Product {
   low_stock_threshold: number;
   unit_cost: number | null;
   is_active: boolean;
+  warehouse_location: string;
 }
 
 export default function ProductsPage() {
@@ -51,6 +52,7 @@ export default function ProductsPage() {
   const [newUom, setNewUom] = useState("unit");
   const [newCost, setNewCost] = useState("");
   const [newThreshold, setNewThreshold] = useState("0");
+  const [newLocation, setNewLocation] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
 
   // Stock adjustment modal
@@ -114,6 +116,7 @@ export default function ProductsPage() {
           unit_of_measure: newUom,
           unit_cost: newCost ? Number(newCost) : undefined,
           low_stock_threshold: Number(newThreshold),
+          warehouse_location: newLocation.toUpperCase(),
         }),
       });
       const data = await res.json();
@@ -124,6 +127,7 @@ export default function ProductsPage() {
       setNewUom("unit");
       setNewCost("");
       setNewThreshold("0");
+      setNewLocation("");
       load();
     } catch (e: any) {
       setCreateError(e.message);
@@ -364,6 +368,21 @@ export default function ProductsPage() {
                   className="w-full px-3.5 py-2 border border-slate-202 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-805"
                 />
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Warehouse Location <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  required
+                  placeholder="e.g. A1, B2, Z1"
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value.toUpperCase())}
+                  pattern="^[A-Z][12]$"
+                  title="One letter A-Z followed by 1 or 2 (e.g. A1, B2)"
+                  maxLength={2}
+                  className="w-full px-3.5 py-2 border border-slate-202 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-805 uppercase"
+                />
+              </div>
               {createError && (
                 <p className="text-rose-600 text-xs font-semibold font-mono uppercase mt-1 md:col-span-3">
                   {createError}
@@ -467,12 +486,13 @@ export default function ProductsPage() {
               <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
                 <thead>
                   <tr className="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-widest text-[9px]">
-                    <th className="px-6 py-4 text-left w-[15%]">SKU</th>
-                    <th className="px-6 py-4 text-left w-[35%]">Product Specification Name</th>
-                    <th className="px-6 py-4 text-left w-[10%]">UOM</th>
-                    <th className="px-6 py-4 text-left w-[10%]">Stock Qty</th>
-                    <th className="px-6 py-4 text-left w-[10%]">Low Safe Limit</th>
-                    <th className="px-6 py-4 text-left w-[10%]">Unit Cost</th>
+                    <th className="px-6 py-4 text-left w-[12%]">SKU</th>
+                    <th className="px-6 py-4 text-left w-[28%]">Product Specification Name</th>
+                    <th className="px-6 py-4 text-left w-[8%]">Location</th>
+                    <th className="px-6 py-4 text-left w-[8%]">UOM</th>
+                    <th className="px-6 py-4 text-left w-[8%]">Stock Qty</th>
+                    <th className="px-6 py-4 text-left w-[8%]">Low Safe Limit</th>
+                    <th className="px-6 py-4 text-left w-[8%]">Unit Cost</th>
                     <th className="px-6 py-4 text-left w-[10%]">State</th>
                     <th className="px-6 py-4 text-right w-[10%]">Operations</th>
                   </tr>
@@ -492,6 +512,11 @@ export default function ProductsPage() {
                               <AlertTriangle className="w-3 h-3 shrink-0" /> Restock urgent
                             </span>
                           )}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span className="inline-flex items-center justify-center w-9 h-6 rounded font-mono font-extrabold text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 tracking-wider">
+                            {p.warehouse_location || "—"}
+                          </span>
                         </td>
                         <td className="px-6 py-3.5 text-slate-500 font-bold uppercase">
                           {p.unit_of_measure}

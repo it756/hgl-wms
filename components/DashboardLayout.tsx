@@ -28,6 +28,8 @@ import {
   RotateCcw,
   PackageCheck,
   ClipboardCheck,
+  Flame,
+  TrendingDown,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -49,7 +51,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     // Listen for auth state changes (token expiry, sign-out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
         if (event === "SIGNED_OUT") {
           localStorage.clear();
@@ -60,7 +64,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     // Verify session is still valid on mount
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!session && localStorage.getItem("access_token") && localStorage.getItem("access_token") !== "demo-token-123456") {
+      if (
+        !session &&
+        localStorage.getItem("access_token") &&
+        localStorage.getItem("access_token") !== "demo-token-123456"
+      ) {
         // Real session is gone — sign out and redirect
         localStorage.clear();
         router.push("/");
@@ -157,6 +165,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/admin/exports", label: "Export Data", icon: FileSpreadsheet },
           { href: "/admin/audit", label: "Audit Trails", icon: History },
           { href: "/admin/variance", label: "Variance Resolution", icon: AlertTriangle },
+          { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
         ];
       case "BU_MANAGER":
         return [
@@ -165,6 +174,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/bu/queue", label: "BU Approval Queue", icon: ClipboardList },
           { href: "/requests/units", label: "Units & Staff", icon: Users },
           { href: "/returns/approvals", label: "Returns Approval", icon: ClipboardCheck },
+          { href: "/variance", label: "Variance Decisions", icon: AlertTriangle },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
         ];
       case "WAREHOUSE_MANAGER":
@@ -173,13 +183,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/warehouse/queue", label: "Warehouse Queue", icon: ClipboardList },
           { href: "/warehouse/supplier-grn", label: "Supplier GRN Queue", icon: FileText },
           { href: "/warehouse/returns", label: "Returns Incoming", icon: PackageCheck },
+          { href: "/warehouse/losses", label: "Loss Account", icon: TrendingDown },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
-          { href: "/admin/variance", label: "Variance Resolution", icon: AlertTriangle },
+          { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
         ];
       case "FINANCE_MANAGER":
         return [
           { href: "/finance/queue", label: "Pending Approvals", icon: ClipboardList },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
+          { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
         ];
       default: // UNIT_STAFF
         return [

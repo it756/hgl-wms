@@ -8,7 +8,8 @@ export type TransactionType =
   | "issuance"
   | "grn"
   | "supplier_grn"
-  | "return_request";
+  | "return_request"
+  | "variance_proposal";
 
 export interface TransactionDocument {
   id: string;

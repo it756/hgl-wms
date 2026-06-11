@@ -73,3 +73,45 @@ export interface SupplierGRNCreateInput {
   sbu_id?: string;
   items: { product_id: string; quantity_received: number; unit_cost?: number }[];
 }
+
+// ─── Variance Disposition ────────────────────────────────────────────────────
+
+export type DispositionType = "WRITE_BACK" | "LOSS";
+
+export interface VarianceDisposition {
+  id: string;
+  transfer_request_id: string;
+  grn_id: string;
+  grn_line_item_id: string;
+  product_id: string;
+  sbu_id: string;
+  quantity_variance: number;
+  disposition: DispositionType;
+  decided_by: string;
+  decided_at: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface LineDispositionInput {
+  grn_line_item_id: string;
+  disposition: DispositionType;
+  notes?: string;
+}
+
+export interface StockLoss {
+  id: string;
+  reference_number: string;
+  variance_disposition_id: string;
+  transfer_request_id: string;
+  grn_id: string;
+  product_id: string;
+  sbu_id: string;
+  quantity_lost: number;
+  unit_cost_at_loss: number | null;
+  value_lost: number | null;
+  decided_by: string;
+  decided_at: string;
+  reason_notes: string | null;
+  created_at: string;
+}

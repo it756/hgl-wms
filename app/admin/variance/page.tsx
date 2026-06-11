@@ -5,24 +5,32 @@ import DashboardLayout from "@/components/DashboardLayout";
 import {
   AlertTriangle,
   CheckCircle2,
-  HelpCircle,
-  User,
-  FileInput,
-  Package,
   Clock,
-  ArrowRight,
-  ClipboardList,
-  Flame,
-  Check,
-  ShieldCheck,
   Building,
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+  RotateCcw,
+  TrendingDown,
+  Loader2,
 } from "lucide-react";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ProductInfo {
+  id: string;
+  name: string;
+  sku: string;
+  unit_cost: number | null;
+}
+
 interface GRNLineItem {
+  id: string;
   product_id: string;
   issued_quantity: number;
   quantity_received: number;
   variance_notes: string | null;
+  products: ProductInfo | null;
 }
 
 interface GRNRow {
@@ -42,20 +50,27 @@ interface VarianceTransfer {
   grns: GRNRow[];
 }
 
-export default function VariancePage() {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function token() {
+  return typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export default function AdminVarianceRegistryPage() {
   const [transfers, setTransfers] = useState<VarianceTransfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Resolution modal
-  const [resolving, setResolving] = useState<string | null>(null);
-  const [resNotes, setResNotes] = useState("");
-  const [resLoading, setResLoading] = useState(false);
-  const [resError, setResError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  const token = () =>
-    typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   async function load() {
     setLoading(true);
@@ -64,23 +79,11 @@ export default function VariancePage() {
       const res = await fetch("/api/admin/variance", {
         headers: { Authorization: `Bearer ${token()}` },
       });
-
-      let data = [];
-      const text = await res.text();
-      if (text) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error("Unable to read variance registry from server.");
-        }
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.error || `Server returned error code ${res.status}`);
-      }
-      setTransfers(data || []);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? `Server error ${res.status}`);
+      setTransfers(data ?? []);
     } catch (e: any) {
-      setError(e.message || "Failed to load variance data.");
+      setError(e.message ?? "Failed to load variance registry");
     } finally {
       setLoading(false);
     }
@@ -90,231 +93,238 @@ export default function VariancePage() {
     load();
   }, []);
 
-  async function submitResolution(e: React.FormEvent) {
-    e.preventDefault();
-    if (!resolving || !resNotes.trim()) return;
-    setResLoading(true);
-    setResError(null);
-    setSuccessMsg(null);
-    try {
-      const res = await fetch("/api/admin/variance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ transfer_request_id: resolving, resolution_notes: resNotes }),
-      });
-
-      let data: any = {};
-      const text = await res.text();
-      if (text) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error("Unable to parse server validation check.");
-        }
-      }
-
-      if (!res.ok) throw new Error(data.error || "Failed to submit resolution");
-
-      setSuccessMsg("Variance resolution recorded & transaction finalized.");
-      setResolving(null);
-      setResNotes("");
-      load();
-    } catch (e: any) {
-      setResError(e.message || "Failed to submit resolution.");
-    } finally {
-      setResLoading(false);
-      setTimeout(() => setSuccessMsg(null), 5000);
-    }
+  function toggleExpand(id: string) {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-6 w-full text-slate-850 font-sans">
-        {/* Header Metadata */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>Administration</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary font-extrabold">Variance Reconciliation</span>
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <AlertTriangle className="w-6 h-6 text-amber-500" />
+              <h1 className="text-2xl font-bold text-slate-800">Variance Registry</h1>
+            </div>
+            <p className="text-slate-500 text-sm ml-9">
+              Read-only audit view of all transfers currently awaiting BU Manager variance
+              disposition. BU Managers decide per-line whether to write back stock or record a loss.
+            </p>
           </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
-            Variance Resolution Center
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Review physical shortfalls, register reconciliation notes, and transition variance
-            transfer tickets.
-          </p>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
 
-        {/* Success alert message toast */}
-        {successMsg && (
-          <div className="bg-[#E6F4F1] border border-teal-200 text-teal-850 rounded-xl px-4 py-3.5 text-xs font-semibold flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-teal-605 shrink-0" />
-            <span>{successMsg}</span>
+        {/* Info banner */}
+        <div className="mb-6 flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
+          <span>
+            Transfers marked <strong>COMPLETED_WITH_VARIANCE</strong> are awaiting BU Manager
+            disposition. Once all lines are decided, the transfer moves to{" "}
+            <strong>COMPLETED</strong>. Write-backs credit warehouse stock; losses are posted to the
+            Loss Account.
+          </span>
+        </div>
+
+        {/* KPI */}
+        {!loading && !error && (
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">
+                Pending Disposition
+              </p>
+              <p className="text-3xl font-bold text-amber-600">{transfers.length}</p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">
+                Total Variance Lines
+              </p>
+              <p className="text-3xl font-bold text-slate-800">
+                {transfers.reduce(
+                  (sum, t) =>
+                    sum +
+                    (t.grns?.[0]?.grn_line_items ?? []).filter(
+                      (li) => li.issued_quantity !== li.quantity_received,
+                    ).length,
+                  0,
+                )}
+              </p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">
+                SBUs Affected
+              </p>
+              <p className="text-3xl font-bold text-slate-800">
+                {new Set(transfers.map((t) => t.sbu_id)).size}
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Global Error Banner */}
-        {error && (
-          <div className="bg-rose-50 border border-rose-100 text-rose-800 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-            <span>Warning: {error}</span>
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-24 text-slate-400">
+            <Loader2 className="w-6 h-6 animate-spin mr-3" />
+            Loading variance registry…
           </div>
         )}
 
-        {/* KPI Summary Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
-              Active Variances
-            </span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-amber-600 font-mono">
-                {String(transfers.length).padStart(2, "0")}
-              </span>
-              <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5 font-bold uppercase flex items-center gap-1">
-                <Flame className="w-3 h-3 shrink-0" /> Critical Review
-              </span>
-            </div>
+        {/* Error */}
+        {!loading && error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+            {error}
           </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
-              Reconciliation SLA
-            </span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-[#1E293B] font-mono">100%</span>
-              <span className="text-[10px] text-primary bg-[#E6F4F1] border border-[#BCE3DE] rounded-full px-1.5 py-0.5 font-bold uppercase">
-                Within Target
-              </span>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
-              Operator Clearance
-            </span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1 select-none">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" /> ADMIN & WH-MANAGER
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Authorised</span>
-            </div>
-          </div>
-        </section>
+        )}
 
-        {/* Transfers list queue */}
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-2.5 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <span className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary"></span>
-            <p className="text-xs font-bold font-mono tracking-wider">
-              RETRIEVING DISCREPANCY FLOWS...
-            </p>
+        {/* Empty */}
+        {!loading && !error && transfers.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+            <CheckCircle2 className="w-12 h-12 mb-4 text-emerald-400" />
+            <p className="font-semibold text-slate-600">No pending variance transfers</p>
+            <p className="text-sm mt-1">All variances have been disposed by BU Managers.</p>
           </div>
-        ) : transfers.length === 0 ? (
-          <div className="py-24 text-center bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center text-slate-400 gap-2">
-            <CheckCircle2 className="w-10 h-10 text-emerald-100" />
-            <p className="font-extrabold text-xs font-mono uppercase text-slate-500">
-              Perfect Reconciliation: Zero active stock variances.
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-6">
+        )}
+
+        {/* Transfer list */}
+        {!loading && !error && transfers.length > 0 && (
+          <div className="space-y-4">
             {transfers.map((tr) => {
               const grn = tr.grns?.[0];
+              const isOpen = expanded[tr.id] ?? false;
+              const varianceLines = (grn?.grn_line_items ?? []).filter(
+                (li) => li.issued_quantity !== li.quantity_received,
+              );
+
               return (
                 <div
                   key={tr.id}
-                  className="bg-white border border-slate-200/90 hover:border-amber-300 rounded-xl p-5 shadow-sm transition-all flex flex-col gap-4"
+                  className="bg-white border border-amber-100 rounded-xl shadow-sm overflow-hidden"
                 >
-                  {/* Card Title Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-2">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-slate-800 text-sm tracking-tight">
-                          {tr.reference_number}
-                        </span>
-                        <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">
-                          Completed with Variance
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-400 font-bold font-mono uppercase">
-                        <Clock className="w-3.5 h-3.5" /> Checked Out:{" "}
-                        {new Date(tr.updated_at).toLocaleDateString("en-KE", {
-                          dateStyle: "medium",
-                        })}
-                        <span className="text-slate-300">|</span>
-                        <span className="flex items-center gap-0.5">
-                          <Building className="w-3 h-3 text-slate-305" />{" "}
-                          {tr.sbu_id || "Unspecified SBU"}
-                        </span>
+                  {/* Card header */}
+                  <button
+                    onClick={() => toggleExpand(tr.id)}
+                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition"
+                  >
+                    <div className="flex items-center gap-4">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-slate-800">{tr.reference_number}</p>
+                        <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                          <Building className="w-3 h-3" />
+                          {tr.sbu_id ?? "—"}
+                          <span className="text-slate-300">·</span>
+                          <Clock className="w-3 h-3" />
+                          {fmtDate(tr.updated_at)}
+                          <span className="text-slate-300">·</span>
+                          <span className="font-medium text-amber-600">
+                            {varianceLines.length} variance line
+                            {varianceLines.length !== 1 ? "s" : ""}
+                          </span>
+                        </p>
                       </div>
                     </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
+                        Awaiting BU Decision
+                      </span>
+                      {isOpen ? (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+                  </button>
 
-                    <button
-                      onClick={() => {
-                        setResolving(tr.id);
-                        setResNotes("");
-                        setResError(null);
-                      }}
-                      className="self-start sm:self-auto px-3.5 py-1.5 bg-primary hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all uppercase tracking-wider"
-                    >
-                      Resolve Variance
-                    </button>
-                  </div>
+                  {/* Expanded detail */}
+                  {isOpen && grn && (
+                    <div className="border-t border-slate-100 px-5 py-4">
+                      {grn.condition_notes && (
+                        <p className="text-xs text-slate-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
+                          <strong>GRN Condition:</strong> {grn.condition_notes}
+                        </p>
+                      )}
 
-                  {/* Variance Information Table */}
-                  {grn && (
-                    <div className="flex flex-col gap-3">
-                      <div className="bg-amber-50/45 p-3 rounded-lg border border-amber-100 text-[11px] text-amber-900 font-medium leading-relaxed">
-                        <strong>Dispatched Note:</strong>{" "}
-                        {grn.condition_notes || "Quantity deviation detected at intake node."}
-                      </div>
-
-                      <div className="overflow-x-auto border border-slate-100 rounded-lg">
-                        <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
+                      <div className="overflow-x-auto rounded-lg border border-slate-100">
+                        <table className="w-full text-sm">
                           <thead>
-                            <tr className="bg-slate-50/70 text-slate-400 font-semibold uppercase tracking-wider text-[9px]">
-                              <th className="px-4 py-3 text-left w-[35%]">SKU product code</th>
-                              <th className="px-4 py-3 text-center w-[15%]">Issued capacity</th>
-                              <th className="px-4 py-3 text-center w-[15%]">Capacity Received</th>
-                              <th className="px-4 py-3 text-center w-[15%]">
-                                Quantified Discrepancy
-                              </th>
-                              <th className="px-4 py-3 text-left w-[20%]">Bay Remarks</th>
+                            <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide border-b border-slate-100">
+                              <th className="px-4 py-3 text-left font-semibold">Product</th>
+                              <th className="px-4 py-3 text-center font-semibold">Issued</th>
+                              <th className="px-4 py-3 text-center font-semibold">Received</th>
+                              <th className="px-4 py-3 text-center font-semibold">Variance</th>
+                              <th className="px-4 py-3 text-right font-semibold">Est. Value Gap</th>
+                              <th className="px-4 py-3 text-left font-semibold">Notes</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-50 text-slate-700">
-                            {grn.grn_line_items.map((li, idx) => {
-                              const dev = li.quantity_received - li.issued_quantity;
+                          <tbody className="divide-y divide-slate-50">
+                            {grn.grn_line_items.map((li) => {
+                              const delta = li.issued_quantity - li.quantity_received;
+                              const valueGap =
+                                li.products?.unit_cost != null
+                                  ? delta * li.products.unit_cost
+                                  : null;
+
                               return (
-                                <tr key={idx} className="hover:bg-slate-50/20">
-                                  <td className="px-4 py-3 font-mono font-bold text-slate-800 uppercase">
-                                    {li.product_id}
+                                <tr key={li.id} className={delta !== 0 ? "bg-amber-50/40" : ""}>
+                                  <td className="px-4 py-3">
+                                    <p className="font-medium text-slate-800">
+                                      {li.products?.name ?? "Unknown"}
+                                    </p>
+                                    <p className="text-xs text-slate-400 font-mono">
+                                      {li.products?.sku ?? li.product_id}
+                                    </p>
                                   </td>
-                                  <td className="px-4 py-3 text-center font-mono font-bold text-slate-500">
+                                  <td className="px-4 py-3 text-center font-mono text-slate-600">
                                     {li.issued_quantity}
                                   </td>
-                                  <td className="px-4 py-3 text-center font-mono font-bold text-slate-500">
+                                  <td className="px-4 py-3 text-center font-mono text-slate-600">
                                     {li.quantity_received}
                                   </td>
                                   <td className="px-4 py-3 text-center">
-                                    <span
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold font-mono ${
-                                        dev === 0
-                                          ? "bg-slate-100 text-slate-500"
-                                          : "bg-rose-50 text-rose-700 border border-rose-100"
-                                      }`}
-                                    >
-                                      {dev > 0 ? `+${dev}` : dev}
-                                    </span>
+                                    {delta === 0 ? (
+                                      <span className="text-xs text-slate-400">None</span>
+                                    ) : (
+                                      <span className="font-bold text-amber-700 text-sm">
+                                        -{delta}
+                                      </span>
+                                    )}
                                   </td>
-                                  <td className="px-4 py-3 text-xs text-slate-400 font-medium">
-                                    {li.variance_notes ?? "No anomalies recorded"}
+                                  <td className="px-4 py-3 text-right text-sm">
+                                    {valueGap != null && delta !== 0 ? (
+                                      <span className="font-semibold text-rose-600">
+                                        ${valueGap.toFixed(2)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400 text-xs">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-slate-500">
+                                    {li.variance_notes ?? "—"}
                                   </td>
                                 </tr>
                               );
                             })}
                           </tbody>
                         </table>
+                      </div>
+
+                      {/* Disposition legend */}
+                      <div className="mt-4 flex gap-6 text-xs text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <RotateCcw className="w-3.5 h-3.5 text-emerald-500" />
+                          Write-Back: variance credited back to warehouse stock
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
+                          Loss: posted to Loss Account with financial value
+                        </div>
                       </div>
                     </div>
                   )}
@@ -324,74 +334,6 @@ export default function VariancePage() {
           </div>
         )}
       </div>
-
-      {/* Reconcile dialog modal popup */}
-      {resolving && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <form
-            onSubmit={submitResolution}
-            className="bg-white rounded-xl shadow-xl p-5 w-full max-w-md border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150"
-          >
-            <div>
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                <span>Accounting & Auditing Safety Gate</span>
-              </div>
-              <h2 className="font-extrabold text-[#1E293B] text-lg">
-                Record Discrepancy Resolution
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5 font-semibold">
-                Submit physical audits or adjustments matching actual transaction levels down to
-                books.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                Resolution Explanation & Notes
-              </label>
-              <textarea
-                required
-                rows={4}
-                placeholder="Specify compliance actions (e.g., Shortfall resolved via Kericho replacement credit token; SKU adjustment made to write off transit damages)..."
-                value={resNotes}
-                onChange={(e) => setResNotes(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs bg-slate-50/50 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary font-medium text-slate-700 resize-none leading-relaxed"
-              />
-            </div>
-
-            {resError && (
-              <p className="text-rose-600 font-semibold font-mono text-[10px] uppercase">
-                {resError}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={() => setResolving(null)}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg cursor-pointer transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={resLoading}
-                className="px-4 py-2 bg-primary hover:bg-[#004740] disabled:bg-slate-100 text-white disabled:text-slate-400 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-sm uppercase tracking-wider"
-              >
-                {resLoading ? (
-                  <>
-                    <span className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-slate-300"></span>
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <span>Commit Resolution</span>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </DashboardLayout>
   );
 }

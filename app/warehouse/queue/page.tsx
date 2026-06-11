@@ -40,6 +40,7 @@ interface PendingRequest {
     product_name?: string;
     sku?: string;
     stock_qty?: number;
+    location?: string;
   }[];
 }
 
@@ -47,6 +48,7 @@ interface IssuanceItem {
   product_id: string;
   product_name: string;
   sku: string;
+  location: string;
   requested: number;
   stock: number;
   quantity_issued: number;
@@ -103,6 +105,7 @@ export default function WarehouseQueuePage() {
           product_name: line.products?.name ?? `Product ${line.product_id}`,
           sku: line.products?.sku ?? "",
           stock_qty: line.products?.stock_quantity ?? 0,
+          location: line.products?.warehouse_location ?? "—",
         })),
       }));
       setRequests(enriched);
@@ -135,6 +138,7 @@ export default function WarehouseQueuePage() {
           product_id: l.product_id,
           product_name: l.product_name || "Unknown Product",
           sku: l.sku || "SKU-UNKNOWN",
+          location: l.location || "—",
           requested: requested,
           stock: stock,
           quantity_issued: initialQty,
@@ -801,6 +805,7 @@ export default function WarehouseQueuePage() {
                         <th className="pb-3 pr-4 w-12 text-center">Verify</th>
                         <th className="pb-3 pr-4">Product / Description</th>
                         <th className="pb-3 px-4 font-mono">Sku ID</th>
+                        <th className="pb-3 px-3 text-center">Location</th>
                         <th className="pb-3 px-4 text-center">Requested</th>
                         <th className="pb-3 px-4 text-center">Stock</th>
                         <th className="pb-3 px-4 text-left w-36">Issue Qty</th>
@@ -847,6 +852,11 @@ export default function WarehouseQueuePage() {
                             </td>
                             <td className="py-4 px-4 font-mono font-medium text-slate-600">
                               {item.sku}
+                            </td>
+                            <td className="py-4 px-3 text-center">
+                              <span className="inline-flex items-center justify-center w-9 h-6 rounded font-mono font-extrabold text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 tracking-wider">
+                                {item.location}
+                              </span>
                             </td>
                             <td className="py-4 px-4 text-center font-mono font-bold text-slate-600">
                               {item.requested}

@@ -9,6 +9,7 @@ export interface Product {
   unit_cost: number | null;
   is_active: boolean;
   warehouse_id: string | null;
+  warehouse_location: string;
   created_at: string;
   updated_at: string;
 }
@@ -21,4 +22,5 @@ export interface ProductCreateInput {
   stock_quantity?: number;
   low_stock_threshold?: number;
   unit_cost?: number;
+  warehouse_location: string;
 }

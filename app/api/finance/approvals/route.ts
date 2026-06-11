@@ -198,8 +198,8 @@ export async function GET(req: Request) {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [transfersResult, grnsResult, approvedTodayResult, rejectedTodayResult] = await Promise.all(
-    [
+  const [transfersResult, grnsResult, proposalsResult, approvedTodayResult, rejectedTodayResult] =
+    await Promise.all([
       supabaseAdmin
         .from("transfer_requests")
         .select("*, sbus(id, name), transfer_line_items(*, products(id, name, sku, unit_cost))")
@@ -211,6 +211,19 @@ export async function GET(req: Request) {
         .eq("status", "AWAITING_FINANCE_APPROVAL")
         .order("created_at", { ascending: false }),
       supabaseAdmin
+        .from("variance_proposals")
+        .select(
+          `id, proposal_notes, proposed_by, created_at, updated_at,
+           transfer_requests ( id, reference_number, sbu_id ),
+           variance_proposal_lines (
+             id, product_id, variance_quantity,
+             recommended_resolution, finance_decision, finance_decision_notes,
+             products ( id, name, sku, unit_cost )
+           )`,
+        )
+        .eq("status", "PENDING_FINANCE_REVIEW")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
         .from("transfer_requests")
         .select("id", { count: "exact", head: true })
         .eq("status", "APPROVED_FOR_ISSUE")
@@ -220,18 +233,23 @@ export async function GET(req: Request) {
         .select("id", { count: "exact", head: true })
         .eq("status", "CANCELLED")
         .gte("updated_at", todayStart.toISOString()),
-    ],
-  );
+    ]);
 
   // Enrich transfer requests with requester full_name from profiles
   const transfers = transfersResult.data ?? [];
   const raisedByIds = [...new Set(transfers.map((t: any) => t.raised_by).filter(Boolean))];
   let profileMap: Record<string, string> = {};
-  if (raisedByIds.length > 0) {
+
+  // Collect all user IDs needing name resolution (transfers + variance proposals)
+  const proposals = proposalsResult.data ?? [];
+  const proposerIds = [...new Set(proposals.map((p: any) => p.proposed_by).filter(Boolean))];
+  const allProfileIds = [...new Set([...raisedByIds, ...proposerIds])];
+
+  if (allProfileIds.length > 0) {
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("id, full_name")
-      .in("id", raisedByIds);
+      .in("id", allProfileIds);
     if (profiles) {
       profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name ?? ""]));
     }
@@ -241,9 +259,15 @@ export async function GET(req: Request) {
     requester_name: profileMap[t.raised_by] ?? null,
   }));
 
+  const enrichedProposals = proposals.map((p: any) => ({
+    ...p,
+    proposer_name: profileMap[p.proposed_by] ?? null,
+  }));
+
   return NextResponse.json({
     transfer_requests: enrichedTransfers,
     supplier_grns: grnsResult.data ?? [],
+    variance_proposals: enrichedProposals,
     approved_today: approvedTodayResult.count ?? 0,
     rejected_today: rejectedTodayResult.count ?? 0,
   });

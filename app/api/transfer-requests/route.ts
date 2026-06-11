@@ -194,7 +194,7 @@ export async function GET(req: Request) {
     let query = supabaseAdmin
       .from("transfer_requests")
       .select(
-        "*, sbus(id, name), sbu_units(id, name, code), transfer_line_items(*, products(id, name, sku, stock_quantity, unit_of_measure, unit_cost))",
+        "*, sbus(id, name), sbu_units(id, name, code), transfer_line_items(*, products(id, name, sku, stock_quantity, unit_of_measure, unit_cost, warehouse_location))",
       )
       .order("created_at", { ascending: false });
 

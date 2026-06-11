@@ -1,0 +1,630 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import DocumentUpload from "@/components/DocumentUpload";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileInput,
+  Clock,
+  ArrowRight,
+  Flame,
+  ShieldCheck,
+  Building,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  X,
+} from "lucide-react";
+
+interface ProductInfo {
+  id: string;
+  name: string;
+  sku: string;
+  unit_cost: number | null;
+}
+
+interface GRNLineItem {
+  id: string;
+  product_id: string;
+  issued_quantity: number;
+  quantity_received: number;
+  variance_notes: string | null;
+  products: ProductInfo | null;
+}
+
+interface GRNRow {
+  id: string;
+  has_variance: boolean;
+  condition_notes: string | null;
+  created_at: string;
+  grn_line_items: GRNLineItem[];
+}
+
+interface ProposalLine {
+  id: string;
+  grn_line_item_id: string;
+  product_id: string;
+  variance_quantity: number;
+  recommended_resolution: "damage_writeoff" | "stock_reintegration";
+  finance_decision: "damage_writeoff" | "stock_reintegration" | null;
+  finance_decision_notes: string | null;
+}
+
+interface Proposal {
+  id: string;
+  status: "PENDING_FINANCE_REVIEW" | "APPROVED" | "REJECTED";
+  proposal_notes: string | null;
+  proposed_by: string;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_at: string;
+  variance_proposal_lines: ProposalLine[];
+}
+
+interface VarianceTransfer {
+  id: string;
+  reference_number: string;
+  sbu_id: string | null;
+  created_at: string;
+  updated_at: string;
+  grns: GRNRow[];
+  variance_proposals: Proposal[];
+}
+
+const PROPOSAL_STATUS_STYLES: Record<string, string> = {
+  PENDING_FINANCE_REVIEW: "bg-amber-50 border-amber-200 text-amber-800",
+  APPROVED: "bg-emerald-50 border-emerald-200 text-emerald-800",
+  REJECTED: "bg-rose-50 border-rose-200 text-rose-800",
+};
+
+function token() {
+  return typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
+}
+
+export default function VariancePage() {
+  const [transfers, setTransfers] = useState<VarianceTransfer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  // Proposal modal state
+  const [proposingFor, setProposingFor] = useState<VarianceTransfer | null>(null);
+  const [proposalNotes, setProposalNotes] = useState("");
+  const [lineResolutions, setLineResolutions] = useState<
+    Record<string, "damage_writeoff" | "stock_reintegration">
+  >({});
+  const [submittingProposal, setSubmittingProposal] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [createdProposalId, setCreatedProposalId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/variance", {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const text = await res.text();
+      let data: any = [];
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error("Unable to read variance data.");
+        }
+      }
+      if (!res.ok) throw new Error(data?.error || `Server error ${res.status}`);
+      setTransfers(data ?? []);
+    } catch (e: any) {
+      setError(e.message || "Failed to load variance data.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function toggleCard(id: string) {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function openProposalModal(tr: VarianceTransfer) {
+    const grn = tr.grns?.[0];
+    if (!grn) return;
+    const initial: Record<string, "damage_writeoff" | "stock_reintegration"> = {};
+    for (const li of grn.grn_line_items) {
+      const delta = li.quantity_received - li.issued_quantity;
+      if (delta === 0) continue;
+      initial[li.id] = delta > 0 ? "stock_reintegration" : "damage_writeoff";
+    }
+    setLineResolutions(initial);
+    setProposalNotes("");
+    setProposalError(null);
+    setCreatedProposalId(null);
+    setProposingFor(tr);
+  }
+
+  async function submitProposal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!proposingFor) return;
+    const grn = proposingFor.grns?.[0];
+    if (!grn) return;
+    setSubmittingProposal(true);
+    setProposalError(null);
+    const lines = grn.grn_line_items
+      .filter((li) => li.quantity_received - li.issued_quantity !== 0)
+      .map((li) => ({
+        grn_line_item_id: li.id,
+        product_id: li.product_id,
+        variance_quantity: li.quantity_received - li.issued_quantity,
+        recommended_resolution: lineResolutions[li.id] ?? "damage_writeoff",
+      }));
+    try {
+      const res = await fetch("/api/admin/variance/proposals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({
+          transfer_request_id: proposingFor.id,
+          grn_id: grn.id,
+          proposal_notes: proposalNotes || null,
+          lines,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit proposal");
+      setCreatedProposalId(data.id);
+    } catch (e: any) {
+      setProposalError(e.message || "Failed to submit proposal.");
+    } finally {
+      setSubmittingProposal(false);
+    }
+  }
+
+  function finishProposal() {
+    setProposingFor(null);
+    setCreatedProposalId(null);
+    setSuccessMsg("Proposal submitted. Finance Manager has been notified.");
+    load();
+    setTimeout(() => setSuccessMsg(null), 5000);
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="flex flex-col gap-6 w-full text-slate-850 font-sans">
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+            <span>Stock Control</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-primary font-extrabold">Variance Reconciliation</span>
+          </div>
+          <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
+            Variance Resolution Center
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            Review physical shortfalls and excess stock, raise a resolution proposal, and await
+            Finance approval to execute.
+          </p>
+        </div>
+
+        {successMsg && (
+          <div className="bg-[#E6F4F1] border border-teal-200 text-teal-850 rounded-xl px-4 py-3.5 text-xs font-semibold flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+        {error && (
+          <div className="bg-rose-50 border border-rose-100 text-rose-800 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* KPI cards */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Active Variances
+            </span>
+            <div className="flex items-baseline justify-between mt-1">
+              <span className="text-3xl font-extrabold text-amber-600 font-mono">
+                {String(transfers.length).padStart(2, "0")}
+              </span>
+              <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5 font-bold uppercase flex items-center gap-1">
+                <Flame className="w-3 h-3 shrink-0" /> Needs Review
+              </span>
+            </div>
+          </div>
+          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Pending Finance
+            </span>
+            <div className="flex items-baseline justify-between mt-1">
+              <span className="text-3xl font-extrabold text-[#1E293B] font-mono">
+                {String(
+                  transfers.filter((t) =>
+                    t.variance_proposals?.some((p) => p.status === "PENDING_FINANCE_REVIEW"),
+                  ).length,
+                ).padStart(2, "0")}
+              </span>
+              <span className="text-[10px] text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-1.5 py-0.5 font-bold uppercase">
+                Awaiting FM
+              </span>
+            </div>
+          </div>
+          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Operator Access
+            </span>
+            <div className="flex items-baseline justify-between mt-1">
+              <span className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1 select-none">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" /> BU / WH / ADMIN
+              </span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Authorised</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Transfer list */}
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-2.5 bg-white border border-slate-200 rounded-xl shadow-sm">
+            <RefreshCw className="w-8 h-8 animate-spin text-primary/50" />
+            <p className="text-xs font-bold font-mono tracking-wider uppercase">
+              Loading discrepancy flows…
+            </p>
+          </div>
+        ) : transfers.length === 0 ? (
+          <div className="py-24 text-center bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center text-slate-400 gap-2">
+            <CheckCircle2 className="w-10 h-10 text-emerald-100" />
+            <p className="font-extrabold text-xs font-mono uppercase text-slate-500">
+              Perfect Reconciliation: Zero active stock variances.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5">
+            {transfers.map((tr) => {
+              const grn = tr.grns?.[0];
+              const activeProp = tr.variance_proposals?.find(
+                (p) => p.status === "PENDING_FINANCE_REVIEW",
+              );
+              const lastProp = tr.variance_proposals?.[0] ?? null;
+              const isExpanded = expandedCards.has(tr.id);
+
+              return (
+                <div
+                  key={tr.id}
+                  className="bg-white border border-slate-200/90 hover:border-amber-200 rounded-xl shadow-sm transition-all flex flex-col"
+                >
+                  {/* Card header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-5 pt-4 pb-3 border-b border-slate-100 gap-2">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-slate-800 text-sm tracking-tight">
+                          {tr.reference_number}
+                        </span>
+                        <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">
+                          Variance
+                        </span>
+                        {lastProp && (
+                          <span
+                            className={`border text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${PROPOSAL_STATUS_STYLES[lastProp.status]}`}
+                          >
+                            {lastProp.status === "PENDING_FINANCE_REVIEW"
+                              ? "Proposal Pending"
+                              : lastProp.status === "APPROVED"
+                                ? "Proposal Approved"
+                                : "Proposal Rejected"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold font-mono uppercase">
+                        <Clock className="w-3.5 h-3.5" />
+                        {new Date(tr.updated_at).toLocaleDateString("en-KE", {
+                          dateStyle: "medium",
+                        })}
+                        <span className="text-slate-300">|</span>
+                        <Building className="w-3 h-3" />
+                        {tr.sbu_id ?? "—"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <button
+                        onClick={() => toggleCard(tr.id)}
+                        className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-semibold rounded-lg transition flex items-center gap-1"
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                        {isExpanded ? "Hide" : "Details"}
+                      </button>
+                      {!activeProp ? (
+                        <button
+                          onClick={() => openProposalModal(tr)}
+                          className="px-3.5 py-1.5 bg-primary hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition uppercase tracking-wider"
+                        >
+                          Propose Resolution
+                        </button>
+                      ) : (
+                        <span className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold rounded-lg uppercase">
+                          Awaiting Finance
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expandable: line items + proposal summary */}
+                  {isExpanded && grn && (
+                    <div className="px-5 py-4 flex flex-col gap-3">
+                      {grn.condition_notes && (
+                        <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-100 text-[11px] text-amber-900 font-medium leading-relaxed">
+                          <strong>GRN Note:</strong> {grn.condition_notes}
+                        </div>
+                      )}
+                      <div className="overflow-x-auto border border-slate-100 rounded-lg">
+                        <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
+                          <thead>
+                            <tr className="bg-slate-50/70 text-slate-400 font-semibold uppercase tracking-wider text-[9px]">
+                              <th className="px-4 py-3 text-left">Product</th>
+                              <th className="px-4 py-3 text-center">Issued</th>
+                              <th className="px-4 py-3 text-center">Received</th>
+                              <th className="px-4 py-3 text-center">Delta</th>
+                              <th className="px-4 py-3 text-left">Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 text-slate-700">
+                            {grn.grn_line_items.map((li) => {
+                              const delta = li.quantity_received - li.issued_quantity;
+                              return (
+                                <tr key={li.id} className="hover:bg-slate-50/20">
+                                  <td className="px-4 py-3">
+                                    <span className="font-bold text-slate-800 block">
+                                      {li.products?.name ?? "—"}
+                                    </span>
+                                    <span className="font-mono text-[9px] text-slate-400">
+                                      {li.products?.sku ?? li.product_id}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center font-mono font-bold text-slate-500">
+                                    {li.issued_quantity}
+                                  </td>
+                                  <td className="px-4 py-3 text-center font-mono font-bold text-slate-500">
+                                    {li.quantity_received}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold font-mono ${delta === 0 ? "bg-slate-100 text-slate-500" : delta > 0 ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-rose-50 text-rose-700 border border-rose-100"}`}
+                                    >
+                                      {delta > 0 ? `+${delta}` : delta}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-slate-400 font-medium">
+                                    {li.variance_notes ?? "—"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {lastProp && (
+                        <div
+                          className={`p-3 rounded-lg border text-xs font-medium flex flex-col gap-1 ${PROPOSAL_STATUS_STYLES[lastProp.status]}`}
+                        >
+                          <div className="flex items-center gap-2 font-extrabold uppercase text-[10px]">
+                            <FileInput className="w-3.5 h-3.5" />
+                            {lastProp.status === "PENDING_FINANCE_REVIEW"
+                              ? "Proposal pending Finance review"
+                              : lastProp.status === "APPROVED"
+                                ? "Proposal approved — transfer closed"
+                                : "Proposal rejected — you may re-submit"}
+                          </div>
+                          {lastProp.proposal_notes && (
+                            <p className="mt-1 opacity-80">{lastProp.proposal_notes}</p>
+                          )}
+                          {lastProp.review_notes && (
+                            <p className="mt-0.5 opacity-80">
+                              <strong>Finance note:</strong> {lastProp.review_notes}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Proposal modal */}
+      {proposingFor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+                  Variance Proposal · {proposingFor.reference_number}
+                </div>
+                <h2 className="font-extrabold text-[#1E293B] text-base">
+                  {createdProposalId
+                    ? "Step 2 — Attach Supporting Documents"
+                    : "Step 1 — Recommend Resolution per Line"}
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setProposingFor(null);
+                  setCreatedProposalId(null);
+                }}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Step 1 */}
+            {!createdProposalId && (
+              <form
+                onSubmit={submitProposal}
+                className="flex flex-col gap-4 overflow-y-auto px-5 py-4"
+              >
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                    Proposal Notes (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Summarise the reason for this variance and the recommended resolution…"
+                    value={proposalNotes}
+                    onChange={(e) => setProposalNotes(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs bg-slate-50/50 focus:outline-none focus:ring-1 focus:ring-primary font-medium text-slate-700 resize-none leading-relaxed"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                    Per-Line Resolution Recommendations
+                  </label>
+                  <p className="text-[10px] text-slate-400 -mt-1">
+                    Finance Manager can override these before approving. Stock Reintegration is only
+                    available for excess lines (delta &gt; 0).
+                  </p>
+                  <div className="border border-slate-150 rounded-lg overflow-hidden">
+                    <table className="min-w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
+                          <th className="px-4 py-2.5 text-left">Product</th>
+                          <th className="px-4 py-2.5 text-center">Delta</th>
+                          <th className="px-4 py-2.5 text-left">Resolution</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {proposingFor.grns?.[0]?.grn_line_items
+                          .filter((li) => li.quantity_received - li.issued_quantity !== 0)
+                          .map((li) => {
+                            const delta = li.quantity_received - li.issued_quantity;
+                            const canReintegrate = delta > 0;
+                            const current = lineResolutions[li.id] ?? "damage_writeoff";
+                            return (
+                              <tr key={li.id} className="bg-white">
+                                <td className="px-4 py-3">
+                                  <span className="font-bold text-slate-800 block">
+                                    {li.products?.name ?? "—"}
+                                  </span>
+                                  <span className="font-mono text-[9px] text-slate-400">
+                                    {li.products?.sku ?? li.product_id}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold font-mono ${delta > 0 ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-rose-50 text-rose-700 border border-rose-100"}`}
+                                  >
+                                    {delta > 0 ? `+${delta}` : delta}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <select
+                                    value={current}
+                                    onChange={(e) =>
+                                      setLineResolutions((prev) => ({
+                                        ...prev,
+                                        [li.id]: e.target.value as any,
+                                      }))
+                                    }
+                                    className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary font-medium text-slate-700 w-full max-w-[220px]"
+                                  >
+                                    <option value="damage_writeoff">Damage Writeoff</option>
+                                    {canReintegrate && (
+                                      <option value="stock_reintegration">
+                                        Stock Reintegration
+                                      </option>
+                                    )}
+                                  </select>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {proposalError && (
+                  <p className="text-rose-600 font-semibold font-mono text-[10px] uppercase">
+                    {proposalError}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setProposingFor(null)}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingProposal}
+                    className="px-4 py-2 bg-primary hover:bg-[#004740] disabled:bg-slate-100 text-white disabled:text-slate-400 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm uppercase tracking-wider"
+                  >
+                    {submittingProposal ? (
+                      <>
+                        <span className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-slate-300" />
+                        <span>Submitting…</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span>Submit Proposal</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 2 */}
+            {createdProposalId && (
+              <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  Proposal submitted. Finance Manager has been notified. Attach any supporting
+                  documents below (optional).
+                </div>
+                <DocumentUpload
+                  transactionType="variance_proposal"
+                  transactionId={createdProposalId}
+                  token={token()}
+                  canDelete={true}
+                />
+                <div className="flex justify-end border-t border-slate-100 pt-4">
+                  <button
+                    onClick={finishProposal}
+                    className="px-5 py-2 bg-primary hover:bg-[#004740] text-white text-xs font-bold rounded-lg transition uppercase tracking-wider shadow-sm flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
+  );
+}
