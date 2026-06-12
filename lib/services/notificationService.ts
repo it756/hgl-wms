@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "../supabaseServer";
 import type { Notification } from "../models/shared";
+import { dispatchToChannels } from "../notifications/channels";
 
 export interface NotifyInput {
   /** Target a specific user by ID */
@@ -9,6 +10,17 @@ export interface NotifyInput {
   type: string;
   message: string;
   related_entity_id?: string;
+  /**
+   * Optional subject for email/whatsapp delivery. Falls back to a generic
+   * subject derived from `type` when omitted.
+   */
+  subject?: string;
+  /**
+   * If true, fan out to email/whatsapp channels (per NOTIFICATION_CHANNELS env)
+   * after persisting the in-app notification row. Defaults to false to preserve
+   * existing call-site behaviour.
+   */
+  dispatchChannels?: boolean;
 }
 
 /**
@@ -32,7 +44,83 @@ export async function createNotification(input: NotifyInput): Promise<Notificati
     .single();
 
   if (error) throw error;
+
+  // Optionally fan out to email + WhatsApp channels.
+  if (input.dispatchChannels) {
+    try {
+      const subject = input.subject ?? input.type.replace(/_/g, " ");
+      const recipients = await resolveRecipients({
+        user_id: input.user_id,
+        user_role: input.user_role,
+      });
+      await Promise.all(
+        recipients.map((r) =>
+          dispatchToChannels({
+            recipient: { email: r.email, whatsapp_number: r.whatsapp_number },
+            subject,
+            message: input.message,
+          }),
+        ),
+      );
+    } catch (channelErr) {
+      console.error("createNotification: channel dispatch failed", channelErr);
+    }
+  }
+
   return data as Notification;
+}
+
+/**
+ * Resolve recipients (email + whatsapp_number) for a user_id or user_role
+ * broadcast. Returns an empty array if neither is provided. Reads from
+ * auth.users (email) and profiles (whatsapp_number).
+ */
+async function resolveRecipients(opts: {
+  user_id?: string;
+  user_role?: string;
+}): Promise<{ email: string | null; whatsapp_number: string | null }[]> {
+  if (opts.user_id) {
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, whatsapp_number")
+      .eq("id", opts.user_id)
+      .maybeSingle();
+
+    let email: string | null = null;
+    try {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(opts.user_id);
+      email = authUser.user?.email ?? null;
+    } catch (e) {
+      console.error("resolveRecipients: getUserById failed", e);
+    }
+    return [{ email, whatsapp_number: (profile as any)?.whatsapp_number ?? null }];
+  }
+
+  if (opts.user_role) {
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, whatsapp_number")
+      .eq("role", opts.user_role)
+      .eq("is_active", true);
+    if (!profiles || profiles.length === 0) return [];
+
+    // Fetch emails one-by-one (admin API exposes listUsers but we need a small set).
+    const out = await Promise.all(
+      profiles.map(async (p: any) => {
+        let email: string | null = null;
+        try {
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);
+          email = authUser.user?.email ?? null;
+        } catch (e) {
+          // ignore — leave email null
+        }
+        return { email, whatsapp_number: p.whatsapp_number ?? null };
+      }),
+    );
+    return out;
+  }
+
+  return [];
 }
 
 /** Mark a notification as read for a given user.
@@ -43,9 +131,7 @@ export async function markNotificationRead(
   userId: string,
   role?: string,
 ): Promise<void> {
-  const filter = role
-    ? `user_id.eq.${userId},user_role.eq.${role}`
-    : `user_id.eq.${userId}`;
+  const filter = role ? `user_id.eq.${userId},user_role.eq.${role}` : `user_id.eq.${userId}`;
 
   const { error } = await supabaseAdmin
     .from("notifications")
@@ -57,7 +143,10 @@ export async function markNotificationRead(
 }
 
 /** Get unread notifications for a user (direct + role-broadcast) */
-export async function getUnreadNotifications(userId: string, role: string): Promise<Notification[]> {
+export async function getUnreadNotifications(
+  userId: string,
+  role: string,
+): Promise<Notification[]> {
   const { data, error } = await supabaseAdmin
     .from("notifications")
     .select("*")

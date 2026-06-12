@@ -18,6 +18,7 @@ interface BulkUserEntry {
   password: string;
   role: string;
   sbu_code?: string;
+  whatsapp_number?: string;
 }
 
 /**
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   const results: { email: string; success: boolean; id?: string; error?: string }[] = [];
 
   for (const entry of users) {
-    const { email, password, full_name, role, sbu_code } = entry;
+    const { email, password, full_name, role, sbu_code, whatsapp_number } = entry;
 
     // Basic field validation
     if (!email || !password || !role) {
@@ -105,6 +106,7 @@ export async function POST(req: Request) {
       full_name: full_name ?? null,
       role,
       sbu_id,
+      whatsapp_number: whatsapp_number ?? null,
       is_active: true,
       updated_at: new Date().toISOString(),
     });

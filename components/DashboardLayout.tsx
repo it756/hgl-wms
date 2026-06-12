@@ -166,6 +166,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/admin/audit", label: "Audit Trails", icon: History },
           { href: "/admin/variance", label: "Variance Resolution", icon: AlertTriangle },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
+          { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
         ];
       case "BU_MANAGER":
         return [
@@ -183,15 +184,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/warehouse/queue", label: "Warehouse Queue", icon: ClipboardList },
           { href: "/warehouse/supplier-grn", label: "Supplier GRN Queue", icon: FileText },
           { href: "/warehouse/returns", label: "Returns Incoming", icon: PackageCheck },
+          { href: "/warehouse/intra-transfer", label: "Intra Transfers", icon: ArrowLeftRight },
           { href: "/warehouse/losses", label: "Loss Account", icon: TrendingDown },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
+          { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
         ];
       case "FINANCE_MANAGER":
         return [
           { href: "/finance/queue", label: "Pending Approvals", icon: ClipboardList },
-          { href: "/admin/products", label: "Product Catalogue", icon: Layers },
+          { href: "/finance/catalogue", label: "Catalogue", icon: Layers },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
+          { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
         ];
       default: // UNIT_STAFF
         return [

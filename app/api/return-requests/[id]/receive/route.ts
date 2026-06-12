@@ -6,14 +6,12 @@ import { createNotification } from "../../../../../lib/services/notificationServ
 /**
  * POST /api/return-requests/[id]/receive
  * Warehouse Manager confirms physical receipt of approved returned goods.
- * Calls the process_return_receipt RPC which atomically:
- *   - Marks the return as RECEIVED
- *   - Increments warehouse stock for each returned line item
+ * Calls the process_return_physical_receipt RPC which:
+ *   - Marks the return as AWAITING_FINANCE_APPROVAL
+ *   - Does NOT modify stock — Finance Manager must approve the stock credit
+ *     via /api/return-requests/[id]/finance-approve.
  */
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -36,13 +34,15 @@ export async function POST(
   }
   if ((existing as any).status !== "APPROVED") {
     return NextResponse.json(
-      { error: `Return request must be APPROVED to receive (current: ${(existing as any).status})` },
+      {
+        error: `Return request must be APPROVED to receive (current: ${(existing as any).status})`,
+      },
       { status: 409 },
     );
   }
 
-  // Atomically restore stock and mark RECEIVED via RPC
-  const { error: rpcError } = await supabaseAdmin.rpc("process_return_receipt", {
+  // Mark as physically received via RPC (no stock change)
+  const { error: rpcError } = await supabaseAdmin.rpc("process_return_physical_receipt", {
     p_return_request_id: id,
     p_received_by: user.id,
   });
@@ -54,18 +54,18 @@ export async function POST(
 
   const ref = (existing as any).reference_number;
 
-  // Notify BU Manager and Unit Staff that the goods have been received
+  // Notify Finance Manager that the return now needs stock-credit approval.
   await Promise.all([
     createNotification({
-      user_role: "BU_MANAGER",
-      type: "return_received",
-      message: `Return request ${ref} has been received at the warehouse and stock has been restored`,
+      user_role: "FINANCE_MANAGER",
+      type: "return_awaiting_finance_approval",
+      message: `Return ${ref} has been physically received and needs Finance approval to credit stock`,
       related_entity_id: id,
     }),
     createNotification({
-      user_role: "UNIT_STAFF",
-      type: "return_received",
-      message: `Return request ${ref} has been received at the warehouse`,
+      user_role: "BU_MANAGER",
+      type: "return_received_pending_finance",
+      message: `Return ${ref} received at warehouse — awaiting Finance approval to restore stock`,
       related_entity_id: id,
     }),
   ]);
@@ -73,11 +73,15 @@ export async function POST(
   await writeAuditLog({
     entity_type: "return_request",
     entity_id: id,
-    action: "return_received",
+    action: "return_physical_receipt",
     performed_by: user.id,
     previous_value: { status: "APPROVED" },
-    new_value: { status: "RECEIVED" },
+    new_value: { status: "AWAITING_FINANCE_APPROVAL" },
   });
 
-  return NextResponse.json({ id, reference_number: ref, status: "RECEIVED" });
+  return NextResponse.json({
+    id,
+    reference_number: ref,
+    status: "AWAITING_FINANCE_APPROVAL",
+  });
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import DamageWriteOffModal from "@/components/DamageWriteOffModal";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Package,
@@ -17,6 +18,7 @@ import {
   Building2,
   ArrowLeftRight,
   RefreshCw,
+  Flame,
 } from "lucide-react";
 
 interface SBU {
@@ -61,6 +63,9 @@ export default function ProductsPage() {
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustError, setAdjustError] = useState<string | null>(null);
+
+  // Direct damage write-off modal
+  const [damageProduct, setDamageProduct] = useState<Product | null>(null);
 
   const token = () => localStorage.getItem("access_token") ?? "";
 
@@ -563,6 +568,13 @@ export default function ProductsPage() {
                               Adjust Stock
                             </button>
                             <button
+                              onClick={() => setDamageProduct(p)}
+                              disabled={p.stock_quantity <= 0}
+                              className="px-2.5 py-1 bg-rose-50 border border-rose-100 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed text-rose-700 font-bold rounded-lg text-[11px] inline-flex items-center gap-1"
+                            >
+                              <Flame className="w-3 h-3" /> Write Off
+                            </button>
+                            <button
                               onClick={() => toggleActive(p)}
                               className={`p-1 px-2 border rounded-md transition-all flex items-center gap-1 text-[11px] cursor-pointer ${
                                 p.is_active
@@ -697,6 +709,14 @@ export default function ProductsPage() {
             </div>
           </form>
         </div>
+      )}
+
+      {damageProduct && (
+        <DamageWriteOffModal
+          product={damageProduct}
+          onClose={() => setDamageProduct(null)}
+          onSuccess={load}
+        />
       )}
     </DashboardLayout>
   );

@@ -5,9 +5,10 @@ import { createNotification } from "../../../../lib/services/notificationService
 
 /**
  * POST /api/finance/approvals
- * Finance Manager approves or rejects a transfer request or supplier GRN.
+ * Finance Manager approves or rejects a transfer request, supplier GRN, or return request.
  *
- * Body: { entity_type: "transfer_request" | "supplier_grn", entity_id: string, action: "approve" | "reject", notes?: string }
+ * Body: { entity_type: "transfer_request" | "supplier_grn" | "return_request",
+ *         entity_id: string, action: "approve" | "reject", notes?: string }
  */
 export async function POST(req: Request) {
   const user = await getUserFromAuthHeader(req);
@@ -179,6 +180,79 @@ export async function POST(req: Request) {
     });
   }
 
+  if (entity_type === "return_request") {
+    const { data: rr, error: fetchError } = await supabaseAdmin
+      .from("return_requests")
+      .select("status, reference_number")
+      .eq("id", entity_id)
+      .single();
+
+    if (fetchError || !rr) {
+      return NextResponse.json({ error: "Return request not found" }, { status: 404 });
+    }
+    if ((rr as any).status !== "AWAITING_FINANCE_APPROVAL") {
+      return NextResponse.json(
+        { error: `Return is not awaiting Finance approval. Current status: ${(rr as any).status}` },
+        { status: 409 },
+      );
+    }
+
+    const ref = (rr as any).reference_number;
+
+    if (action === "approve") {
+      const { error: rpcError } = await supabaseAdmin.rpc("process_return_stock_credit", {
+        p_return_request_id: entity_id,
+        p_approved_by: user.id,
+        p_notes: notes ?? null,
+      });
+      if (rpcError) throw rpcError;
+
+      for (const r of ["BU_MANAGER", "UNIT_STAFF", "WAREHOUSE_MANAGER"] as const) {
+        await createNotification({
+          user_role: r,
+          type: "return_stock_restored",
+          message: `Return ${ref} approved by Finance — stock restored`,
+          related_entity_id: entity_id,
+        });
+      }
+    } else {
+      const { error: updateError } = await supabaseAdmin
+        .from("return_requests")
+        .update({
+          status: "REJECTED",
+          finance_approved_by: user.id,
+          finance_approved_at: new Date().toISOString(),
+          finance_approval_notes: notes ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", entity_id);
+
+      if (updateError) throw updateError;
+
+      for (const r of ["BU_MANAGER", "WAREHOUSE_MANAGER"] as const) {
+        await createNotification({
+          user_role: r,
+          type: "return_rejected_by_finance",
+          message: `Return ${ref} was rejected by Finance${notes ? `: ${notes}` : ""}`,
+          related_entity_id: entity_id,
+        });
+      }
+    }
+
+    await writeAuditLog({
+      entity_type: "return_request",
+      entity_id,
+      action: `finance_${action}`,
+      performed_by: user.id,
+      new_value: { notes },
+    });
+
+    return NextResponse.json({
+      id: entity_id,
+      status: action === "approve" ? "STOCK_RESTORED" : "REJECTED",
+    });
+  }
+
   return NextResponse.json({ error: `Unknown entity_type: ${entity_type}` }, { status: 400 });
 }
 
@@ -198,42 +272,61 @@ export async function GET(req: Request) {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [transfersResult, grnsResult, proposalsResult, approvedTodayResult, rejectedTodayResult] =
-    await Promise.all([
-      supabaseAdmin
-        .from("transfer_requests")
-        .select("*, sbus(id, name), transfer_line_items(*, products(id, name, sku, unit_cost))")
-        .eq("status", "PENDING_APPROVAL")
-        .order("created_at", { ascending: false }),
-      supabaseAdmin
-        .from("supplier_grns")
-        .select("*, supplier_grn_line_items(*, products(id, name, sku))")
-        .eq("status", "AWAITING_FINANCE_APPROVAL")
-        .order("created_at", { ascending: false }),
-      supabaseAdmin
-        .from("variance_proposals")
-        .select(
-          `id, proposal_notes, proposed_by, created_at, updated_at,
-           transfer_requests ( id, reference_number, sbu_id ),
-           variance_proposal_lines (
-             id, product_id, variance_quantity,
-             recommended_resolution, finance_decision, finance_decision_notes,
-             products ( id, name, sku, unit_cost )
-           )`,
-        )
-        .eq("status", "PENDING_FINANCE_REVIEW")
-        .order("created_at", { ascending: false }),
-      supabaseAdmin
-        .from("transfer_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "APPROVED_FOR_ISSUE")
-        .gte("approved_at", todayStart.toISOString()),
-      supabaseAdmin
-        .from("transfer_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "CANCELLED")
-        .gte("updated_at", todayStart.toISOString()),
-    ]);
+  const [
+    transfersResult,
+    grnsResult,
+    proposalsResult,
+    returnsResult,
+    approvedTodayResult,
+    rejectedTodayResult,
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("transfer_requests")
+      .select("*, sbus(id, name), transfer_line_items(*, products(id, name, sku, unit_cost))")
+      .eq("status", "PENDING_APPROVAL")
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("supplier_grns")
+      .select("*, supplier_grn_line_items(*, products(id, name, sku))")
+      .eq("status", "AWAITING_FINANCE_APPROVAL")
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("variance_proposals")
+      .select(
+        `id, proposal_notes, proposed_by, created_at, updated_at,
+         transfer_requests ( id, reference_number, sbu_id ),
+         variance_proposal_lines (
+           id, product_id, variance_quantity,
+           recommended_resolution, finance_decision, finance_decision_notes,
+           products ( id, name, sku, unit_cost )
+         )`,
+      )
+      .eq("status", "PENDING_FINANCE_REVIEW")
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("return_requests")
+      .select(
+        `id, reference_number, status, reason, notes, sbu_id, raised_by,
+         received_by, received_at, created_at, updated_at,
+         sbus ( id, name ),
+         return_line_items (
+           id, product_id, quantity_to_return, quantity_received,
+           products ( id, name, sku, unit_cost, unit_of_measure )
+         )`,
+      )
+      .eq("status", "AWAITING_FINANCE_APPROVAL")
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("transfer_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "APPROVED_FOR_ISSUE")
+      .gte("approved_at", todayStart.toISOString()),
+    supabaseAdmin
+      .from("transfer_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "CANCELLED")
+      .gte("updated_at", todayStart.toISOString()),
+  ]);
 
   // Enrich transfer requests with requester full_name from profiles
   const transfers = transfersResult.data ?? [];
@@ -254,6 +347,7 @@ export async function GET(req: Request) {
       profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name ?? ""]));
     }
   }
+
   const enrichedTransfers = transfers.map((t: any) => ({
     ...t,
     requester_name: profileMap[t.raised_by] ?? null,
@@ -268,6 +362,7 @@ export async function GET(req: Request) {
     transfer_requests: enrichedTransfers,
     supplier_grns: grnsResult.data ?? [],
     variance_proposals: enrichedProposals,
+    return_requests: returnsResult.data ?? [],
     approved_today: approvedTodayResult.count ?? 0,
     rejected_today: rejectedTodayResult.count ?? 0,
   });

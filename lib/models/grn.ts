@@ -62,6 +62,7 @@ export interface SupplierGRNLineItem {
   product_id: string;
   quantity_received: number;
   unit_cost: number | null;
+  expiry_date: string | null;
   created_at: string;
 }
 
@@ -71,7 +72,15 @@ export interface SupplierGRNCreateInput {
   invoice_amount?: number;
   date_received?: string;
   sbu_id?: string;
-  items: { product_id: string; quantity_received: number; unit_cost?: number }[];
+  items: {
+    product_id: string;
+    quantity_received: number;
+    /** Optional expected qty from packing list — used to flag has_packing_variance. */
+    quantity_expected?: number;
+    unit_cost?: number;
+    /** ISO date (YYYY-MM-DD) — batch expiry */
+    expiry_date?: string | null;
+  }[];
 }
 
 // ─── Variance Disposition ────────────────────────────────────────────────────

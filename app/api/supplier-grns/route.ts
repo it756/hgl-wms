@@ -25,7 +25,14 @@ export async function POST(req: Request) {
   }
 
   const body: SupplierGRNCreateInput = await req.json();
-  const { supplier_name, supplier_invoice_reference, invoice_amount, date_received, sbu_id, items } = body;
+  const {
+    supplier_name,
+    supplier_invoice_reference,
+    invoice_amount,
+    date_received,
+    sbu_id,
+    items,
+  } = body;
 
   if (!supplier_name || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json(
@@ -56,14 +63,28 @@ export async function POST(req: Request) {
   if (grnError) throw grnError;
   const grnId = (grn as any).id;
 
-  const lineInserts = items.map((item) => ({
-    supplier_grn_id: grnId,
-    product_id: item.product_id,
-    quantity_received: item.quantity_received,
-    unit_cost: item.unit_cost ?? null,
-  }));
+  // Detect packing-list variance: any line with quantity_expected != quantity_received
+  let hasPackingVariance = false;
 
-  const { error: liError } = await supabaseAdmin.from("supplier_grn_line_items").insert(lineInserts);
+  const lineInserts = items.map((item) => {
+    if (
+      typeof item.quantity_expected === "number" &&
+      item.quantity_expected !== item.quantity_received
+    ) {
+      hasPackingVariance = true;
+    }
+    return {
+      supplier_grn_id: grnId,
+      product_id: item.product_id,
+      quantity_received: item.quantity_received,
+      unit_cost: item.unit_cost ?? null,
+      expiry_date: item.expiry_date ?? null,
+    };
+  });
+
+  const { error: liError } = await supabaseAdmin
+    .from("supplier_grn_line_items")
+    .insert(lineInserts);
   if (liError) throw liError;
 
   // Notify Finance Manager for approval
@@ -74,15 +95,41 @@ export async function POST(req: Request) {
     related_entity_id: grnId,
   });
 
+  // Notify Admin + Finance silently if there was a packing variance
+  if (hasPackingVariance) {
+    await Promise.all([
+      createNotification({
+        user_role: "ADMIN",
+        type: "supplier_grn_packing_variance",
+        message: `Packing variance detected on Supplier GRN ${reference_number}`,
+        related_entity_id: grnId,
+      }),
+      createNotification({
+        user_role: "FINANCE_MANAGER",
+        type: "supplier_grn_packing_variance",
+        message: `Packing variance detected on Supplier GRN ${reference_number}`,
+        related_entity_id: grnId,
+      }),
+    ]);
+  }
+
   await writeAuditLog({
     entity_type: "supplier_grn",
     entity_id: grnId,
     action: "create",
     performed_by: user.id,
-    new_value: { reference_number, status: "AWAITING_FINANCE_APPROVAL", supplier_name },
+    new_value: {
+      reference_number,
+      status: "AWAITING_FINANCE_APPROVAL",
+      supplier_name,
+      has_packing_variance: hasPackingVariance,
+    },
   });
 
-  return NextResponse.json({ id: grnId, reference_number }, { status: 201 });
+  return NextResponse.json(
+    { id: grnId, reference_number, has_packing_variance: hasPackingVariance },
+    { status: 201 },
+  );
 }
 
 /**

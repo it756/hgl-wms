@@ -14,7 +14,7 @@ import { writeAuditLog } from "../../../../../../lib/services/auditService";
  *   }>
  * }
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const transferId = params.id;
+  const { id: transferId } = await params;
   if (!transferId) {
     return NextResponse.json({ error: "Transfer request ID is required" }, { status: 400 });
   }
@@ -78,11 +78,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
   }
 
-  // Call the atomic RPC
+  // Call the atomic RPC. Pass the array directly — PostgREST serializes it to JSON.
+  // Wrapping with JSON.stringify would send a JSON scalar (string) instead of an array,
+  // causing Postgres to raise "cannot call json_array_elements on a scalar".
   const { error: rpcError } = await supabaseAdmin.rpc("process_variance_disposition", {
     p_transfer_request_id: transferId,
     p_decided_by: user.id,
-    p_line_dispositions: JSON.stringify(line_dispositions),
+    p_line_dispositions: line_dispositions,
   });
 
   if (rpcError) {

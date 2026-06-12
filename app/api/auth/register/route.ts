@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { email, password, full_name, role, sbu_id } = body;
+  const { email, password, full_name, role, sbu_id, whatsapp_number } = body;
 
   if (!email || !password || !role) {
     return NextResponse.json({ error: "email, password and role are required" }, { status: 400 });
@@ -69,6 +69,7 @@ export async function POST(req: Request) {
     full_name: full_name ?? null,
     role,
     sbu_id: sbu_id ?? null,
+    whatsapp_number: whatsapp_number ?? null,
     is_active: true,
     updated_at: new Date().toISOString(),
   });

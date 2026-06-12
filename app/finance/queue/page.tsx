@@ -49,16 +49,32 @@ interface PendingItem {
   }>;
 }
 
+function fmtDateTime(input: string | null | undefined): string {
+  if (!input) return "—";
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return String(input);
+  return d.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function FinanceQueuePage() {
   const [transfers, setTransfers] = useState<PendingItem[]>([]);
   const [supplierGrns, setSupplierGrns] = useState<PendingItem[]>([]);
+  const [returnsList, setReturnsList] = useState<PendingItem[]>([]);
   const [varianceProposals, setVarianceProposals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
-  const [activeTab, setActiveTab] = useState<"transfers" | "grns" | "variance">("transfers");
+  const [activeTab, setActiveTab] = useState<"transfers" | "grns" | "variance" | "returns">(
+    "transfers",
+  );
   // Variance proposal review state
   const [lineDecisions, setLineDecisions] = useState<
     Record<string, Record<string, { finance_decision: string; finance_decision_notes: string }>>
@@ -106,6 +122,22 @@ export default function FinanceQueuePage() {
         setTransfers(normalizedTransfers);
         setSupplierGrns(normalizedGrns);
         setVarianceProposals(data.variance_proposals ?? []);
+        const normalizedReturns = (data.return_requests ?? []).map((r: any) => ({
+          ...r,
+          sbu_name: r.sbus?.name ?? r.sbu_id,
+          items: (r.return_line_items ?? []).map((l: any) => ({
+            name: l.products?.name ?? `Product ${l.product_id}`,
+            sku: l.products?.sku ?? "",
+            quantity: l.quantity_to_return,
+            unit_cost: l.products?.unit_cost ?? null,
+            total: l.quantity_to_return * (l.products?.unit_cost ?? 0),
+          })),
+          estimated_value: (r.return_line_items ?? []).reduce(
+            (s: number, l: any) => s + (l.quantity_to_return ?? 0) * (l.products?.unit_cost ?? 0),
+            0,
+          ),
+        }));
+        setReturnsList(normalizedReturns);
         setApprovedToday(data.approved_today ?? 0);
         setRejectedToday(data.rejected_today ?? 0);
       } else {
@@ -123,7 +155,7 @@ export default function FinanceQueuePage() {
   }, []);
 
   async function handleAction(
-    entityType: "transfer_request" | "supplier_grn",
+    entityType: "transfer_request" | "supplier_grn" | "return_request",
     entityId: string,
     action: "approve" | "reject",
   ) {
@@ -145,7 +177,13 @@ export default function FinanceQueuePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Action failed");
       setSuccess(
-        `${entityType === "transfer_request" ? "Transfer Request" : "Supplier GRN"} ${action === "approve" ? "approved" : "rejected"} successfully.`,
+        `${
+          entityType === "transfer_request"
+            ? "Transfer Request"
+            : entityType === "supplier_grn"
+              ? "Supplier GRN"
+              : "Return Request"
+        } ${action === "approve" ? "approved" : "rejected"} successfully.`,
       );
       setNotes((prev) => {
         const copy = { ...prev };
@@ -255,7 +293,14 @@ export default function FinanceQueuePage() {
       g.sbu_name?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const totalPending = transfers.length + supplierGrns.length + varianceProposals.length;
+  const filteredReturns = returnsList.filter(
+    (r) =>
+      r.reference_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.sbu_name?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const totalPending =
+    transfers.length + supplierGrns.length + varianceProposals.length + returnsList.length;
   const pendingValue =
     transfers.reduce((sum, t) => sum + (t.estimated_value || 0), 0) +
     supplierGrns.reduce((sum, g) => sum + (g.invoice_amount || 0), 0);
@@ -474,6 +519,21 @@ export default function FinanceQueuePage() {
                 >
                   <AlertTriangle className="w-3.5 h-3.5" />
                   <span>Variances ({varianceProposals.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("returns");
+                    setSelectedItem(null);
+                  }}
+                  className={`px-3 py-2 text-xs font-bold rounded-md transition-all uppercase tracking-wider flex items-center gap-2 ${
+                    activeTab === "returns"
+                      ? "bg-purple-600 text-white shadow-sm font-extrabold"
+                      : "text-purple-700 hover:text-purple-800"
+                  }`}
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>Returns ({returnsList.length})</span>
                 </button>
               </div>
 
@@ -744,7 +804,7 @@ export default function FinanceQueuePage() {
                   ))
                 )}
               </div>
-            ) : (
+            ) : activeTab === "grns" ? (
               /* SUPPLIER GRNS PANEL LIST */
               <div className="flex flex-col gap-4">
                 {filteredGRNs.length === 0 ? (
@@ -792,7 +852,67 @@ export default function FinanceQueuePage() {
                           {fmt(g.invoice_amount)}
                         </span>
                         <span className="text-[10px] font-medium text-slate-450 mt-1 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> {g.created_at}
+                          <Calendar className="w-3 h-3" /> {fmtDateTime(g.created_at)}
+                        </span>
+                      </div>
+
+                      <span className="absolute right-3 top-3 text-slate-350 opacity-45">
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              /* RETURN REQUESTS PANEL LIST */
+              <div className="flex flex-col gap-4">
+                {filteredReturns.length === 0 ? (
+                  <div className="bg-white py-12 text-center text-slate-400 font-semibold text-xs border border-slate-150 rounded-xl uppercase tracking-wider shadow-sm">
+                    No return requests awaiting finance approval.
+                  </div>
+                ) : (
+                  filteredReturns.map((r) => (
+                    <div
+                      key={r.id}
+                      onClick={() => setSelectedItem(r)}
+                      className={`border bg-white rounded-xl p-5 shadow-sm hover:border-purple-500/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer relative ${
+                        selectedItem?.id === r.id
+                          ? "border-purple-600 ring-1 ring-purple-500/25 bg-purple-50/20"
+                          : "border-slate-200/90"
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-purple-50 rounded-lg text-purple-600 mt-1 shrink-0">
+                          <ArrowLeftRight className="w-5 h-5" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-slate-800 font-mono text-sm tracking-tight">
+                              {r.reference_number}
+                            </span>
+                            <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-wider bg-purple-100/70 border border-purple-200 text-purple-850 rounded-full font-sans">
+                              stock credit
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-semibold text-slate-500 font-sans">
+                            Returned to <strong className="text-slate-700">{r.sbu_name}</strong>
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mt-0.5">
+                            {r.items?.length ?? 0} line item
+                            {(r.items?.length ?? 0) === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex md:flex-col items-end justify-between md:justify-center border-t md:border-t-0 border-slate-100 pt-3 md:pt-0 shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">
+                          Restoration Value
+                        </span>
+                        <span className="text-base font-black font-mono text-purple-700">
+                          {fmt(r.estimated_value)}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-450 mt-1 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" /> {fmtDateTime(r.created_at)}
                         </span>
                       </div>
 
@@ -862,7 +982,7 @@ export default function FinanceQueuePage() {
                   <div className="flex justify-between">
                     <span>Date Filed:</span>
                     <span className="text-slate-800 font-mono font-bold">
-                      {selectedItem.created_at}
+                      {fmtDateTime(selectedItem.created_at)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -946,7 +1066,11 @@ export default function FinanceQueuePage() {
                   <button
                     onClick={() =>
                       handleAction(
-                        activeTab === "transfers" ? "transfer_request" : "supplier_grn",
+                        activeTab === "transfers"
+                          ? "transfer_request"
+                          : activeTab === "returns"
+                            ? "return_request"
+                            : "supplier_grn",
                         selectedItem.id,
                         "reject",
                       )
@@ -958,7 +1082,11 @@ export default function FinanceQueuePage() {
                   <button
                     onClick={() =>
                       handleAction(
-                        activeTab === "transfers" ? "transfer_request" : "supplier_grn",
+                        activeTab === "transfers"
+                          ? "transfer_request"
+                          : activeTab === "returns"
+                            ? "return_request"
+                            : "supplier_grn",
                         selectedItem.id,
                         "approve",
                       )

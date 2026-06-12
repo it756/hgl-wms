@@ -36,9 +36,11 @@ interface LineItem {
   product_name: string;
   sku: string;
   unit_of_measure: string;
+  quantity_expected: number;
   quantity_received: number;
   unit_cost: number;
   total_cost: number;
+  expiry_date: string;
 }
 
 interface ProductOption {
@@ -118,9 +120,11 @@ export default function SupplierGRNPage() {
       product_name: "",
       sku: "",
       unit_of_measure: "EA",
+      quantity_expected: 1,
       quantity_received: 1,
       unit_cost: 0.0,
       total_cost: 0.0,
+      expiry_date: "",
     },
   ]);
   const [productSearch, setProductSearch] = useState<string[]>([""]);
@@ -157,6 +161,64 @@ export default function SupplierGRNPage() {
       .then(setSbus)
       .catch(() => {});
   }, [loadGrns]);
+
+  // ── Packing list CSV import ──
+  const [importing, setImporting] = useState(false);
+  const [unmatchedRows, setUnmatchedRows] = useState<
+    { sku: string; product_name: string; quantity_expected: number }[]
+  >([]);
+
+  async function handlePackingListUpload(file: File) {
+    setImporting(true);
+    setError(null);
+    setUnmatchedRows([]);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/supplier-grns/import-csv", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to parse CSV.");
+      const matched = (data.matched ?? []) as Array<{
+        product_id: string;
+        product_name: string;
+        sku: string;
+        unit_of_measure?: string;
+        quantity_expected: number;
+        unit_cost?: number | null;
+        expiry_date?: string | null;
+      }>;
+      if (matched.length === 0) {
+        setError("No products in the CSV matched the catalogue. Check the SKUs and try again.");
+      } else {
+        const newLines: LineItem[] = matched.map((m) => ({
+          product_id: m.product_id,
+          product_name: m.product_name,
+          sku: m.sku,
+          unit_of_measure: m.unit_of_measure ?? "EA",
+          quantity_expected: m.quantity_expected,
+          quantity_received: m.quantity_expected,
+          unit_cost: m.unit_cost ?? 0,
+          total_cost: m.quantity_expected * (m.unit_cost ?? 0),
+          expiry_date: m.expiry_date ?? "",
+        }));
+        setLines(newLines);
+        setProductSearch(newLines.map((l) => l.product_name));
+        setProductOptions(newLines.map(() => []));
+        setSuccess(
+          `Imported ${newLines.length} line item${newLines.length === 1 ? "" : "s"} from packing list. Tick off received quantities below.`,
+        );
+      }
+      setUnmatchedRows(data.unmatched ?? []);
+    } catch (err: any) {
+      setError(err.message || "Failed to import packing list.");
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function searchProducts(idx: number, query: string) {
     const searches = [...productSearch];
@@ -234,9 +296,11 @@ export default function SupplierGRNPage() {
         product_name: "",
         sku: "",
         unit_of_measure: "EA",
+        quantity_expected: 1,
         quantity_received: 1,
         unit_cost: 0.0,
         total_cost: 0.0,
+        expiry_date: "",
       },
     ]);
     setProductSearch([...productSearch, ""]);
@@ -267,9 +331,11 @@ export default function SupplierGRNPage() {
         product_name: li.products?.name ?? "",
         sku: li.products?.sku ?? "",
         unit_of_measure: li.products?.unit_of_measure ?? "EA",
+        quantity_expected: li.quantity_expected ?? li.quantity_received,
         quantity_received: li.quantity_received,
         unit_cost: li.unit_cost ?? 0,
         total_cost: li.quantity_received * (li.unit_cost ?? 0),
+        expiry_date: li.expiry_date ?? "",
       }));
       setLines(
         loadedLines.length
@@ -280,9 +346,11 @@ export default function SupplierGRNPage() {
                 product_name: "",
                 sku: "",
                 unit_of_measure: "EA",
+                quantity_expected: 1,
                 quantity_received: 1,
                 unit_cost: 0,
                 total_cost: 0,
+                expiry_date: "",
               },
             ],
       );
@@ -317,8 +385,10 @@ export default function SupplierGRNPage() {
       sbu_id: sbuId || undefined,
       items: lines.map((l) => ({
         product_id: l.product_id,
+        quantity_expected: l.quantity_expected || l.quantity_received,
         quantity_received: l.quantity_received,
         unit_cost: l.unit_cost,
+        expiry_date: l.expiry_date || undefined,
       })),
     };
     try {
@@ -364,9 +434,11 @@ export default function SupplierGRNPage() {
         product_name: "",
         sku: "",
         unit_of_measure: "EA",
+        quantity_expected: 1,
         quantity_received: 1,
         unit_cost: 0.0,
         total_cost: 0.0,
+        expiry_date: "",
       },
     ]);
     setProductSearch([""]);
@@ -814,24 +886,61 @@ export default function SupplierGRNPage() {
                   <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
                     Line Items
                   </h3>
-                  <button
-                    type="button"
-                    onClick={addLine}
-                    className="px-3 py-1.5 border border-primary text-primary hover:bg-primary/5 rounded-lg text-xs font-bold transition flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Row
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <label className="px-3 py-1.5 border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      {importing ? "Importing…" : "Import Packing List"}
+                      <input
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="hidden"
+                        disabled={importing}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handlePackingListUpload(f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addLine}
+                      className="px-3 py-1.5 border border-primary text-primary hover:bg-primary/5 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Row
+                    </button>
+                  </div>
                 </div>
+
+                {unmatchedRows.length > 0 && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg p-3 text-[11px] font-medium">
+                    <p className="font-bold uppercase tracking-wider text-[10px] mb-1">
+                      {unmatchedRows.length} row{unmatchedRows.length === 1 ? "" : "s"} skipped —
+                      unknown SKU
+                    </p>
+                    <ul className="list-disc list-inside max-h-32 overflow-y-auto">
+                      {unmatchedRows.map((r, i) => (
+                        <li key={i}>
+                          <span className="font-mono">{r.sku || "(no SKU)"}</span>
+                          {r.product_name ? ` — ${r.product_name}` : ""}
+                          {r.quantity_expected ? ` × ${r.quantity_expected}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div className="overflow-visible">
                   <table className="w-full min-w-160 text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
                         <th className="py-3 px-3">Product Description</th>
-                        <th className="py-3 px-3 w-28">UoM</th>
-                        <th className="py-3 px-3 w-28 text-center">Qty Received</th>
+                        <th className="py-3 px-3 w-24">UoM</th>
+                        <th className="py-3 px-3 w-24 text-center">Qty Expected</th>
+                        <th className="py-3 px-3 w-24 text-center">Qty Received</th>
                         <th className="py-3 px-3 w-32">Unit Cost (ZMW)</th>
-                        <th className="py-3 px-3 w-32 text-right">Total ({currency})</th>
+                        <th className="py-3 px-3 w-36">Expiry Date</th>
+                        <th className="py-3 px-3 w-28 text-right">Total ({currency})</th>
                         <th className="py-3 px-3 w-12"></th>
                       </tr>
                     </thead>
@@ -886,11 +995,29 @@ export default function SupplierGRNPage() {
                           <td className="py-3 px-3">
                             <input
                               type="number"
+                              min="0"
+                              value={line.quantity_expected}
+                              onChange={(e) => {
+                                const u = [...lines];
+                                u[idx].quantity_expected = Number(e.target.value);
+                                setLines(u);
+                              }}
+                              className="w-full border border-slate-200 rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700"
+                            />
+                          </td>
+                          <td className="py-3 px-3">
+                            <input
+                              type="number"
                               min="1"
                               required
                               value={line.quantity_received}
                               onChange={(e) => updateQuantity(idx, Number(e.target.value))}
-                              className="w-full border border-slate-200 rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700"
+                              className={`w-full border rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700 ${
+                                line.quantity_expected &&
+                                line.quantity_received !== line.quantity_expected
+                                  ? "border-amber-400 bg-amber-50"
+                                  : "border-slate-200"
+                              }`}
                             />
                           </td>
                           <td className="py-3 px-3">
@@ -902,6 +1029,18 @@ export default function SupplierGRNPage() {
                               value={line.unit_cost}
                               onChange={(e) => updateUnitCost(idx, Number(e.target.value))}
                               className="w-full border border-slate-200 rounded-lg p-1.5 font-bold font-mono text-xs text-slate-755"
+                            />
+                          </td>
+                          <td className="py-3 px-3">
+                            <input
+                              type="date"
+                              value={line.expiry_date}
+                              onChange={(e) => {
+                                const u = [...lines];
+                                u[idx].expiry_date = e.target.value;
+                                setLines(u);
+                              }}
+                              className="w-full border border-slate-200 rounded-lg p-1.5 font-medium text-xs text-slate-700"
                             />
                           </td>
                           <td className="py-3 px-3 text-right font-extrabold font-mono text-slate-800 text-sm">

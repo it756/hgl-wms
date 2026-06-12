@@ -56,6 +56,15 @@ interface IssuanceItem {
   verified?: boolean;
 }
 
+const SHORTFALL_REASONS = [
+  "Stock shortage - Remaining on backorder",
+  "Damaged stock",
+  "Expired stock",
+  "Reserved for other orders",
+  "Pending supplier delivery",
+  "Other",
+] as const;
+
 export default function WarehouseQueuePage() {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -893,19 +902,53 @@ export default function WarehouseQueuePage() {
                                   className="w-full px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-slate-400 font-semibold cursor-not-allowed"
                                 />
                               ) : (
-                                <input
-                                  type="text"
-                                  value={item.shortfall_reason || ""}
-                                  onChange={(e) => updateShortfallReason(idx, e.target.value)}
-                                  placeholder="Enter reason..."
-                                  className={`w-full px-3 py-1.5 border rounded-lg font-semibold placeholder:text-slate-350 text-xs focus:outline-none ${
-                                    exceedsStock
-                                      ? "border-red-300 text-red-800 bg-red-50/50"
-                                      : isShortfallDetail
-                                        ? "border-orange-300 text-[#904D00] bg-orange-50/40"
-                                        : "border-slate-200 focus:ring-1 focus:ring-primary focus:border-primary"
-                                  }`}
-                                />
+                                (() => {
+                                  const raw = item.shortfall_reason ?? "";
+                                  const isOther = raw.startsWith("Other:") || raw === "Other";
+                                  const selected = isOther
+                                    ? "Other"
+                                    : SHORTFALL_REASONS.includes(raw as any)
+                                      ? raw
+                                      : "Stock shortage - Remaining on backorder";
+                                  const otherDetail = raw.startsWith("Other:")
+                                    ? raw.slice(6).trimStart()
+                                    : "";
+                                  return (
+                                    <div className="flex flex-col gap-1.5">
+                                      <select
+                                        value={selected}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          updateShortfallReason(idx, v === "Other" ? "Other: " : v);
+                                        }}
+                                        className={`w-full px-3 py-1.5 border rounded-lg font-semibold text-xs focus:outline-none ${
+                                          exceedsStock
+                                            ? "border-red-300 text-red-800 bg-red-50/50"
+                                            : isShortfallDetail
+                                              ? "border-orange-300 text-[#904D00] bg-orange-50/40"
+                                              : "border-slate-200 focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                                        }`}
+                                      >
+                                        {SHORTFALL_REASONS.map((r) => (
+                                          <option key={r} value={r}>
+                                            {r}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      {selected === "Other" && (
+                                        <input
+                                          type="text"
+                                          value={otherDetail}
+                                          onChange={(e) =>
+                                            updateShortfallReason(idx, `Other: ${e.target.value}`)
+                                          }
+                                          placeholder="Specify reason…"
+                                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg font-semibold placeholder:text-slate-350 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                                        />
+                                      )}
+                                    </div>
+                                  );
+                                })()
                               )}
                             </td>
                           </tr>

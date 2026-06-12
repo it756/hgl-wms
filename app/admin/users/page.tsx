@@ -3,20 +3,20 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import type { UserRole } from "../../../lib/models/user";
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  SlidersHorizontal, 
-  Mail, 
-  User, 
-  Lock, 
-  Building2, 
-  Shield, 
-  Power, 
-  Check, 
-  X, 
-  ShieldAlert, 
+import {
+  Users,
+  UserPlus,
+  Search,
+  SlidersHorizontal,
+  Mail,
+  User,
+  Lock,
+  Building2,
+  Shield,
+  Power,
+  Check,
+  X,
+  ShieldAlert,
   TrendingUp,
   Activity,
   ArrowRight,
@@ -25,7 +25,7 @@ import {
   Download,
   FileText,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
 } from "lucide-react";
 
 interface UserRow {
@@ -79,6 +79,7 @@ export default function UsersPage() {
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
   const [formName, setFormName] = useState("");
+  const [formWhatsapp, setFormWhatsapp] = useState("");
   const [formRole, setFormRole] = useState<UserRole>("UNIT_STAFF");
   const [formSbu, setFormSbu] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -86,14 +87,17 @@ export default function UsersPage() {
 
   // CSV import state
   const [showCsvImport, setShowCsvImport] = useState(false);
-  const [csvRows, setCsvRows] = useState<{
-    full_name: string;
-    email: string;
-    password: string;
-    role: string;
-    sbu_code: string;
-    _error?: string;
-  }[]>([]);
+  const [csvRows, setCsvRows] = useState<
+    {
+      full_name: string;
+      email: string;
+      password: string;
+      role: string;
+      sbu_code: string;
+      whatsapp_number: string;
+      _error?: string;
+    }[]
+  >([]);
   const [csvParseError, setCsvParseError] = useState<string | null>(null);
   const [csvImportLoading, setCsvImportLoading] = useState(false);
   const [csvResults, setCsvResults] = useState<
@@ -134,11 +138,16 @@ export default function UsersPage() {
       const idx = (col: string) => headers.indexOf(col);
       const parsed = lines.slice(1).map((line) => {
         // Handle quoted fields
-        const cols = line.match(/(?:"[^"]*"|[^,])+/g)?.map((c) =>
-          c.replace(/^"|"$/g, "").trim()
-        ) ?? [];
+        const cols =
+          line.match(/(?:"[^"]*"|[^,])+/g)?.map((c) => c.replace(/^"|"$/g, "").trim()) ?? [];
         const role = (cols[idx("role")] ?? "").toUpperCase();
-        const validRoles = ["BU_MANAGER", "WAREHOUSE_MANAGER", "UNIT_STAFF", "FINANCE_MANAGER", "ADMIN"];
+        const validRoles = [
+          "BU_MANAGER",
+          "WAREHOUSE_MANAGER",
+          "UNIT_STAFF",
+          "FINANCE_MANAGER",
+          "ADMIN",
+        ];
         let _error: string | undefined;
         if (!cols[idx("email")]) _error = "Missing email";
         else if (!cols[idx("password")]) _error = "Missing password";
@@ -149,6 +158,7 @@ export default function UsersPage() {
           password: cols[idx("password")] ?? "",
           role,
           sbu_code: cols[idx("sbu_code")] ?? "",
+          whatsapp_number: cols[idx("whatsapp_number")] ?? "",
           _error,
         };
       });
@@ -161,13 +171,16 @@ export default function UsersPage() {
     setCsvImportLoading(true);
     setCsvResults([]);
     try {
-      const users = csvRows.filter((r) => !r._error).map(({ full_name, email, password, role, sbu_code }) => ({
-        full_name: full_name || undefined,
-        email,
-        password,
-        role,
-        sbu_code: sbu_code || undefined,
-      }));
+      const users = csvRows
+        .filter((r) => !r._error)
+        .map(({ full_name, email, password, role, sbu_code, whatsapp_number }) => ({
+          full_name: full_name || undefined,
+          email,
+          password,
+          role,
+          sbu_code: sbu_code || undefined,
+          whatsapp_number: whatsapp_number || undefined,
+        }));
       const res = await fetch("/api/admin/users/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
@@ -253,6 +266,7 @@ export default function UsersPage() {
           email: formEmail,
           password: formPassword,
           full_name: formName,
+          whatsapp_number: formWhatsapp || undefined,
           role: formRole,
           sbu_id: formSbu || undefined,
         }),
@@ -263,6 +277,7 @@ export default function UsersPage() {
       setFormEmail("");
       setFormPassword("");
       setFormName("");
+      setFormWhatsapp("");
       setFormRole("UNIT_STAFF");
       setFormSbu("");
       load();
@@ -273,9 +288,10 @@ export default function UsersPage() {
     }
   }
 
-  const filtered = users.filter(u => 
-    (u.full_name?.toLowerCase() || "").includes(search.toLowerCase()) || 
-    u.email.toLowerCase().includes(search.toLowerCase())
+  const filtered = users.filter(
+    (u) =>
+      (u.full_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -290,18 +306,26 @@ export default function UsersPage() {
               <span className="text-[#005c55]">User Management</span>
             </div>
             <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">Corporate Users</h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">Provision accounts, adjust operational permissions, and associate users with SBUs.</p>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+              Provision accounts, adjust operational permissions, and associate users with SBUs.
+            </p>
           </div>
           <div className="flex items-center gap-2 self-start md:self-auto">
             <button
-              onClick={() => { setShowCsvImport(!showCsvImport); setShowForm(false); }}
+              onClick={() => {
+                setShowCsvImport(!showCsvImport);
+                setShowForm(false);
+              }}
               className="px-4 py-2.5 border border-[#005c55] text-[#005c55] hover:bg-[#005c55]/5 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 font-sans"
             >
               <Upload className="w-4 h-4" />
               Import CSV
             </button>
             <button
-              onClick={() => { setShowForm(!showForm); setShowCsvImport(false); }}
+              onClick={() => {
+                setShowForm(!showForm);
+                setShowCsvImport(false);
+              }}
               className="px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm font-sans"
             >
               <UserPlus className="w-4 h-4" />
@@ -321,30 +345,50 @@ export default function UsersPage() {
         {/* KPI Segment */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Total Staff</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Total Staff
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-[#1E293B] font-mono">{String(users.length).padStart(2, '0')}</span>
-              <span className="text-[10px] text-teal-605 bg-teal-50 border border-teal-100 rounded-full px-1.5 py-0.5 font-bold">ACTIVE BASE</span>
+              <span className="text-3xl font-extrabold text-[#1E293B] font-mono">
+                {String(users.length).padStart(2, "0")}
+              </span>
+              <span className="text-[10px] text-teal-605 bg-teal-50 border border-teal-100 rounded-full px-1.5 py-0.5 font-bold">
+                ACTIVE BASE
+              </span>
             </div>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Active Users</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Active Users
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-[#0D9488] font-mono">{String(users.filter(u => u.is_active).length).padStart(2, '0')}</span>
+              <span className="text-3xl font-extrabold text-[#0D9488] font-mono">
+                {String(users.filter((u) => u.is_active).length).padStart(2, "0")}
+              </span>
               <span className="text-[10px] text-slate-400 font-bold">ONLINE ELIGIBLE</span>
             </div>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Deactivated Users</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Deactivated Users
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-rose-600 font-mono">{String(users.filter(u => !u.is_active).length).padStart(2, '0')}</span>
-              <span className="text-[10px] text-rose-650 bg-rose-50 border border-rose-100 rounded-full px-1.5 py-0.5 font-bold">RESTRICTED</span>
+              <span className="text-3xl font-extrabold text-rose-600 font-mono">
+                {String(users.filter((u) => !u.is_active).length).padStart(2, "0")}
+              </span>
+              <span className="text-[10px] text-rose-650 bg-rose-50 border border-rose-100 rounded-full px-1.5 py-0.5 font-bold">
+                RESTRICTED
+              </span>
             </div>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Departments/SBUs</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              Departments/SBUs
+            </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-extrabold text-blue-600 font-mono">{String(sbus.length).padStart(2, '0')}</span>
+              <span className="text-3xl font-extrabold text-blue-600 font-mono">
+                {String(sbus.length).padStart(2, "0")}
+              </span>
               <span className="text-[10px] text-blue-600 font-bold">ORGANISATION</span>
             </div>
           </div>
@@ -366,8 +410,11 @@ export default function UsersPage() {
               </button>
             </div>
             <p className="text-[11px] text-slate-400 font-medium -mt-2">
-              Upload a CSV with columns: <span className="font-mono text-slate-600">full_name, email, password, role, sbu_code</span>.
-              &nbsp;Roles: BU_MANAGER, WAREHOUSE_MANAGER, UNIT_STAFF, FINANCE_MANAGER, ADMIN.
+              Upload a CSV with columns:{" "}
+              <span className="font-mono text-slate-600">
+                full_name, email, password, role, sbu_code, whatsapp_number
+              </span>
+              . &nbsp;Roles: BU_MANAGER, WAREHOUSE_MANAGER, UNIT_STAFF, FINANCE_MANAGER, ADMIN.
             </p>
 
             {csvParseError && (
@@ -379,7 +426,12 @@ export default function UsersPage() {
             <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-[#005c55] rounded-xl py-8 cursor-pointer transition-colors bg-slate-50/40">
               <Upload className="w-7 h-7 text-slate-300" />
               <span className="text-xs font-bold text-slate-400">Click to upload CSV file</span>
-              <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvFile} />
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={handleCsvFile}
+              />
             </label>
 
             {/* Preview table */}
@@ -411,24 +463,45 @@ export default function UsersPage() {
                   <table className="min-w-full text-[11px] font-medium">
                     <thead>
                       <tr className="bg-slate-50">
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">#</th>
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Name</th>
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Email</th>
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Role</th>
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">SBU Code</th>
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Status</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          #
+                        </th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          Role
+                        </th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          SBU Code
+                        </th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          Status
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {csvRows.map((row, i) => (
-                        <tr key={i} className={row._error ? "bg-rose-50/40" : "hover:bg-slate-50/40"}>
+                        <tr
+                          key={i}
+                          className={row._error ? "bg-rose-50/40" : "hover:bg-slate-50/40"}
+                        >
                           <td className="px-3 py-2 text-slate-400 font-mono">{i + 1}</td>
-                          <td className="px-3 py-2 text-slate-700 font-semibold">{row.full_name || <span className="italic text-slate-300">—</span>}</td>
+                          <td className="px-3 py-2 text-slate-700 font-semibold">
+                            {row.full_name || <span className="italic text-slate-300">—</span>}
+                          </td>
                           <td className="px-3 py-2 text-slate-600 font-mono">{row.email}</td>
                           <td className="px-3 py-2">
-                            <span className="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-bold">{row.role}</span>
+                            <span className="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                              {row.role}
+                            </span>
                           </td>
-                          <td className="px-3 py-2 text-slate-500 font-mono">{row.sbu_code || "—"}</td>
+                          <td className="px-3 py-2 text-slate-500 font-mono">
+                            {row.sbu_code || "—"}
+                          </td>
                           <td className="px-3 py-2">
                             {row._error ? (
                               <span className="text-rose-600 font-bold text-[10px] flex items-center gap-1">
@@ -457,13 +530,20 @@ export default function UsersPage() {
                   <table className="min-w-full text-[11px] font-medium">
                     <thead>
                       <tr className="bg-slate-50">
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Email</th>
-                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">Result</th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-3 py-2 text-left text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                          Result
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {csvResults.map((r, i) => (
-                        <tr key={i} className={r.success ? "hover:bg-slate-50/40" : "bg-rose-50/40"}>
+                        <tr
+                          key={i}
+                          className={r.success ? "hover:bg-slate-50/40" : "bg-rose-50/40"}
+                        >
                           <td className="px-3 py-2 text-slate-600 font-mono">{r.email}</td>
                           <td className="px-3 py-2">
                             {r.success ? (
@@ -483,7 +563,12 @@ export default function UsersPage() {
                 </div>
                 <div className="flex justify-end">
                   <button
-                    onClick={() => { setShowCsvImport(false); setCsvRows([]); setCsvResults([]); setCsvParseError(null); }}
+                    onClick={() => {
+                      setShowCsvImport(false);
+                      setCsvRows([]);
+                      setCsvResults([]);
+                      setCsvParseError(null);
+                    }}
                     className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-1"
                   >
                     <X className="w-3.5 h-3.5" /> Close
@@ -501,12 +586,21 @@ export default function UsersPage() {
               <Sparkles className="w-5 h-5 text-teal-650 shrink-0" />
               <h2 className="font-extrabold text-[#1E293B] text-sm">Provision New Account Node</h2>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mb-4">Provide credential defaults and business unit mapping configuration for the team member.</p>
-            {formError && <div className="mb-4 bg-rose-50 text-rose-750 border border-rose-100 px-3.5 py-2 rounded-lg text-xs font-bold font-mono uppercase">{formError}</div>}
-            
+            <p className="text-[11px] text-slate-400 font-medium mb-4">
+              Provide credential defaults and business unit mapping configuration for the team
+              member.
+            </p>
+            {formError && (
+              <div className="mb-4 bg-rose-50 text-rose-750 border border-rose-100 px-3.5 py-2 rounded-lg text-xs font-bold font-mono uppercase">
+                {formError}
+              </div>
+            )}
+
             <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Full Name</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Full Name
+                </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -520,7 +614,25 @@ export default function UsersPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Email Address</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  WhatsApp Number (optional)
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="tel"
+                    placeholder="e.g. +260977000000"
+                    value={formWhatsapp}
+                    onChange={(e) => setFormWhatsapp(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Email Address
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -535,7 +647,9 @@ export default function UsersPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Temporary Password</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Temporary Password
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -550,7 +664,9 @@ export default function UsersPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Access Scope Role</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Access Scope Role
+                </label>
                 <div className="relative">
                   <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <select
@@ -568,7 +684,9 @@ export default function UsersPage() {
               </div>
 
               <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Strategic Business Unit Association</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Strategic Business Unit Association
+                </label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <select
@@ -627,7 +745,7 @@ export default function UsersPage() {
             </div>
             <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold font-mono">
               <Activity className="w-3.5 h-3.5 text-[#005c55]" />
-              <span>ACTIVE USER NODES: {users.filter(u => u.is_active).length}</span>
+              <span>ACTIVE USER NODES: {users.filter((u) => u.is_active).length}</span>
             </div>
           </div>
 
@@ -645,12 +763,24 @@ export default function UsersPage() {
               <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
                 <thead>
                   <tr className="bg-slate-50/50">
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[30%]">Team Member Info</th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">Email Address</th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">Operational Role Role</th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">SBU Node</th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">State</th>
-                    <th className="px-6 py-4 text-right font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">Operations</th>
+                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[30%]">
+                      Team Member Info
+                    </th>
+                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
+                      Email Address
+                    </th>
+                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
+                      Operational Role Role
+                    </th>
+                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                      SBU Node
+                    </th>
+                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                      State
+                    </th>
+                    <th className="px-6 py-4 text-right font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                      Operations
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -662,12 +792,18 @@ export default function UsersPage() {
                             {(u.full_name ?? u.email).substring(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <span className="font-extrabold text-slate-800 text-sm block">{u.full_name ?? "Unprovisioned Name"}</span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">ID: {u.id.substring(0, 8)}</span>
+                            <span className="font-extrabold text-slate-800 text-sm block">
+                              {u.full_name ?? "Unprovisioned Name"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">
+                              ID: {u.id.substring(0, 8)}
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-3.5 text-slate-500 font-semibold font-mono">{u.email}</td>
+                      <td className="px-6 py-3.5 text-slate-500 font-semibold font-mono">
+                        {u.email}
+                      </td>
                       <td className="px-6 py-3.5">
                         <div className="relative inline-block">
                           <select
@@ -689,18 +825,22 @@ export default function UsersPage() {
                             {sbus.find((s) => s.id === u.sbu_id)?.code}
                           </span>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px] font-semibold">Independent</span>
+                          <span className="text-slate-400 italic text-[11px] font-semibold">
+                            Independent
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-3.5">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
-                            u.is_active 
-                              ? "bg-teal-50 border border-teal-200 text-teal-800" 
+                            u.is_active
+                              ? "bg-teal-50 border border-teal-200 text-teal-800"
                               : "bg-rose-50 border border-rose-200 text-rose-700"
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-teal-600" : "bg-rose-500"}`}></span>
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-teal-600" : "bg-rose-500"}`}
+                          ></span>
                           {u.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
@@ -713,7 +853,9 @@ export default function UsersPage() {
                             <Power className="w-3 h-3" /> Deactivate
                           </button>
                         ) : (
-                          <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Suspended</span>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">
+                            Suspended
+                          </span>
                         )}
                       </td>
                     </tr>

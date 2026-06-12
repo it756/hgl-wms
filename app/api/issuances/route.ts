@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
-import {
-  supabaseAdmin,
-  getUserFromAuthHeader,
-} from "../../../lib/supabaseServer";
+import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { sendEmail } from "../../../lib/email";
 
 export async function POST(req: Request) {
   try {
     const user = await getUserFromAuthHeader(req);
-    if (!user)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const role = (user.user_metadata as any)?.role || "";
     if (role !== "WAREHOUSE_MANAGER")
@@ -24,16 +20,16 @@ export async function POST(req: Request) {
     // Verify transfer belongs to user's SBU (based on user metadata) to enforce scoped visibility.
     try {
       const { data: tr } = await supabaseAdmin
-        .from('transfer_requests')
-        .select('sbu_id')
-        .eq('id', transfer_request_id)
+        .from("transfer_requests")
+        .select("sbu_id")
+        .eq("id", transfer_request_id)
         .single();
       const userSbu = (user.user_metadata as any)?.sbu_id;
       if (userSbu && (tr as any)?.sbu_id !== userSbu) {
-        return NextResponse.json({ error: 'Forbidden: SBU mismatch' }, { status: 403 });
+        return NextResponse.json({ error: "Forbidden: SBU mismatch" }, { status: 403 });
       }
     } catch (e) {
-      console.error('SBU check failed', e);
+      console.error("SBU check failed", e);
       // proceed — the process_issuance RPC performs core validations; this is a best-effort guard
     }
 
@@ -46,12 +42,12 @@ export async function POST(req: Request) {
       p_logistics_notes: logistics_notes || null,
     });
     if (rpcError) {
-      console.error('process_issuance RPC failed', rpcError);
+      console.error("process_issuance RPC failed", rpcError);
       throw rpcError;
     }
     const issuanceId = (rpcData as any) || null;
 
-    // notify BU Manager and Unit Staff for the SBU (best-effort)
+    // notify BU Manager, Unit Staff and Finance Manager for the SBU (best-effort)
     await supabaseAdmin.from("notifications").insert([
       {
         related_entity_id: transfer_request_id,
@@ -64,6 +60,12 @@ export async function POST(req: Request) {
         type: "goods_issued",
         message: "Goods have been issued",
         user_role: "UNIT_STAFF",
+      },
+      {
+        related_entity_id: transfer_request_id,
+        type: "goods_issued",
+        message: "Goods have been issued from the warehouse",
+        user_role: "FINANCE_MANAGER",
       },
     ]);
 
@@ -81,16 +83,20 @@ export async function POST(req: Request) {
           `Goods issued ${ref}`,
           `<p>Goods for ${ref} have been issued.</p>`,
         );
+      const financeEmail = process.env.FINANCE_MANAGER_EMAIL;
+      if (financeEmail)
+        await sendEmail(
+          financeEmail,
+          `Goods issued ${ref}`,
+          `<p>Goods for transfer ${ref} have been issued from the warehouse.</p>`,
+        );
     } catch (e) {
-      console.error("BU notify/email failed", e);
+      console.error("BU/Finance notify/email failed", e);
     }
 
     return NextResponse.json({ issuanceId }, { status: 201 });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json(
-      { error: err.message || "Internal" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });
   }
 }
