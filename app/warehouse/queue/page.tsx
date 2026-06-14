@@ -89,6 +89,16 @@ export default function WarehouseQueuePage() {
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [licenseVerified, setLicenseVerified] = useState(false);
 
+  function showError(msg: string) {
+    setError(msg);
+    setTimeout(() => setError(null), 5000);
+  }
+
+  function showSuccess(msg: string) {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(null), 5000);
+  }
+
   async function loadQueue() {
     setLoading(true);
     try {
@@ -119,7 +129,7 @@ export default function WarehouseQueuePage() {
       }));
       setRequests(enriched);
     } catch (err: any) {
-      setError(err.message || "Failed to load queue");
+      showError(err.message || "Failed to load queue");
     } finally {
       setLoading(false);
     }
@@ -204,12 +214,15 @@ export default function WarehouseQueuePage() {
     );
   }
 
+  const allVerified = issuanceItems.length > 0 && issuanceItems.every((item) => item.verified);
+  const verifiedCount = issuanceItems.filter((item) => item.verified).length;
+
   async function submitIssuance() {
     if (!issuingId) return;
 
     const hasExceeds = issuanceItems.some((item) => item.quantity_issued > item.stock);
     if (hasExceeds) {
-      setError("Please resolve exceeds stock error before proceeding.");
+      showError("Please resolve exceeds stock error before proceeding.");
       return;
     }
 
@@ -237,7 +250,7 @@ export default function WarehouseQueuePage() {
       const data = res.ok ? await res.json() : null;
       if (!res.ok) throw new Error(data?.error || "Failed to record issuance");
       const issuanceId: string | null = data?.issuanceId ?? null;
-      setSuccessMsg(`Issuance recorded successfully for ${activeRequest?.reference_number}`);
+      showSuccess(`Issuance recorded successfully for ${activeRequest?.reference_number}`);
       if (issuanceId) {
         setIssuedRecord({ issuanceId, referenceNumber: activeRequest?.reference_number ?? "" });
       }
@@ -246,7 +259,7 @@ export default function WarehouseQueuePage() {
       setIssuanceItems([]);
       await loadQueue();
     } catch (err: any) {
-      setError(err.message || "Failed to record issuance. Please try again.");
+      showError(err.message || "Failed to record issuance. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -781,13 +794,38 @@ export default function WarehouseQueuePage() {
               {/* Line Items Card Table */}
               <div className="bg-white border border-slate-200/90 shadow-sm rounded-xl overflow-hidden p-6 flex flex-col gap-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex flex-col">
-                    <h3 className="text-sm font-bold text-slate-800">
-                      Dispatch Verification &amp; Shortfall Controls
-                    </h3>
-                    <p className="text-[11px] text-slate-400 mt-1 font-semibold">
-                      Tick on individual items to signify physical packaging complete.
+                  <div className="flex flex-col flex-1 gap-2 pr-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-slate-800">
+                        Dispatch Verification &amp; Shortfall Controls
+                      </h3>
+                      <span
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                          allVerified
+                            ? "bg-teal-50 text-teal-700 border-teal-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {verifiedCount} / {issuanceItems.length} verified
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-semibold">
+                      Tick each item after physically picking and packing it. All items must be
+                      verified before dispatch can be confirmed.
                     </p>
+                    {/* Progress bar */}
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          allVerified ? "bg-teal-500" : "bg-amber-400"
+                        }`}
+                        style={{
+                          width: issuanceItems.length
+                            ? `${(verifiedCount / issuanceItems.length) * 100}%`
+                            : "0%",
+                        }}
+                      />
+                    </div>
                   </div>
                   <button className="text-slate-400 hover:text-slate-600 flex items-center gap-1 text-[11px] font-bold">
                     <svg
@@ -1021,14 +1059,26 @@ export default function WarehouseQueuePage() {
                   >
                     Cancel Request
                   </button>
-                  <button
-                    onClick={submitIssuance}
-                    disabled={submitting}
-                    className="px-4 py-2 bg-primary hover:bg-[#004740] rounded-lg text-white text-xs font-bold cursor-pointer transition flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {submitting ? "Submitting..." : "Confirm & Dispatch"}
-                  </button>
+                  <div className="flex flex-col items-end gap-1">
+                    {!allVerified && (
+                      <p className="text-[10px] text-amber-600 font-bold">
+                        Tick all {issuanceItems.length} items to enable dispatch
+                      </p>
+                    )}
+                    <button
+                      onClick={submitIssuance}
+                      disabled={submitting || !allVerified}
+                      title={
+                        !allVerified
+                          ? "Tick off all line items before confirming dispatch"
+                          : undefined
+                      }
+                      className="px-4 py-2 bg-primary hover:bg-[#004740] rounded-lg text-white text-xs font-bold cursor-pointer transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {submitting ? "Submitting..." : "Confirm & Dispatch"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

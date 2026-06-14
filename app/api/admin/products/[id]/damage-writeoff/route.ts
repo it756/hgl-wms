@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
+import { createNotification } from "../../../../../../lib/services/notificationService";
 
 /**
  * POST /api/admin/products/[id]/damage-writeoff
@@ -63,24 +64,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .single();
 
   // Notify Admin + Finance Manager
-  try {
-    await supabaseAdmin.from("notifications").insert([
-      {
-        related_entity_id: ledgerId as string,
-        type: "damage_writeoff",
-        message: `Damage write-off: ${qty} units of ${(prod as any)?.name ?? productId} (${(prod as any)?.sku ?? ""}) — ${reason}`,
-        user_role: "ADMIN",
-      },
-      {
-        related_entity_id: ledgerId as string,
-        type: "damage_writeoff",
-        message: `Damage write-off recorded: ${qty} units of ${(prod as any)?.name ?? productId}`,
-        user_role: "FINANCE_MANAGER",
-      },
-    ]);
-  } catch (e) {
-    console.error("damage write-off notify failed", e);
-  }
+  await Promise.all([
+    createNotification({
+      related_entity_id: ledgerId as string,
+      type: "damage_writeoff",
+      message: `Damage write-off: ${qty} units of ${(prod as any)?.name ?? productId} (${(prod as any)?.sku ?? ""}) — ${reason}`,
+      user_role: "ADMIN",
+      dispatchChannels: true,
+    }),
+    createNotification({
+      related_entity_id: ledgerId as string,
+      type: "damage_writeoff",
+      message: `Damage write-off recorded: ${qty} units of ${(prod as any)?.name ?? productId}`,
+      user_role: "FINANCE_MANAGER",
+      dispatchChannels: true,
+    }),
+  ]);
 
   return NextResponse.json(
     {

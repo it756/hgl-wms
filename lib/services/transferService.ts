@@ -98,6 +98,7 @@ export async function createTransferRequest(
     type: "transfer_request_submitted",
     message: `New transfer request ${reference_number} requires your attention`,
     related_entity_id: transferId,
+    dispatchChannels: true,
   });
 
   await writeAuditLog({

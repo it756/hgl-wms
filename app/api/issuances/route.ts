@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { sendEmail } from "../../../lib/email";
+import { createNotification } from "../../../lib/services/notificationService";
 
 export async function POST(req: Request) {
   try {
@@ -48,48 +49,39 @@ export async function POST(req: Request) {
     const issuanceId = (rpcData as any) || null;
 
     // notify BU Manager, Unit Staff and Finance Manager for the SBU (best-effort)
-    await supabaseAdmin.from("notifications").insert([
-      {
+    await Promise.all([
+      createNotification({
         related_entity_id: transfer_request_id,
         type: "goods_issued",
         message: "Goods have been issued",
         user_role: "BU_MANAGER",
-      },
-      {
+        dispatchChannels: true,
+      }),
+      createNotification({
         related_entity_id: transfer_request_id,
         type: "goods_issued",
         message: "Goods have been issued",
         user_role: "UNIT_STAFF",
-      },
-      {
+        dispatchChannels: true,
+      }),
+      createNotification({
         related_entity_id: transfer_request_id,
         type: "goods_issued",
         message: "Goods have been issued from the warehouse",
         user_role: "FINANCE_MANAGER",
-      },
+        dispatchChannels: true,
+      }),
     ]);
 
     try {
+      // Notification channels will handle emails to role-holders; keep a small
+      // audit in logs only if needed.
       const { data: tr } = await supabaseAdmin
         .from("transfer_requests")
         .select("reference_number,sbu_id")
         .eq("id", transfer_request_id)
         .single();
       const ref = (tr as any)?.reference_number;
-      const buEmail = process.env.BU_MANAGER_EMAIL;
-      if (buEmail)
-        await sendEmail(
-          buEmail,
-          `Goods issued ${ref}`,
-          `<p>Goods for ${ref} have been issued.</p>`,
-        );
-      const financeEmail = process.env.FINANCE_MANAGER_EMAIL;
-      if (financeEmail)
-        await sendEmail(
-          financeEmail,
-          `Goods issued ${ref}`,
-          `<p>Goods for transfer ${ref} have been issued from the warehouse.</p>`,
-        );
     } catch (e) {
       console.error("BU/Finance notify/email failed", e);
     }

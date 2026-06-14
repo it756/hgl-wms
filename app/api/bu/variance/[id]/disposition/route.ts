@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../../lib/services/auditService";
+import { createNotification } from "../../../../../../lib/services/notificationService";
 
 /**
  * POST /api/bu/variance/[id]/disposition
@@ -93,14 +94,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   // Notify Warehouse Manager
-  await supabaseAdmin.from("notifications").insert([
-    {
-      related_entity_id: transferId,
-      type: "variance_disposed",
-      message: `Variance disposition submitted for transfer by BU Manager — check Loss Account`,
-      user_role: "WAREHOUSE_MANAGER",
-    },
-  ]);
+  await createNotification({
+    related_entity_id: transferId,
+    type: "variance_disposed",
+    message: `Variance disposition submitted for transfer by BU Manager — check Loss Account`,
+    user_role: "WAREHOUSE_MANAGER",
+    dispatchChannels: true,
+  });
 
   await writeAuditLog({
     entity_type: "transfer_request",

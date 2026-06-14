@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
-import { sendEmail } from "../../../lib/email";
+import { createNotification } from "../../../lib/services/notificationService";
 
 export async function POST(req: Request) {
   try {
@@ -66,26 +66,13 @@ export async function POST(req: Request) {
 
     // notify warehouse manager on variance
     if (hasVariance) {
-      await supabaseAdmin.from("notifications").insert([
-        {
-          related_entity_id: transfer_request_id,
-          type: "grn_variance",
-          message: "GRN reported a variance",
-          user_role: "WAREHOUSE_MANAGER",
-        },
-      ]);
-      const wmEmail = process.env.WAREHOUSE_MANAGER_EMAIL;
-      if (wmEmail) {
-        try {
-          await sendEmail(
-            wmEmail,
-            `Variance reported for transfer ${transfer_request_id}`,
-            `<p>Variance detected on transfer ${transfer_request_id}</p>`,
-          );
-        } catch (e) {
-          console.error("Email failed", e);
-        }
-      }
+      await createNotification({
+        related_entity_id: transfer_request_id,
+        type: "grn_variance",
+        message: "GRN reported a variance",
+        user_role: "WAREHOUSE_MANAGER",
+        dispatchChannels: true,
+      });
 
       // Auto-raise a variance proposal so Finance can see and act on the variance
       // immediately (without waiting for a Warehouse Manager to file one manually).
@@ -133,14 +120,13 @@ export async function POST(req: Request) {
 
             if (varianceLines.length > 0) {
               await supabaseAdmin.from("variance_proposal_lines").insert(varianceLines);
-              await supabaseAdmin.from("notifications").insert([
-                {
-                  related_entity_id: proposalId,
-                  type: "variance_proposal_submitted",
-                  message: `Variance proposal auto-raised from receipt — pending Finance review`,
-                  user_role: "FINANCE_MANAGER",
-                },
-              ]);
+              await createNotification({
+                related_entity_id: proposalId,
+                type: "variance_proposal_submitted",
+                message: `Variance proposal auto-raised from receipt — pending Finance review`,
+                user_role: "FINANCE_MANAGER",
+                dispatchChannels: true,
+              });
             }
           } else if (propError) {
             console.error("Auto variance_proposal insert failed:", propError);

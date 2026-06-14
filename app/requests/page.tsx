@@ -28,6 +28,29 @@ interface TransferRequest {
   sbu_units: { id: string; name: string; code: string } | null;
 }
 
+// Optimistic pending entry written by /requests/new before navigating here.
+// Keep this shape in sync with the writer in app/requests/new/page.tsx.
+type OptimisticPending = {
+  clientId: string;
+  status: "SUBMITTING" | "FAILED";
+  created_at: string;
+  error?: string;
+  payload: {
+    requesting_unit_id: string;
+    required_date?: string;
+    estimated_value?: number;
+    notes?: string;
+    lines: { product_id: string; requested_quantity: number }[];
+  };
+  snapshot: {
+    unit: { id: string; name: string; code: string } | null;
+    estimated_value: number | null;
+    required_date: string | null;
+  };
+};
+
+const PENDING_KEY = "pending_transfer_request";
+
 const STATUS_COLORS: Record<string, string> = {
   PENDING_BU_APPROVAL: "bg-amber-50 text-amber-700 border border-amber-200",
   PENDING: "bg-slate-100 text-slate-500 border border-slate-200",
@@ -37,6 +60,8 @@ const STATUS_COLORS: Record<string, string> = {
   COMPLETED: "bg-teal-50 text-emerald-700 border border-teal-200",
   COMPLETED_WITH_VARIANCE: "bg-red-50 text-rose-700 border border-red-200",
   CANCELLED: "bg-slate-100 text-slate-400 border border-slate-200",
+  SUBMITTING: "bg-sky-50 text-sky-700 border border-sky-200",
+  FAILED: "bg-rose-50 text-rose-700 border border-rose-200",
 };
 
 export default function RequestsListPage() {
@@ -56,27 +81,111 @@ function RequestsListContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Optimistic state
+  const [pending, setPending] = useState<OptimisticPending | null>(null);
+  const [bannerSuccess, setBannerSuccess] = useState<string | null>(null);
+
   // Search & Filters state
   const [searchRef, setSearchRef] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  useEffect(() => {
-    async function fetchRequests() {
-      try {
-        const token = localStorage.getItem("access_token");
-        const res = await fetch("/api/transfer-requests", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to load requests");
-        setRequests(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  async function fetchRequests() {
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("/api/transfer-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load requests");
+      setRequests(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    fetchRequests();
+  }
+
+  async function submitPending(entry: OptimisticPending) {
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("/api/transfer-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(entry.payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Submission failed");
+
+      // Success — clear pending, refresh list, show success banner.
+      sessionStorage.removeItem(PENDING_KEY);
+      setPending(null);
+      setBannerSuccess(data.reference_number);
+      await fetchRequests();
+    } catch (err: any) {
+      // Failure — keep entry so user can Retry / Discard from the table row.
+      const failed: OptimisticPending = {
+        ...entry,
+        status: "FAILED",
+        error: err?.message ?? "Submission failed",
+      };
+      try {
+        sessionStorage.setItem(PENDING_KEY, JSON.stringify(failed));
+      } catch {
+        /* ignore quota errors */
+      }
+      setPending(failed);
+    }
+  }
+
+  function retryPending() {
+    if (!pending) return;
+    const next: OptimisticPending = { ...pending, status: "SUBMITTING", error: undefined };
+    try {
+      sessionStorage.setItem(PENDING_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore quota errors */
+    }
+    setPending(next);
+    void submitPending(next);
+  }
+
+  function discardPending() {
+    sessionStorage.removeItem(PENDING_KEY);
+    setPending(null);
+  }
+
+  useEffect(() => {
+    void fetchRequests();
+
+    // Pick up any optimistic pending entry left by /requests/new.
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(PENDING_KEY);
+    } catch {
+      /* sessionStorage not available */
+    }
+    if (!raw) return;
+
+    let parsed: OptimisticPending | null = null;
+    try {
+      parsed = JSON.parse(raw) as OptimisticPending;
+    } catch {
+      sessionStorage.removeItem(PENDING_KEY);
+      return;
+    }
+    if (!parsed || !parsed.payload) {
+      sessionStorage.removeItem(PENDING_KEY);
+      return;
+    }
+
+    setPending(parsed);
+    if (parsed.status === "SUBMITTING") {
+      void submitPending(parsed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredRequests = requests.filter((r) => {
@@ -143,9 +252,32 @@ function RequestsListContent() {
           </div>
         </div>
 
-        {created && (
+        {(bannerSuccess || created) && (
           <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-4 py-3 text-xs font-semibold animate-pulse">
-            Transfer request <strong>{created}</strong> submitted successfully.
+            Transfer request <strong>{bannerSuccess ?? created}</strong> submitted successfully.
+          </div>
+        )}
+
+        {pending?.status === "FAILED" && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-xs font-semibold flex items-center justify-between gap-3">
+            <span>
+              Submission failed: {pending.error ?? "Unknown error"}. Use Retry or Discard in the
+              table below.
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={retryPending}
+                className="px-3 py-1 rounded-md bg-white border border-rose-300 text-rose-700 hover:bg-rose-100 font-bold cursor-pointer"
+              >
+                Retry
+              </button>
+              <button
+                onClick={discardPending}
+                className="px-3 py-1 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold cursor-pointer"
+              >
+                Discard
+              </button>
+            </div>
           </div>
         )}
 
@@ -216,7 +348,7 @@ function RequestsListContent() {
               <span className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary"></span>
               <p className="text-xs font-bold font-mono">LOADING REQUESTS...</p>
             </div>
-          ) : filteredRequests.length === 0 ? (
+          ) : filteredRequests.length === 0 && !pending ? (
             <div className="py-16 text-center text-slate-500 font-semibold text-sm">
               No matching transfer requests found.
             </div>
@@ -249,6 +381,79 @@ function RequestsListContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant">
+                  {pending && (
+                    <tr
+                      key={`pending-${pending.clientId}`}
+                      className={
+                        pending.status === "FAILED" ? "bg-rose-50/40" : "bg-sky-50/40 animate-pulse"
+                      }
+                    >
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-slate-400 font-mono text-sm leading-none">
+                          {pending.status === "SUBMITTING" ? "Submitting…" : "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-500">
+                        {pending.snapshot.unit ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                              {pending.snapshot.unit.code}
+                            </span>
+                            <span>{pending.snapshot.unit.name}</span>
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[pending.status]}`}
+                        >
+                          {pending.status === "SUBMITTING" && (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          )}
+                          {pending.status === "SUBMITTING" ? "SUBMITTING" : "FAILED TO SUBMIT"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-500">
+                        {pending.snapshot.required_date
+                          ? new Date(pending.snapshot.required_date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono font-bold text-slate-600">
+                        {fmt(pending.snapshot.estimated_value)}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-400">
+                        {new Date(pending.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {pending.status === "FAILED" ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={retryPending}
+                              className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                            >
+                              Retry
+                            </button>
+                            <button
+                              onClick={discardPending}
+                              className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
+                            >
+                              Discard
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )}
                   {filteredRequests.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-6 py-4">

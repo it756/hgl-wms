@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
-import { sendEmail } from "../../../lib/email";
+import { createNotification } from "../../../lib/services/notificationService";
 
 export async function POST(req: Request) {
   try {
@@ -141,39 +141,23 @@ export async function POST(req: Request) {
 
     if (isUnitStaff) {
       // Notify BU_MANAGER(s) in the same SBU that a new request awaits their approval
-      await supabaseAdmin.from("notifications").insert([
-        {
-          user_role: "BU_MANAGER",
-          type: "transfer_request_pending_bu_approval",
-          message: `Transfer ${reference_number} requires your approval`,
-          related_entity_id: transferId,
-        },
-      ]);
+      await createNotification({
+        user_role: "BU_MANAGER",
+        type: "transfer_request_pending_bu_approval",
+        message: `Transfer ${reference_number} requires your approval`,
+        related_entity_id: transferId,
+        dispatchChannels: true,
+      });
     } else {
       // BU_MANAGER-raised: notify warehouse (or finance if requires approval)
       const notifyRole = requiresFinanceApproval ? "FINANCE_MANAGER" : "WAREHOUSE_MANAGER";
-      await supabaseAdmin.from("notifications").insert([
-        {
-          user_role: notifyRole,
-          type: "transfer_request_submitted",
-          message: `New transfer ${reference_number}`,
-          related_entity_id: transferId,
-        },
-      ]);
-
-      // optionally send an email (best-effort)
-      try {
-        const warehouseEmail = process.env.WAREHOUSE_MANAGER_EMAIL;
-        if (warehouseEmail && !requiresFinanceApproval) {
-          await sendEmail(
-            warehouseEmail,
-            `New transfer request ${reference_number}`,
-            `<p>New transfer request ${reference_number} raised by ${user.email}</p>`,
-          );
-        }
-      } catch (e) {
-        console.error("Email send failed", e);
-      }
+      await createNotification({
+        user_role: notifyRole,
+        type: "transfer_request_submitted",
+        message: `New transfer ${reference_number}`,
+        related_entity_id: transferId,
+        dispatchChannels: true,
+      });
     }
 
     return NextResponse.json({ id: transferId, reference_number }, { status: 201 });

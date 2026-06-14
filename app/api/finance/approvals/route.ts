@@ -71,6 +71,7 @@ export async function POST(req: Request) {
           ? `Transfer ${(tr as any).reference_number} approved for issuance`
           : `Transfer ${(tr as any).reference_number} rejected by Finance`,
       related_entity_id: entity_id,
+      dispatchChannels: true,
     });
 
     await writeAuditLog({
@@ -164,6 +165,7 @@ export async function POST(req: Request) {
           ? `Supplier GRN ${(grn as any).reference_number} approved — stock updated`
           : `Supplier GRN ${(grn as any).reference_number} rejected by Finance`,
       related_entity_id: entity_id,
+      dispatchChannels: true,
     });
 
     await writeAuditLog({
@@ -213,6 +215,7 @@ export async function POST(req: Request) {
           type: "return_stock_restored",
           message: `Return ${ref} approved by Finance — stock restored`,
           related_entity_id: entity_id,
+          dispatchChannels: true,
         });
       }
     } else {
@@ -235,6 +238,7 @@ export async function POST(req: Request) {
           type: "return_rejected_by_finance",
           message: `Return ${ref} was rejected by Finance${notes ? `: ${notes}` : ""}`,
           related_entity_id: entity_id,
+          dispatchChannels: true,
         });
       }
     }

@@ -41,6 +41,39 @@ SMTP_PORT=587                    # SMTP port (usually 587 for TLS)
 SMTP_USER=                       # SMTP username / email address
 SMTP_PASS=                       # SMTP password or app password
 SMTP_FROM=                       # From address for outgoing emails
+
+## Email retry configuration
+
+The application includes a centralized email sending helper with configurable retry/backoff behaviour. Configure the behaviour with the following environment variables:
+
+- `EMAIL_MAX_RETRIES` (default: `5`): Maximum number of send attempts before the message is recorded as a dead-letter.
+- `EMAIL_BASE_DELAY_MS` (default: `200`): Base delay (in milliseconds) used for exponential backoff between retries.
+- `EMAIL_MAX_DELAY_MS` (default: `10000`): Maximum backoff delay (in milliseconds).
+- `EMAIL_USE_JITTER` (default: `true`): When `true`, applies full jitter (random delay between `0` and the exponential delay) to reduce retry collisions.
+
+Behaviour notes:
+- The send helper uses exponential backoff with full jitter by default. For attempt N the exponential delay is approximately `min(EMAIL_MAX_DELAY_MS, EMAIL_BASE_DELAY_MS * 2^N)`; the actual wait when jitter is enabled is a random value between `0` and that delay.
+- Transient network/server errors are retried. Permanent client errors (SMTP 4xx/5xx response classification is used conservatively) are recorded as dead-letters and not retried further.
+- Dead-letter records are written to the `audit_logs` table as an `email_dead_letter` action (best-effort). If you prefer a dedicated table, add an `email_dead_letters` migration and update the recorder accordingly.
+
+Example .env snippet:
+
+```
+
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=example-user
+SMTP_PASS=secret
+EMAIL_FROM=no-reply@example.com
+
+EMAIL_MAX_RETRIES=5
+EMAIL_BASE_DELAY_MS=200
+EMAIL_MAX_DELAY_MS=10000
+EMAIL_USE_JITTER=true
+
+```
+
+If you need stricter delivery guarantees, consider offloading sends to a dedicated queue (Redis/Bull or cloud tasks) and letting a worker manage retries and rate limiting.
 ```
 
 ---

@@ -710,14 +710,6 @@ export default function ProductsPage() {
           </form>
         </div>
       )}
-
-      {damageProduct && (
-        <DamageWriteOffModal
-          product={damageProduct}
-          onClose={() => setDamageProduct(null)}
-          onSuccess={load}
-        />
-      )}
     </DashboardLayout>
   );
 }

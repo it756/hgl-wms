@@ -687,6 +687,7 @@ export default function FinanceQueuePage() {
                                         >
                                           <option value="">Use recommended</option>
                                           <option value="damage_writeoff">Damage Writeoff</option>
+                                          <option value="damage_writeoff">Loss</option>
                                           {li.variance_quantity > 0 && (
                                             <option value="stock_reintegration">
                                               Stock Reintegration

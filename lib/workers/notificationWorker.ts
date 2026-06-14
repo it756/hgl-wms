@@ -8,8 +8,6 @@
 import { supabaseAdmin } from "../supabaseServer";
 import { sendEmail } from "../email";
 
-const MAX_RETRIES = 3;
-
 interface PendingEmailNotification {
   id: string;
   user_id: string | null;
@@ -20,52 +18,71 @@ interface PendingEmailNotification {
   email?: string | null;
 }
 
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function resolveEmailsForNotification(
-  n: PendingEmailNotification,
-): Promise<string[]> {
+async function resolveEmailsForNotification(n: PendingEmailNotification): Promise<string[]> {
   const emails: string[] = [];
 
   if (n.user_id) {
     // Fetch email for the specific user from Supabase Auth
     const { data } = await supabaseAdmin.auth.admin.getUserById(n.user_id);
     if (data.user?.email) emails.push(data.user.email);
-  } else if (n.user_role) {
-    // Fetch all active users with that role
-    const { data: profiles } = await supabaseAdmin
+    return emails;
+  }
+
+  if (n.user_role) {
+    // Try to scope by SBU using related_entity_id when available
+    let sbuId: string | null = null;
+    try {
+      if (n.related_entity_id) {
+        const { data: tr } = await supabaseAdmin
+          .from("transfer_requests")
+          .select("sbu_id")
+          .eq("id", n.related_entity_id)
+          .maybeSingle();
+        if (tr && (tr as any).sbu_id) sbuId = (tr as any).sbu_id;
+        else {
+          const { data: grn } = await supabaseAdmin
+            .from("grns")
+            .select("transfer_request_id")
+            .eq("id", n.related_entity_id)
+            .maybeSingle();
+          if (grn && (grn as any).transfer_request_id) {
+            const { data: tr2 } = await supabaseAdmin
+              .from("transfer_requests")
+              .select("sbu_id")
+              .eq("id", (grn as any).transfer_request_id)
+              .maybeSingle();
+            if (tr2 && (tr2 as any).sbu_id) sbuId = (tr2 as any).sbu_id;
+          }
+        }
+      }
+    } catch (e) {
+      // ignore and fall back to global role broadcast
+    }
+
+    // Fetch profiles for the role (and SBU if known)
+    let q: any = supabaseAdmin
       .from("profiles")
       .select("id")
       .eq("role", n.user_role)
       .eq("is_active", true);
+    if (sbuId) q = q.eq("sbu_id", sbuId);
+    const { data: profiles } = await q;
 
     for (const profile of profiles ?? []) {
-      const { data } = await supabaseAdmin.auth.admin.getUserById(profile.id);
-      if (data.user?.email) emails.push(data.user.email);
+      try {
+        const { data } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+        if (data.user?.email) emails.push(data.user.email);
+      } catch (e) {
+        // ignore missing email
+      }
     }
   }
 
-  return emails;
+  // Dedupe
+  return Array.from(new Set(emails));
 }
 
-async function sendWithRetry(
-  to: string,
-  subject: string,
-  html: string,
-  attempt = 1,
-): Promise<void> {
-  try {
-    await sendEmail(to, subject, html);
-  } catch (err) {
-    if (attempt < MAX_RETRIES) {
-      await sleep(200 * Math.pow(2, attempt)); // exponential backoff
-      return sendWithRetry(to, subject, html, attempt + 1);
-    }
-    throw err;
-  }
-}
+// Note: sendEmail now includes centralized retry/backoff; worker-level retries removed.
 
 export async function runNotificationWorker(): Promise<{ sent: number; failed: number }> {
   let sent = 0;
@@ -88,7 +105,7 @@ export async function runNotificationWorker(): Promise<{ sent: number; failed: n
     try {
       const emails = await resolveEmailsForNotification(notification as PendingEmailNotification);
       for (const email of emails) {
-        await sendWithRetry(
+        await sendEmail(
           email,
           `Harvest WMS: ${notification.type.replace(/_/g, " ")}`,
           `<p>${notification.message}</p>`,

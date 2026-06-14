@@ -111,30 +111,61 @@ export default function NewTransferRequestPage() {
     }
 
     setSubmitting(true);
+
+    // Optimistic submit: persist a "pending" record to sessionStorage and
+    // navigate to the list page immediately. The actual POST is performed by
+    // the list page so the user sees their new request as a SUBMITTING row
+    // straight away. On failure, the list page surfaces Retry / Discard.
+    const unit = units.find((u) => u.id === requestingUnitId) ?? null;
+    const clientId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    const optimistic = {
+      clientId,
+      status: "SUBMITTING" as const,
+      created_at: new Date().toISOString(),
+      payload: {
+        requesting_unit_id: requestingUnitId,
+        required_date: requiredDate || undefined,
+        estimated_value: estimatedValue > 0 ? estimatedValue : undefined,
+        notes: notes || undefined,
+        lines,
+      },
+      snapshot: {
+        unit: unit ? { id: unit.id, name: unit.name, code: unit.code } : null,
+        estimated_value: estimatedValue > 0 ? estimatedValue : null,
+        required_date: requiredDate || null,
+      },
+    };
+
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch("/api/transfer-requests", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          requesting_unit_id: requestingUnitId,
-          required_date: requiredDate || undefined,
-          estimated_value: estimatedValue > 0 ? estimatedValue : undefined,
-          notes: notes || undefined,
-          lines,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Submission failed");
-      router.push(`/requests?created=${data.reference_number}`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
+      sessionStorage.setItem("pending_transfer_request", JSON.stringify(optimistic));
+    } catch {
+      // sessionStorage may be unavailable (private mode, quota); fall back to
+      // the original blocking flow rather than losing the request silently.
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch("/api/transfer-requests", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(optimistic.payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Submission failed");
+        router.push(`/requests?created=${data.reference_number}`);
+      } catch (err: any) {
+        setError(err.message ?? "Submission failed");
+        setSubmitting(false);
+      }
+      return;
     }
+
+    router.push("/requests");
   }
 
   return (

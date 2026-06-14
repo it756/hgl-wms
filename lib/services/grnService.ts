@@ -69,6 +69,7 @@ export async function recordGRN(input: GRNCreateInput, receivedBy: string): Prom
       type: "grn_variance",
       message: `GRN submitted with variances for transfer ${input.transfer_request_id}`,
       related_entity_id: grnId,
+      dispatchChannels: true,
     });
   }
 
@@ -78,6 +79,7 @@ export async function recordGRN(input: GRNCreateInput, receivedBy: string): Prom
     type: "grn_submitted",
     message: `GRN submitted — transfer is now ${newStatus}`,
     related_entity_id: grnId,
+    dispatchChannels: true,
   });
 
   await writeAuditLog({

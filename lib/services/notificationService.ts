@@ -52,6 +52,7 @@ export async function createNotification(input: NotifyInput): Promise<Notificati
       const recipients = await resolveRecipients({
         user_id: input.user_id,
         user_role: input.user_role,
+        related_entity_id: input.related_entity_id,
       });
       await Promise.all(
         recipients.map((r) =>
@@ -59,6 +60,8 @@ export async function createNotification(input: NotifyInput): Promise<Notificati
             recipient: { email: r.email, whatsapp_number: r.whatsapp_number },
             subject,
             message: input.message,
+            type: input.type,
+            role: input.user_role,
           }),
         ),
       );
@@ -78,6 +81,8 @@ export async function createNotification(input: NotifyInput): Promise<Notificati
 async function resolveRecipients(opts: {
   user_id?: string;
   user_role?: string;
+  /** Optionally use the related entity (transfer/grn/etc) to scope recipients to an SBU */
+  related_entity_id?: string | null;
 }): Promise<{ email: string | null; whatsapp_number: string | null }[]> {
   if (opts.user_id) {
     const { data: profile } = await supabaseAdmin
@@ -97,16 +102,50 @@ async function resolveRecipients(opts: {
   }
 
   if (opts.user_role) {
-    const { data: profiles } = await supabaseAdmin
+    // Try to infer SBU from a related entity (transfer, grn, etc.) so we notify
+    // role-holders for the correct SBU only.
+    let sbuId: string | null = null;
+    if (opts.related_entity_id) {
+      try {
+        // transfer_requests have sbu_id directly
+        const { data: tr } = await supabaseAdmin
+          .from("transfer_requests")
+          .select("sbu_id")
+          .eq("id", opts.related_entity_id)
+          .maybeSingle();
+        if (tr && (tr as any).sbu_id) sbuId = (tr as any).sbu_id;
+        else {
+          // grns point to transfer_request_id
+          const { data: grn } = await supabaseAdmin
+            .from("grns")
+            .select("transfer_request_id")
+            .eq("id", opts.related_entity_id)
+            .maybeSingle();
+          if (grn && (grn as any).transfer_request_id) {
+            const { data: tr2 } = await supabaseAdmin
+              .from("transfer_requests")
+              .select("sbu_id")
+              .eq("id", (grn as any).transfer_request_id)
+              .maybeSingle();
+            if (tr2 && (tr2 as any).sbu_id) sbuId = (tr2 as any).sbu_id;
+          }
+        }
+      } catch (e) {
+        // best-effort: fall back to global role broadcast
+      }
+    }
+
+    let q: any = supabaseAdmin
       .from("profiles")
       .select("id, whatsapp_number")
       .eq("role", opts.user_role)
       .eq("is_active", true);
+    if (sbuId) q = q.eq("sbu_id", sbuId);
+    const { data: profiles } = await q;
     if (!profiles || profiles.length === 0) return [];
 
-    // Fetch emails one-by-one (admin API exposes listUsers but we need a small set).
     const out = await Promise.all(
-      profiles.map(async (p: any) => {
+      (profiles as any[]).map(async (p: any) => {
         let email: string | null = null;
         try {
           const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);

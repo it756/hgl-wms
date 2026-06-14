@@ -37,7 +37,7 @@ interface GRNLineItemInput {
   sku: string;
   issued_quantity: number;
   quantity_received: number;
-  variance_notes?: string;
+  variance_notes?: string 
 }
 
 export default function SubmitGRNPage() {
@@ -90,7 +90,7 @@ export default function SubmitGRNPage() {
         product_name: l.product_name || `Product Code ${l.product_id}`,
         sku: l.sku || `SKU-${l.product_id}`,
         issued_quantity: l.requested_quantity,
-        quantity_received: l.requested_quantity,
+        quantity_received: 0,
         variance_notes: "",
       })),
     );
@@ -325,7 +325,7 @@ export default function SubmitGRNPage() {
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100">
-                            <div>
+                            {/* <div>
                               <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 leading-none">
                                 Issued Qty
                               </label>
@@ -335,7 +335,7 @@ export default function SubmitGRNPage() {
                                 readOnly
                                 className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-slate-100 font-mono text-slate-550 font-bold leading-normal"
                               />
-                            </div>
+                            </div> */}
                             <div>
                               <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 leading-none">
                                 Received Qty
@@ -350,7 +350,7 @@ export default function SubmitGRNPage() {
                                 className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-800 font-extrabold focus:border-primary focus:outline-hidden leading-normal"
                               />
                             </div>
-                            <div>
+                            {/* <div>
                               <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 leading-none">
                                 Variance Notes
                               </label>
@@ -363,7 +363,7 @@ export default function SubmitGRNPage() {
                                 className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:border-primary focus:outline-hidden leading-normal"
                                 placeholder="e.g. Broken packaging, -5 count"
                               />
-                            </div>
+                            </div> */}
                           </div>
                         </div>
                       ))}

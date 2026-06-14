@@ -12,6 +12,7 @@
 
 import { sendEmail } from "../email";
 import { sendWhatsApp } from "./whatsapp";
+import { buildNotificationEmail } from "./emailTemplate";
 
 export type Channel = "email" | "whatsapp";
 
@@ -27,6 +28,10 @@ export interface DispatchInput {
   subject: string;
   /** Plain-text or HTML message body. WhatsApp providers expect plain text. */
   message: string;
+  /** Notification type string (e.g. "goods_issued") — used in the email template. */
+  type?: string;
+  /** Recipient role label (e.g. "WAREHOUSE_MANAGER") — used in the email template. */
+  role?: string;
   /** Override active channels (defaults to NOTIFICATION_CHANNELS env). */
   channels?: Channel[];
 }
@@ -52,7 +57,12 @@ export async function dispatchToChannels(input: DispatchInput): Promise<void> {
       try {
         if (channel === "email") {
           if (!input.recipient.email) return;
-          await sendEmail(input.recipient.email, input.subject, input.message);
+          const html = buildNotificationEmail({
+            type: input.type ?? input.subject,
+            role: input.role ?? "",
+            message: input.message,
+          });
+          await sendEmail(input.recipient.email, input.subject, html);
         } else if (channel === "whatsapp") {
           if (!input.recipient.whatsapp_number) return;
           await sendWhatsApp(input.recipient.whatsapp_number, input.message);
