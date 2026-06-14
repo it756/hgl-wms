@@ -176,7 +176,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/requests/units", label: "Units & Staff", icon: Users },
           { href: "/returns/approvals", label: "Returns Approval", icon: ClipboardCheck },
           { href: "/variance", label: "Variance Decisions", icon: AlertTriangle },
-          { href: "/admin/products", label: "Product Catalogue", icon: Layers },
+          { href: "/bu/stock", label: "My Stock", icon: Layers },
         ];
       case "WAREHOUSE_MANAGER":
         return [
@@ -204,7 +204,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/grn/submit", label: "Receive GRN", icon: CheckCircle },
           { href: "/returns", label: "My Returns", icon: RotateCcw },
           { href: "/returns/new", label: "New Return", icon: Plus },
-          { href: "/admin/products", label: "Product Catalogue", icon: Layers },
+          { href: "/bu/stock", label: "My Stock", icon: Layers },
         ];
     }
   };

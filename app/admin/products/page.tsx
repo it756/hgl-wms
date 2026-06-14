@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import DamageWriteOffModal from "@/components/DamageWriteOffModal";
 import { useCurrency } from "@/lib/hooks/useCurrency";
@@ -40,6 +41,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +92,13 @@ export default function ProductsPage() {
   }
 
   useEffect(() => {
+    // BU_MANAGER and UNIT_STAFF should view their own SBU's stock, not the global catalogue
+    const role = typeof window !== "undefined" ? (localStorage.getItem("user_role") ?? "") : "";
+    if (role === "BU_MANAGER" || role === "UNIT_STAFF") {
+      router.replace("/bu/stock");
+      return;
+    }
+
     async function loadSbus() {
       try {
         const res = await fetch("/api/admin/sbus", {
