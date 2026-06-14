@@ -48,7 +48,9 @@ export async function GET(req: Request) {
 
   let query = supabaseAdmin
     .from("sbu_stock")
-    .select("sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, sbu_name, sbu_code")
+    .select(
+      "sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, sbu_name, sbu_code",
+    )
     .order("product_name", { ascending: true });
 
   if (effectiveSbuId) {

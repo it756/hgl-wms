@@ -56,15 +56,12 @@ export default function SbuStockPage() {
     const q = search.trim().toLowerCase();
     if (!q) return items;
     return items.filter(
-      (i) =>
-        i.product_name.toLowerCase().includes(q) ||
-        i.sku.toLowerCase().includes(q),
+      (i) => i.product_name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q),
     );
   }, [items, search]);
 
   const totalValue = useMemo(
-    () =>
-      filtered.reduce((sum, i) => sum + (i.unit_cost ?? 0) * i.quantity, 0),
+    () => filtered.reduce((sum, i) => sum + (i.unit_cost ?? 0) * i.quantity, 0),
     [filtered],
   );
 
@@ -78,12 +75,10 @@ export default function SbuStockPage() {
             <span className="text-slate-300">/</span>
             <span className="text-primary font-bold">Stock Inventory</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans">
-            My Stock
-          </h1>
+          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans">My Stock</h1>
           <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Items currently held by your business unit. Only goods issued to
-            your SBU and not yet returned are shown here.
+            Items currently held by your business unit. Only goods issued to your SBU and not yet
+            returned are shown here.
           </p>
         </div>
 
@@ -128,9 +123,7 @@ export default function SbuStockPage() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Total SKUs
               </p>
-              <p className="text-2xl font-extrabold text-slate-800 mt-1">
-                {filtered.length}
-              </p>
+              <p className="text-2xl font-extrabold text-slate-800 mt-1">{filtered.length}</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-4">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -144,9 +137,7 @@ export default function SbuStockPage() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Estimated Value
               </p>
-              <p className="text-2xl font-extrabold text-slate-800 mt-1">
-                {fmt(totalValue)}
-              </p>
+              <p className="text-2xl font-extrabold text-slate-800 mt-1">{fmt(totalValue)}</p>
             </div>
           </div>
         )}
@@ -165,8 +156,8 @@ export default function SbuStockPage() {
               </p>
               {!search && (
                 <p className="text-xs text-slate-400 max-w-xs text-center">
-                  Stock appears here once the warehouse issues goods to your
-                  unit via an approved transfer request.
+                  Stock appears here once the warehouse issues goods to your unit via an approved
+                  transfer request.
                 </p>
               )}
             </div>
@@ -215,9 +206,7 @@ export default function SbuStockPage() {
                       {item.unit_cost != null ? fmt(item.unit_cost) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                      {item.unit_cost != null
-                        ? fmt(item.unit_cost * item.quantity)
-                        : "—"}
+                      {item.unit_cost != null ? fmt(item.unit_cost * item.quantity) : "—"}
                     </td>
                   </tr>
                 ))}
