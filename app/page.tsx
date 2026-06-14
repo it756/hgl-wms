@@ -16,11 +16,36 @@ export default function LoginPage() {
 
   // Well-known credentials convenience helpers for testing/demo
   const demoUsers = [
-    { email: "david.okuku@harvestgl.net", role: "WAREHOUSE_MANAGER", name: "David Okuku", sbu: "Central Warehousing Ops" },
-    { email: "admin@harvestgl.net", role: "ADMIN", name: "Admin Lead", sbu: "System Administration" },
-    { email: "bu.manager@harvestgl.net", role: "BU_MANAGER", name: "Alexander Wright", sbu: "Finance & Admin SBU" },
-    { email: "finance@harvestgl.net", role: "FINANCE_MANAGER", name: "Sarah Miller", sbu: "Finance Global Hub" },
-    { email: "staff@harvestgl.net", role: "UNIT_STAFF", name: "Lisa Chen", sbu: "Logistics Ops Center" },
+    {
+      email: "david.okuku@harvestgl.net",
+      role: "WAREHOUSE_MANAGER",
+      name: "David Okuku",
+      sbu: "Central Warehousing Ops",
+    },
+    {
+      email: "admin@harvestgl.net",
+      role: "ADMIN",
+      name: "Admin Lead",
+      sbu: "System Administration",
+    },
+    {
+      email: "bu.manager@harvestgl.net",
+      role: "BU_MANAGER",
+      name: "Alexander Wright",
+      sbu: "Finance & Admin SBU",
+    },
+    {
+      email: "finance@harvestgl.net",
+      role: "FINANCE_MANAGER",
+      name: "Sarah Miller",
+      sbu: "Finance Global Hub",
+    },
+    {
+      email: "staff@harvestgl.net",
+      role: "UNIT_STAFF",
+      name: "Lisa Chen",
+      sbu: "Logistics Ops Center",
+    },
   ];
 
   async function handleLogin(e: React.FormEvent) {
@@ -36,13 +61,13 @@ export default function LoginPage() {
 
       if (authError) {
         // Fallback for demo purposes if the specific supabase setup is not ready
-        const demo = demoUsers.find(u => u.email === email);
+        const demo = demoUsers.find((u) => u.email === email);
         if (demo && password === "password123") {
           localStorage.setItem("access_token", "demo-token-123456");
           localStorage.setItem("user_role", demo.role);
           localStorage.setItem("user_name", demo.name);
           localStorage.setItem("user_sbu", demo.sbu);
-          
+
           if (demo.role === "ADMIN") {
             router.push("/admin");
           } else if (demo.role === "BU_MANAGER" || demo.role === "UNIT_STAFF") {
@@ -90,7 +115,7 @@ export default function LoginPage() {
     }
   }
 
-  function applyDemoUser(u: typeof demoUsers[0]) {
+  function applyDemoUser(u: (typeof demoUsers)[0]) {
     setEmail(u.email);
     setPassword("password123");
   }
@@ -110,7 +135,9 @@ export default function LoginPage() {
           <div className="flex flex-col items-center mb-8 text-center animate-fade-in">
             <div className="flex items-center gap-2 mb-2">
               <Warehouse className="text-primary w-10 h-10" />
-              <span className="text-2xl font-extrabold tracking-tight text-on-background uppercase">Harvest WMS</span>
+              <span className="text-2xl font-extrabold tracking-tight text-on-background uppercase">
+                Harvest WMS
+              </span>
             </div>
             <h1 className="text-lg font-semibold text-slate-500">Sign in to your account</h1>
           </div>
@@ -126,7 +153,10 @@ export default function LoginPage() {
 
               {/* Email Field */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="email">
+                <label
+                  className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                  htmlFor="email"
+                >
                   Email address
                 </label>
                 <div className="relative">
@@ -148,10 +178,16 @@ export default function LoginPage() {
               {/* Password Field */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="password">
+                  <label
+                    className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                    htmlFor="password"
+                  >
                     Password
                   </label>
-                  <Link className="text-xs font-bold text-primary hover:underline" href="/forgot-password">
+                  <Link
+                    className="text-xs font-bold text-primary hover:underline"
+                    href="/forgot-password"
+                  >
                     Forgot password?
                   </Link>
                 </div>
@@ -224,9 +260,10 @@ export default function LoginPage() {
       </main>
 
       <footer className="py-6 text-center border-t border-outline-variant/30 bg-surface-container-lower">
-        <p className="text-xs font-semibold text-slate-400">© 2026 Harvest WMS • Global Logistics Solutions</p>
+        <p className="text-xs font-semibold text-slate-400">
+          © 2026 Harvest WMS • Global Logistics Solutions
+        </p>
       </footer>
     </div>
   );
 }
-

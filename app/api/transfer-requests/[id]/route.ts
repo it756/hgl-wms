@@ -25,7 +25,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     // Only the original requester can edit
     if ((existing as any).raised_by !== user.id)
-      return NextResponse.json({ error: "Forbidden: you did not raise this request" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden: you did not raise this request" },
+        { status: 403 },
+      );
 
     // Block edits once approved or beyond
     if (!EDITABLE_STATUSES.includes((existing as any).status)) {
@@ -56,7 +59,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     for (const line of lines) {
       const product = stockMap.get(line.product_id);
       if (!product)
-        return NextResponse.json({ error: `Product ${line.product_id} not found.` }, { status: 422 });
+        return NextResponse.json(
+          { error: `Product ${line.product_id} not found.` },
+          { status: 422 },
+        );
       if (line.requested_quantity <= 0)
         return NextResponse.json(
           { error: `Requested quantity for "${product.name}" must be greater than zero.` },

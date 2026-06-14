@@ -46,7 +46,9 @@ export default function ForgotPasswordPage() {
           <div className="flex flex-col items-center mb-8 text-center">
             <div className="flex items-center gap-2 mb-2">
               <Warehouse className="text-primary w-10 h-10" />
-              <span className="text-2xl font-extrabold tracking-tight text-on-background uppercase animate-pulse">Harvest WMS</span>
+              <span className="text-2xl font-extrabold tracking-tight text-on-background uppercase animate-pulse">
+                Harvest WMS
+              </span>
             </div>
             <h1 className="text-lg font-semibold text-slate-500">Reset your password</h1>
           </div>
@@ -56,7 +58,9 @@ export default function ForgotPasswordPage() {
             {submitted ? (
               <div className="flex flex-col gap-4 text-center">
                 <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg p-4 text-sm font-semibold">
-                  We have sent a reset password link to <strong className="break-all">{email}</strong> if it exists. Please check your inbox.
+                  We have sent a reset password link to{" "}
+                  <strong className="break-all">{email}</strong> if it exists. Please check your
+                  inbox.
                 </div>
                 <Link
                   href="/"
@@ -69,7 +73,8 @@ export default function ForgotPasswordPage() {
             ) : (
               <form onSubmit={handleReset} className="flex flex-col gap-4">
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Enter your email address associated with your Harvest WMS account, and we will send you a secure password reset link.
+                  Enter your email address associated with your Harvest WMS account, and we will
+                  send you a secure password reset link.
                 </p>
 
                 {error && (
@@ -80,7 +85,10 @@ export default function ForgotPasswordPage() {
 
                 {/* Email Field */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="email">
+                  <label
+                    className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                    htmlFor="email"
+                  >
                     Email address
                   </label>
                   <div className="relative">
@@ -130,7 +138,9 @@ export default function ForgotPasswordPage() {
       </main>
 
       <footer className="py-6 text-center border-t border-outline-variant/30 bg-surface-container-lower">
-        <p className="text-xs font-semibold text-slate-400">© 2026 Harvest WMS • Global Logistics Solutions</p>
+        <p className="text-xs font-semibold text-slate-400">
+          © 2026 Harvest WMS • Global Logistics Solutions
+        </p>
       </footer>
     </div>
   );

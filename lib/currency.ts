@@ -13,7 +13,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 export function formatAmount(
   amount: number | null | undefined,
   currency: Currency,
-  rate: number | null
+  rate: number | null,
 ): string {
   if (amount == null) return "—";
   if (currency === "USD") {

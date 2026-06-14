@@ -35,10 +35,13 @@ describe("issuanceService.processIssuance", () => {
       "user-001",
     );
 
-    expect(mockRpc).toHaveBeenCalledWith("process_issuance", expect.objectContaining({
-      p_transfer_request_id: "transfer-uuid-001",
-      p_issued_by: "user-001",
-    }));
+    expect(mockRpc).toHaveBeenCalledWith(
+      "process_issuance",
+      expect.objectContaining({
+        p_transfer_request_id: "transfer-uuid-001",
+        p_issued_by: "user-001",
+      }),
+    );
     expect(result).toBe("issuance-uuid-001");
   });
 
@@ -50,8 +53,6 @@ describe("issuanceService.processIssuance", () => {
 
     const { processIssuance } = await import("../../lib/services/issuanceService");
 
-    await expect(
-      processIssuance("transfer-uuid-bad", [], "user-001"),
-    ).rejects.toThrow();
+    await expect(processIssuance("transfer-uuid-bad", [], "user-001")).rejects.toThrow();
   });
 });

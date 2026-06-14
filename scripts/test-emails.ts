@@ -85,7 +85,8 @@ const testCases: TestCase[] = [
     type: "variance_proposal_submitted",
     subject: "[TEST] Variance Proposal Submitted",
     role: "FINANCE_MANAGER",
-    message: "Variance resolution proposal submitted for transfer TRF-TEST-001 — pending Finance review.",
+    message:
+      "Variance resolution proposal submitted for transfer TRF-TEST-001 — pending Finance review.",
   },
   {
     type: "variance_proposal_approved",
@@ -97,7 +98,8 @@ const testCases: TestCase[] = [
     type: "variance_proposal_rejected",
     subject: "[TEST] Variance Proposal Rejected",
     role: "WAREHOUSE_MANAGER",
-    message: "Variance resolution proposal for transfer TRF-TEST-001 was rejected by Finance. Please revise.",
+    message:
+      "Variance resolution proposal for transfer TRF-TEST-001 was rejected by Finance. Please revise.",
   },
   {
     type: "variance_disposed",
@@ -116,7 +118,8 @@ const testCases: TestCase[] = [
     type: "return_approved",
     subject: "[TEST] Return Request Approved",
     role: "WAREHOUSE_MANAGER",
-    message: "Return request RET-TEST-001 has been approved and is awaiting receipt at the warehouse.",
+    message:
+      "Return request RET-TEST-001 has been approved and is awaiting receipt at the warehouse.",
   },
   {
     type: "return_rejected",
@@ -128,7 +131,8 @@ const testCases: TestCase[] = [
     type: "return_received",
     subject: "[TEST] Return Received at Warehouse",
     role: "BU_MANAGER",
-    message: "Return request RET-TEST-001 has been received at the warehouse and stock has been restored.",
+    message:
+      "Return request RET-TEST-001 has been received at the warehouse and stock has been restored.",
   },
   {
     type: "return_stock_restored",

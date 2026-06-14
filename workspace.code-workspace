@@ -1,9 +1,9 @@
 {
-	"folders": [],
-	"settings": {
-		"chat.tools.terminal.autoApprove": {
-			".specify/scripts/bash/": true,
-			".specify/scripts/powershell/": true
-		}
-	}
+  "folders": [],
+  "settings": {
+    "chat.tools.terminal.autoApprove": {
+      ".specify/scripts/bash/": true,
+      ".specify/scripts/powershell/": true,
+    },
+  },
 }

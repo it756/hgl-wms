@@ -34,7 +34,7 @@ export default function NewTransferRequestPage() {
   const [unitsError, setUnitsError] = useState<string | null>(null);
   const [requiredDate, setRequiredDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<LineItem[]>([{ product_id: "", requested_quantity: 1 }]);
+  const [lines, setLines] = useState<LineItem[]>([{ product_id: "", requested_quantity: 0 }]);
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -55,7 +55,7 @@ export default function NewTransferRequestPage() {
 
       try {
         const [prodRes, unitsRes] = await Promise.all([
-          fetch("/api/admin/products", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("/api/bu/catalogue", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("/api/bu/units", { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         if (prodRes.ok) setProducts((await prodRes.json()) || []);
@@ -85,7 +85,7 @@ export default function NewTransferRequestPage() {
   }, 0);
 
   function addLine() {
-    setLines((prev) => [...prev, { product_id: "", requested_quantity: 1 }]);
+    setLines((prev) => [...prev, { product_id: "", requested_quantity: 0 }]);
   }
 
   function removeLine(index: number) {
@@ -339,7 +339,9 @@ export default function NewTransferRequestPage() {
                         </option>
                       ))}
                     {products.length === 0 && (
-                      <option value="demo_id">Sample Industrial Compressor (UOM: Unit)</option>
+                      <option value="" disabled>
+                        No products in your SBU&apos;s warehouse catalogue
+                      </option>
                     )}
                   </select>
                 </div>
@@ -352,7 +354,7 @@ export default function NewTransferRequestPage() {
                     type="number"
                     required
                     min={1}
-                    value={line.requested_quantity}
+                    value={line.requested_quantity || ""}
                     onChange={(e) => updateLine(i, "requested_quantity", Number(e.target.value))}
                     className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono font-bold text-slate-700"
                     placeholder="1"

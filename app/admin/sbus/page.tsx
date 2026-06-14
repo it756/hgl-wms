@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { 
-  Building2, 
-  Plus, 
-  Search, 
-  SlidersHorizontal, 
-  Edit3, 
-  Power, 
-  AlertCircle, 
-  Check, 
-  X, 
-  ShieldAlert, 
+import {
+  Building2,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Edit3,
+  Power,
+  AlertCircle,
+  Check,
+  X,
+  ShieldAlert,
   Calculator,
   ChevronRight,
   TrendingUp,
-  Activity
+  Activity,
 } from "lucide-react";
 
 interface SBU {
@@ -134,9 +134,10 @@ export default function SBUsPage() {
     }
   }
 
-  const filtered = sbus.filter(s => 
-    s.name.toLowerCase().includes(search.toLowerCase()) || 
-    s.code.toLowerCase().includes(search.toLowerCase())
+  const filtered = sbus.filter(
+    (s) =>
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.code.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -150,8 +151,12 @@ export default function SBUsPage() {
               <span className="text-slate-300">/</span>
               <span className="text-[#005c55]">SBU Registry</span>
             </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">Strategic Business Units</h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">Manage corporate branches, custom threshold configurations, and transaction rules.</p>
+            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
+              Strategic Business Units
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+              Manage corporate branches, custom threshold configurations, and transaction rules.
+            </p>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
@@ -177,9 +182,14 @@ export default function SBUsPage() {
               <Building2 className="w-4 h-4 text-[#005c55]" />
               Register New Strategic Business Unit (SBU)
             </h3>
-            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <form
+              onSubmit={handleCreate}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+            >
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">SBU Name</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  SBU Name
+                </label>
                 <input
                   required
                   placeholder="e.g. Catering SBU"
@@ -189,7 +199,9 @@ export default function SBUsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Unit Code</label>
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Unit Code
+                </label>
                 <input
                   required
                   placeholder="e.g. CAT"
@@ -215,7 +227,9 @@ export default function SBUsPage() {
                 </button>
               </div>
               {formError && (
-                <p className="text-rose-600 text-xs font-semibold font-mono uppercase mt-1 md:col-span-3">{formError}</p>
+                <p className="text-rose-600 text-xs font-semibold font-mono uppercase mt-1 md:col-span-3">
+                  {formError}
+                </p>
               )}
             </form>
           </div>
@@ -237,7 +251,7 @@ export default function SBUsPage() {
             </div>
             <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold font-mono">
               <Activity className="w-3.5 h-3.5 text-[#005c55]" />
-              <span>ACTIVE UNITS: {sbus.filter(s => s.is_active).length}</span>
+              <span>ACTIVE UNITS: {sbus.filter((s) => s.is_active).length}</span>
             </div>
           </div>
 
@@ -320,7 +334,7 @@ export default function SBUsPage() {
                             </div>
                           ) : s.finance_approval_threshold != null ? (
                             <span className="font-mono text-[#0D9488] font-bold">
-                            K {s.finance_approval_threshold.toLocaleString()}
+                              K {s.finance_approval_threshold.toLocaleString()}
                             </span>
                           ) : (
                             <span className="text-slate-400 font-semibold italic text-[11px]">
@@ -331,12 +345,14 @@ export default function SBUsPage() {
                         <td className="px-6 py-3.5">
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase ${
-                              s.is_active 
-                                ? "bg-teal-50 border border-teal-250 text-teal-800" 
+                              s.is_active
+                                ? "bg-teal-50 border border-teal-250 text-teal-800"
                                 : "bg-slate-100 border border-slate-200 text-slate-650"
                             }`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${s.is_active ? "bg-teal-600" : "bg-slate-400"}`}></span>
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${s.is_active ? "bg-teal-600" : "bg-slate-400"}`}
+                            ></span>
                             {s.is_active ? "Active" : "Inactive"}
                           </span>
                         </td>
@@ -368,8 +384,8 @@ export default function SBUsPage() {
                                 <button
                                   onClick={() => toggleActive(s)}
                                   className={`p-1 px-2 border rounded-md transition-all flex items-center gap-1 text-[11px] cursor-pointer ${
-                                    s.is_active 
-                                      ? "bg-rose-50/10 border-rose-200/50 text-rose-600 hover:bg-rose-50 hover:border-rose-300" 
+                                    s.is_active
+                                      ? "bg-rose-50/10 border-rose-200/50 text-rose-600 hover:bg-rose-50 hover:border-rose-300"
                                       : "bg-teal-50/10 border-teal-200/50 text-teal-650 hover:bg-teal-50 hover:border-teal-300"
                                   }`}
                                 >

@@ -20,11 +20,11 @@
 - [ ] T011 [P] Implement notification persistence model and service `lib/services/notificationService.ts`
 - [ ] T012 Configure email service and template folder `lib/email/*`
 - [ ] T013 [P] Create database migration scripts in `supabase/migrations/`
- - [ ] T046 Add `Finance Manager` role to `User` model, admin UI to assign role, and add RBAC scope checks for finance actions (`lib/models/user.ts`, `lib/rbac.ts`, `app/admin/users/*`)
- - [ ] T051 Consolidate DB RPC work: choose canonical RPC for atomic stock updates and remove duplicates; update references in tasks and plan
- - [ ] T052 Add admin setting for `finance_approval_threshold` and per-SBU overrides; implement Admin UI and API (task owner: Admin feature)
- - [ ] T053 Implement DB-level RBAC guard for `process_issuance` and document required privileges (TBD: grant EXECUTE to server functions only)
- - [ ] T054 Update specify templates and README to reflect Supabase-only migrations and single Next.js repo
+- [ ] T046 Add `Finance Manager` role to `User` model, admin UI to assign role, and add RBAC scope checks for finance actions (`lib/models/user.ts`, `lib/rbac.ts`, `app/admin/users/*`)
+- [ ] T051 Consolidate DB RPC work: choose canonical RPC for atomic stock updates and remove duplicates; update references in tasks and plan
+- [ ] T052 Add admin setting for `finance_approval_threshold` and per-SBU overrides; implement Admin UI and API (task owner: Admin feature)
+- [ ] T053 Implement DB-level RBAC guard for `process_issuance` and document required privileges (TBD: grant EXECUTE to server functions only)
+- [ ] T054 Update specify templates and README to reflect Supabase-only migrations and single Next.js repo
 
 **Checkpoint**: Foundational tasks complete — user story work may begin.
 
@@ -45,14 +45,14 @@
 - [ ] T023 [US2] Implement API endpoint `POST /api/issuances` in `app/api/issuances/route.ts`
 - [ ] T024 [US2] Implement Warehouse Manager queue UI at `app/warehouse/queue/page.tsx`
 - [ ] T025 [US2] Add integration test for recording issuance at `tests/integration/test_record_issuance.test.ts`
- - [ ] T042 [US2] Implement a multi-line atomic stock decrement RPC (`decrement_stock_batch`) and migration in `supabase/migrations/002_decrement_stock_batch.sql`
- - [ ] T043 [US2] Update `issuanceService` and `POST /api/issuances` to use the batch RPC so issuance creation and stock updates run atomically in a single DB transaction at `lib/services/issuanceService.ts`
- - [ ] T044 [US2] Add concurrency integration tests simulating concurrent issuances at `tests/integration/test_concurrent_issuance.test.ts`
- - [ ] T047 Implement finance-approval UI and API for transfer requests (Finance review queue) at `app/finance/queue/*` and `app/api/finance/approvals/route.ts`
- - [ ] T048 Implement Supplier GRN flow: `POST /api/supplier-grns` and UI at `app/warehouse/supplier-grn/*`; ensure GRNs are `AWAITING_FINANCE_APPROVAL` until finance approves (see `supabase/migrations/` for flags)
- - [ ] T048a Implement stock-increment RPC gated by finance approval and add migration `supabase/migrations/003_increment_stock_after_grn.sql`
- - [ ] T049 Update issuance service (`lib/services/issuanceService.ts`) and `app/api/issuances/route.ts` to enforce `APPROVED_FOR_ISSUE` status before issuing and to record `approved_by`/`approved_at` metadata
- - [ ] T050 Add integration tests for finance approval flows and supplier GRN approvals at `tests/integration/test_finance_approval.test.ts`
+- [ ] T042 [US2] Implement a multi-line atomic stock decrement RPC (`decrement_stock_batch`) and migration in `supabase/migrations/002_decrement_stock_batch.sql`
+- [ ] T043 [US2] Update `issuanceService` and `POST /api/issuances` to use the batch RPC so issuance creation and stock updates run atomically in a single DB transaction at `lib/services/issuanceService.ts`
+- [ ] T044 [US2] Add concurrency integration tests simulating concurrent issuances at `tests/integration/test_concurrent_issuance.test.ts`
+- [ ] T047 Implement finance-approval UI and API for transfer requests (Finance review queue) at `app/finance/queue/*` and `app/api/finance/approvals/route.ts`
+- [ ] T048 Implement Supplier GRN flow: `POST /api/supplier-grns` and UI at `app/warehouse/supplier-grn/*`; ensure GRNs are `AWAITING_FINANCE_APPROVAL` until finance approves (see `supabase/migrations/` for flags)
+- [ ] T048a Implement stock-increment RPC gated by finance approval and add migration `supabase/migrations/003_increment_stock_after_grn.sql`
+- [ ] T049 Update issuance service (`lib/services/issuanceService.ts`) and `app/api/issuances/route.ts` to enforce `APPROVED_FOR_ISSUE` status before issuing and to record `approved_by`/`approved_at` metadata
+- [ ] T050 Add integration tests for finance approval flows and supplier GRN approvals at `tests/integration/test_finance_approval.test.ts`
 
 ## Phase 5: User Story 3 - Submit GRN (Priority: P1)
 
@@ -70,7 +70,7 @@
 - [ ] T034 [P] Seed product catalogue and initial SBUs script at `scripts/seed/seed_data.ts`
 - [ ] T035 Implement export CSV endpoints `app/api/exports/*` and frontend export UI `app/admin/exports/page.tsx`
 - [ ] T036 [P] Implement audit log query API `app/api/audit/route.ts` and UI `app/admin/audit/page.tsx`
- - [ ] T045 [US3] Implement variance reconciliation UI and API for admin review at `app/admin/variance/*` and `app/api/admin/variance/route.ts`
+- [ ] T045 [US3] Implement variance reconciliation UI and API for admin review at `app/admin/variance/*` and `app/api/admin/variance/route.ts`
 
 ## Phase 7: Tests, Docs & Polish
 

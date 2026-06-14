@@ -3,15 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
-import {
-  RotateCcw,
-  Plus,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Package,
-  AlertCircle,
-} from "lucide-react";
+import { RotateCcw, Plus, Clock, CheckCircle2, XCircle, Package, AlertCircle } from "lucide-react";
 
 interface ReturnRequest {
   id: string;

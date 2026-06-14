@@ -120,8 +120,8 @@ export default function SupplierGRNPage() {
       product_name: "",
       sku: "",
       unit_of_measure: "EA",
-      quantity_expected: 1,
-      quantity_received: 1,
+      quantity_expected: 0,
+      quantity_received: 0,
       unit_cost: 0.0,
       total_cost: 0.0,
       expiry_date: "",
@@ -296,8 +296,8 @@ export default function SupplierGRNPage() {
         product_name: "",
         sku: "",
         unit_of_measure: "EA",
-        quantity_expected: 1,
-        quantity_received: 1,
+        quantity_expected: 0,
+        quantity_received: 0,
         unit_cost: 0.0,
         total_cost: 0.0,
         expiry_date: "",
@@ -346,8 +346,8 @@ export default function SupplierGRNPage() {
                 product_name: "",
                 sku: "",
                 unit_of_measure: "EA",
-                quantity_expected: 1,
-                quantity_received: 1,
+                quantity_expected: 0,
+                quantity_received: 0,
                 unit_cost: 0,
                 total_cost: 0,
                 expiry_date: "",
@@ -434,8 +434,8 @@ export default function SupplierGRNPage() {
         product_name: "",
         sku: "",
         unit_of_measure: "EA",
-        quantity_expected: 1,
-        quantity_received: 1,
+        quantity_expected: 0,
+        quantity_received: 0,
         unit_cost: 0.0,
         total_cost: 0.0,
         expiry_date: "",
@@ -996,7 +996,7 @@ export default function SupplierGRNPage() {
                             <input
                               type="number"
                               min="0"
-                              value={line.quantity_expected}
+                              value={line.quantity_expected || ""}
                               onChange={(e) => {
                                 const u = [...lines];
                                 u[idx].quantity_expected = Number(e.target.value);
@@ -1008,9 +1008,9 @@ export default function SupplierGRNPage() {
                           <td className="py-3 px-3">
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               required
-                              value={line.quantity_received}
+                              value={line.quantity_received || ""}
                               onChange={(e) => updateQuantity(idx, Number(e.target.value))}
                               className={`w-full border rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700 ${
                                 line.quantity_expected &&

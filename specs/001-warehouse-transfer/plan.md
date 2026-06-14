@@ -8,23 +8,24 @@ Deliver Harvest WMS v1.0 providing a single-warehouse transfer workflow: request
 
 ## Technical Context
 
- - Frontend + Backend: Single Next.js repo (App Router) hosting UI and API routes under `app/` and server helpers in `lib/`
- - Database: Supabase Postgres (managed) — use Supabase SQL migrations in `supabase/migrations/` (do not use Prisma)
- - Auth: Supabase Auth for user management + server-side verification using Supabase service role key
+- Frontend + Backend: Single Next.js repo (App Router) hosting UI and API routes under `app/` and server helpers in `lib/`
+- Database: Supabase Postgres (managed) — use Supabase SQL migrations in `supabase/migrations/` (do not use Prisma)
+- Auth: Supabase Auth for user management + server-side verification using Supabase service role key
 - Email: Nodemailer (SMTP) or Resend
 - Hosting: Railway (app + Postgres)
 
 **Performance Targets**: Dashboard load < 2s under normal load; support 50 concurrent users.
- - DB schema and Supabase SQL migrations (T006, T013)
-This plan enforces Constitution principles: P1 (Scoped Visibility), P2 (Audit Trail First), P3 (Transfer Request Required), P4 (GRN Closes the Loop), P6 (Notifications), P7 (Role Integrity). Phase 0 research must include a constitution validation step.
+
+- DB schema and Supabase SQL migrations (T006, T013)
+  This plan enforces Constitution principles: P1 (Scoped Visibility), P2 (Audit Trail First), P3 (Transfer Request Required), P4 (GRN Closes the Loop), P6 (Notifications), P7 (Role Integrity). Phase 0 research must include a constitution validation step.
 
 Phase 1 — Setup (T001–T005)
 
- - DB Migrations: Supabase SQL migrations in `supabase/migrations/` (no Prisma)
+- DB Migrations: Supabase SQL migrations in `supabase/migrations/` (no Prisma)
 - DB schema, migrations, and Prisma models (T006, T013)
 - Authentication + RBAC middleware (T007, T008)
 - Core models: User, SBU, Product (T009)
- - Extend `User` model and admin UI to support `Finance Manager` role and RBAC scopes (T046)
+- Extend `User` model and admin UI to support `Finance Manager` role and RBAC scopes (T046)
 - Audit service (T010) and Notification model/service (T011)
 - Email config and templates (T012)
 
@@ -34,7 +35,7 @@ Phase 3 — Transfer Request Flow (T014–T020)
 - API endpoint `POST /api/transfer-requests` (T017)
 - Frontend forms and list views (T018–T019)
 - Integration tests (T020)
- - Add finance-approval UI and server endpoints for reviewing and approving requests (T047)
+- Add finance-approval UI and server endpoints for reviewing and approving requests (T047)
 
 Phase 4 — Issuance (T021–T025)
 
@@ -42,14 +43,14 @@ Phase 4 — Issuance (T021–T025)
 - API endpoint `POST /api/issuances` (T023)
 - Warehouse queue UI (T024)
 - Tests (T025)
- - Update issuance flow to respect finance approvals (no issuance until `APPROVED_FOR_ISSUE`) and record approval metadata (T043)
+- Update issuance flow to respect finance approvals (no issuance until `APPROVED_FOR_ISSUE`) and record approval metadata (T043)
 
 Phase 5 — GRN (T026–T030)
 
 - GRN models and service (T026–T027)
 - API endpoint `POST /api/grns` (T028)
 - GRN UI and tests (T029–T030)
- - Add Supplier GRN flow: Warehouse Manager records supplier receipt which remains `AWAITING_FINANCE_APPROVAL` until Finance Manager approves; stock increment is gated behind Finance approval (T048, T048a)
+- Add Supplier GRN flow: Warehouse Manager records supplier receipt which remains `AWAITING_FINANCE_APPROVAL` until Finance Manager approves; stock increment is gated behind Finance approval (T048, T048a)
 
 Phase 6 — Cross-cutting & Admin (T031–T036)
 
@@ -58,6 +59,7 @@ Phase 6 — Cross-cutting & Admin (T031–T036)
 Phase 7 — Tests & Polish (T037–T041)
 
 New Acceptance Criteria (Finance)
+
 - Transfers flagged `requires_finance_approval` must remain non-issuable until a Finance Manager approves; include integration tests in M2.
 - Supplier GRNs only increment SBU-attributable stock after Finance approval; rejections must be auditable and notify relevant parties.
 

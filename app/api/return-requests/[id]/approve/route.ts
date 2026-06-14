@@ -8,10 +8,7 @@ import { createNotification } from "../../../../../lib/services/notificationServ
  * BU Manager or Admin approves or rejects a PENDING_APPROVAL return request.
  * Body: { action: "approve" | "reject", approval_notes?: string }
  */
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

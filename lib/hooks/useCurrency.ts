@@ -39,7 +39,7 @@ export function useCurrency(): UseCurrencyReturn {
 
   const fmt = useCallback(
     (amount: number | null | undefined) => formatAmount(amount, currency, rate),
-    [currency, rate]
+    [currency, rate],
   );
 
   return { currency, rate, fetching, rateError, toggleCurrency, fmt };

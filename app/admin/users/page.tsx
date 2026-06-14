@@ -11,6 +11,8 @@ import {
   Mail,
   User,
   Lock,
+  Eye,
+  EyeOff,
   Building2,
   Shield,
   Power,
@@ -78,6 +80,7 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
+  const [showFormPassword, setShowFormPassword] = useState(false);
   const [formName, setFormName] = useState("");
   const [formWhatsapp, setFormWhatsapp] = useState("");
   const [formRole, setFormRole] = useState<UserRole>("UNIT_STAFF");
@@ -293,6 +296,20 @@ export default function UsersPage() {
       (u.full_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  useEffect(() => setPage(1), [search]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages]);
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const startIndex = filtered.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIndex = Math.min(filtered.length, page * pageSize);
 
   return (
     <DashboardLayout>
@@ -654,12 +671,24 @@ export default function UsersPage() {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     required
-                    type="password"
+                    type={showFormPassword ? "text" : "password"}
                     placeholder="Set temporary login password"
                     value={formPassword}
                     onChange={(e) => setFormPassword(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
+                    className="w-full pl-9 pr-10 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowFormPassword((s) => !s)}
+                    aria-label={showFormPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                  >
+                    {showFormPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -759,109 +788,144 @@ export default function UsersPage() {
               No matching team members found in registry.
             </div>
           ) : (
-            <div className="overflow-x-auto text-[#1E293B]">
-              <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
-                <thead>
-                  <tr className="bg-slate-50/50">
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[30%]">
-                      Team Member Info
-                    </th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
-                      Email Address
-                    </th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
-                      Operational Role Role
-                    </th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
-                      SBU Node
-                    </th>
-                    <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
-                      State
-                    </th>
-                    <th className="px-6 py-4 text-right font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
-                      Operations
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {filtered.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-[#005c55] font-mono shrink-0">
-                            {(u.full_name ?? u.email).substring(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <span className="font-extrabold text-slate-800 text-sm block">
-                              {u.full_name ?? "Unprovisioned Name"}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">
-                              ID: {u.id.substring(0, 8)}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5 text-slate-500 font-semibold font-mono">
-                        {u.email}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <div className="relative inline-block">
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold cursor-pointer uppercase appearance-none focus:outline-none focus:ring-1 focus:ring-[#005c55] ${ROLE_COLORS[u.role]}`}
-                          >
-                            {ROLES.map((r) => (
-                              <option key={r} value={r}>
-                                {r.replace("_", " ")}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5">
-                        {sbus.find((s) => s.id === u.sbu_id) ? (
-                          <span className="font-mono bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">
-                            {sbus.find((s) => s.id === u.sbu_id)?.code}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic text-[11px] font-semibold">
-                            Independent
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
-                            u.is_active
-                              ? "bg-teal-50 border border-teal-200 text-teal-800"
-                              : "bg-rose-50 border border-rose-200 text-rose-700"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-teal-600" : "bg-rose-500"}`}
-                          ></span>
-                          {u.is_active ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        {u.is_active ? (
-                          <button
-                            onClick={() => handleDeactivate(u.id)}
-                            className="px-2 py-1 border border-rose-100 hover:bg-rose-50 text-rose-600 font-bold rounded-lg cursor-pointer transition-all flex items-center justify-end gap-1 text-[11px] ml-auto"
-                          >
-                            <Power className="w-3 h-3" /> Deactivate
-                          </button>
-                        ) : (
-                          <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">
-                            Suspended
-                          </span>
-                        )}
-                      </td>
+            <div>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                <div className="text-[12px] text-slate-500">
+                  Showing {startIndex} - {endIndex} of {filtered.length}
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="text-xs border border-slate-200 rounded px-2 py-1 bg-white"
+                  >
+                    <option value={5}>5 / page</option>
+                    <option value={10}>10 / page</option>
+                    <option value={25}>25 / page</option>
+                  </select>
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1 text-xs border border-slate-200 rounded disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <div className="text-[12px] text-slate-600 font-bold">
+                    Page {page} of {totalPages}
+                  </div>
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="px-3 py-1 text-xs border border-slate-200 rounded disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto text-[#1E293B]">
+                <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[30%]">
+                        Team Member Info
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
+                        Email Address
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
+                        Operational Role Role
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        SBU Node
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        State
+                      </th>
+                      <th className="px-6 py-4 text-right font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        Operations
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {paginated.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-50/40 transition-colors">
+                        <td className="px-6 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-[#005c55] font-mono shrink-0">
+                              {(u.full_name ?? u.email).substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="font-extrabold text-slate-800 text-sm block">
+                                {u.full_name ?? "Unprovisioned Name"}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">
+                                ID: {u.id.substring(0, 8)}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3.5 text-slate-500 font-semibold font-mono">
+                          {u.email}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <div className="relative inline-block">
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
+                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold cursor-pointer uppercase appearance-none focus:outline-none focus:ring-1 focus:ring-[#005c55] ${ROLE_COLORS[u.role]}`}
+                            >
+                              {ROLES.map((r) => (
+                                <option key={r} value={r}>
+                                  {r.replace("_", " ")}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3.5">
+                          {sbus.find((s) => s.id === u.sbu_id) ? (
+                            <span className="font-mono bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">
+                              {sbus.find((s) => s.id === u.sbu_id)?.code}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px] font-semibold">
+                              Independent
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
+                              u.is_active
+                                ? "bg-teal-50 border border-teal-200 text-teal-800"
+                                : "bg-rose-50 border border-rose-200 text-rose-700"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-teal-600" : "bg-rose-500"}`}
+                            ></span>
+                            {u.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5 text-right">
+                          {u.is_active ? (
+                            <button
+                              onClick={() => handleDeactivate(u.id)}
+                              className="px-2 py-1 border border-rose-100 hover:bg-rose-50 text-rose-600 font-bold rounded-lg cursor-pointer transition-all flex items-center justify-end gap-1 text-[11px] ml-auto"
+                            >
+                              <Power className="w-3 h-3" /> Deactivate
+                            </button>
+                          ) : (
+                            <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">
+                              Suspended
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

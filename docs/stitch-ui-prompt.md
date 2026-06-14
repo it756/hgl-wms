@@ -66,6 +66,7 @@ Design a **Business Unit Manager dashboard** for Harvest WMS.
 Layout: Dark left sidebar (collapsed icon + label nav) + main content area.
 
 **Sidebar nav items** (icons + labels):
+
 - Dashboard (active)
 - My Transfer Requests
 - Product Catalogue
@@ -73,6 +74,7 @@ Layout: Dark left sidebar (collapsed icon + label nav) + main content area.
 - My Profile
 
 **Main content**:
+
 - Top bar: "Good morning, [Name]" with SBU name chip ("Finance & Admin SBU") and notification bell icon
 - **KPI cards row** (4 cards):
   - Pending Requests: 3
@@ -90,6 +92,7 @@ Layout: Dark left sidebar (collapsed icon + label nav) + main content area.
 Design a **Warehouse Manager dashboard** for Harvest WMS.
 
 **Sidebar nav items**:
+
 - Dashboard (active)
 - Issuance Queue
 - Supplier GRNs
@@ -98,6 +101,7 @@ Design a **Warehouse Manager dashboard** for Harvest WMS.
 - My Profile
 
 **Main content**:
+
 - KPI cards: Pending Requests (5), Awaiting Finance Approval (2), Low Stock Items (3), Completed Today (4)
 - **Low Stock Alerts** panel: list of 3 products with current stock vs threshold, amber warning icon
 - **Issuance Queue preview**: top 3 pending/approved requests, with SBU name, reference, date, status badge, and "Issue Goods" action button
@@ -109,6 +113,7 @@ Design a **Warehouse Manager dashboard** for Harvest WMS.
 Design a **Finance Manager dashboard** for Harvest WMS.
 
 **Sidebar nav items**:
+
 - Dashboard (active)
 - Transfer Approvals
 - Supplier GRN Approvals
@@ -116,6 +121,7 @@ Design a **Finance Manager dashboard** for Harvest WMS.
 - My Profile
 
 **Main content**:
+
 - KPI cards: Awaiting Approval (4), Approved Today (2), Rejected (1), Total Value Pending (KES 48,500)
 - **Pending Approvals table**: Reference, SBU, Estimated Value, Raised By, Date, Status badge, Actions (Approve / Reject buttons)
 - Show 3 rows of realistic sample data
@@ -343,4 +349,4 @@ A read-only catalogue view shown to BU Managers when browsing products before ra
 
 ---
 
-*End of prompts. Each screen above is self-contained and can be pasted individually into Stitch AI's "Generate screen from text" input.*
+_End of prompts. Each screen above is self-contained and can be pasted individually into Stitch AI's "Generate screen from text" input._

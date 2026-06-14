@@ -37,7 +37,7 @@ interface GRNLineItemInput {
   sku: string;
   issued_quantity: number;
   quantity_received: number;
-  variance_notes?: string 
+  variance_notes?: string;
 }
 
 export default function SubmitGRNPage() {
@@ -343,7 +343,7 @@ export default function SubmitGRNPage() {
                               <input
                                 type="number"
                                 min={0}
-                                value={item.quantity_received}
+                                value={item.quantity_received || ""}
                                 onChange={(e) =>
                                   updateGRNItem(idx, "quantity_received", Number(e.target.value))
                                 }

@@ -331,7 +331,7 @@ export default function NewReturnPage() {
                             type="number"
                             min={0}
                             max={item.issued_quantity}
-                            value={item.quantity_to_return}
+                            value={item.quantity_to_return || ""}
                             onChange={(e) => updateQty(idx, Number(e.target.value))}
                             className="w-20 text-center border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                           />

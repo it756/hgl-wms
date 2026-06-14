@@ -40,7 +40,10 @@ describe("grnService.recordGRN", () => {
   it("throws when transfer is not in ISSUED status", async () => {
     const trChain = buildChain({
       single: vi.fn(() =>
-        Promise.resolve({ data: { id: "tr-001", status: "PENDING", sbu_id: "sbu-001" }, error: null }),
+        Promise.resolve({
+          data: { id: "tr-001", status: "PENDING", sbu_id: "sbu-001" },
+          error: null,
+        }),
       ),
     });
     mockFrom.mockReturnValue(trChain);
@@ -80,10 +83,17 @@ describe("grnService.recordGRN", () => {
           // First call: status check
           return buildChain({
             single: vi.fn(() =>
-              Promise.resolve({ data: { id: "tr-001", status: "ISSUED", sbu_id: "sbu-001" }, error: null }),
+              Promise.resolve({
+                data: { id: "tr-001", status: "ISSUED", sbu_id: "sbu-001" },
+                error: null,
+              }),
             ),
-            eq: vi.fn(function (this: any) { return this; }),
-            select: vi.fn(function (this: any) { return this; }),
+            eq: vi.fn(function (this: any) {
+              return this;
+            }),
+            select: vi.fn(function (this: any) {
+              return this;
+            }),
           });
         }
         // Subsequent calls: update status

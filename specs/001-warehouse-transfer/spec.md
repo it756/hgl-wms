@@ -56,10 +56,12 @@ As a Business Unit Manager, I want transfers above configured monetary threshold
 As a Warehouse Manager, when goods are received from suppliers into the central warehouse I want to record a Supplier Goods Received Note (GRN) and have the Finance Manager approve the GRN before stock levels attributable to an SBU are increased.
 
 **Independent Tests**:
+
 - Create a transfer above the configured finance threshold; verify it is created in `PENDING_APPROVAL` and visible to the Finance Manager for approval. Verify that until finance approval is granted the Warehouse Manager cannot issue the transfer.
 - Create a Supplier GRN; verify Warehouse Manager records supplier receipt and it remains in `AWAITING_FINANCE_APPROVAL` until Finance Manager approves; only after approval are stock levels allocated to SBUs and inventory counts adjusted.
 
 **Acceptance Scenarios**:
+
 1. Given a transfer requiring finance approval, when the Finance Manager approves, then the transfer moves to `APPROVED_FOR_ISSUE` and the Warehouse Manager may record an issuance.
 2. Given a Supplier GRN recorded by the Warehouse Manager, when Finance Manager approves, then stock levels are incremented and `GRN_APPROVED` status is recorded; if Finance rejects, the GRN remains flagged and stock is not changed.
 
@@ -71,6 +73,7 @@ As a Warehouse Manager, when goods are received from suppliers into the central 
 - `finance_approval_scope`: either `global` or `per_sbu` (default `global`). If `per_sbu`, SBUs may set custom thresholds via Admin UI.
 
 Acceptance behavior:
+
 - Transfers with `estimated_value >= finance_approval_threshold` and `requires_finance_approval = true` must enter `PENDING_APPROVAL` and remain non-issuable until approved by a Finance Manager.
 
 ### Edge Cases

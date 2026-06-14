@@ -34,7 +34,7 @@ Phase 2 — Foundational (T006–T013)
 - DB schema and Supabase SQL migrations (T006, T013)
 - Authentication + RBAC middleware (T007, T008)
 - Core models: User, SBU, Product (T009)
- - Extend `User` model and admin UI to support `Finance Manager` role and RBAC scopes (T046)
+- Extend `User` model and admin UI to support `Finance Manager` role and RBAC scopes (T046)
 - Audit service (T010) and Notification model/service (T011)
 - Email config and templates (T012)
 
@@ -44,7 +44,7 @@ Phase 3 — Transfer Request Flow (T014–T020)
 - API endpoint `POST /api/transfer-requests` (T017)
 - Frontend forms and list views (T018–T019)
 - Integration tests (T020)
- - Add finance-approval UI and server endpoints for reviewing and approving requests (T047)
+- Add finance-approval UI and server endpoints for reviewing and approving requests (T047)
 
 Phase 4 — Issuance (T021–T025)
 
@@ -52,14 +52,14 @@ Phase 4 — Issuance (T021–T025)
 - API endpoint `POST /api/issuances` (T023)
 - Warehouse queue UI (T024)
 - Tests (T025)
- - Update issuance flow to respect finance approvals (no issuance until `APPROVED_FOR_ISSUE`) and record approval metadata (T043)
+- Update issuance flow to respect finance approvals (no issuance until `APPROVED_FOR_ISSUE`) and record approval metadata (T043)
 
 Phase 5 — GRN (T026–T030)
 
 - GRN models and service (T026–T027)
 - API endpoint `POST /api/grns` (T028)
 - GRN UI and tests (T029–T030)
- - Add Supplier GRN flow: Warehouse Manager records supplier receipt which remains `AWAITING_FINANCE_APPROVAL` until Finance Manager approves; stock increment is gated behind Finance approval (T048, T048a)
+- Add Supplier GRN flow: Warehouse Manager records supplier receipt which remains `AWAITING_FINANCE_APPROVAL` until Finance Manager approves; stock increment is gated behind Finance approval (T048, T048a)
 
 Phase 6 — Cross-cutting & Admin (T031–T036)
 
@@ -68,6 +68,7 @@ Phase 6 — Cross-cutting & Admin (T031–T036)
 Phase 7 — Tests & Polish (T037–T041)
 
 New Acceptance Criteria (Finance)
+
 - Transfers flagged `requires_finance_approval` must remain non-issuable until a Finance Manager approves; include integration tests in M2.
 - Supplier GRNs only increment SBU-attributable stock after Finance approval; rejections must be auditable and notify relevant parties.
 

@@ -20,7 +20,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cannot deactivate your own account" }, { status: 400 });
   }
 
-  await supabaseAdmin.from("profiles").update({ is_active: false, updated_at: new Date().toISOString() }).eq("id", user_id);
+  await supabaseAdmin
+    .from("profiles")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("id", user_id);
   await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "876600h" }); // ~100 years
 
   return NextResponse.json({ message: "User deactivated" });

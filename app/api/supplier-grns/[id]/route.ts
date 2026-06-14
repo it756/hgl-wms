@@ -58,8 +58,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const body = await req.json();
-  const { supplier_name, supplier_invoice_reference, invoice_amount, date_received, sbu_id, items } =
-    body;
+  const {
+    supplier_name,
+    supplier_invoice_reference,
+    invoice_amount,
+    date_received,
+    sbu_id,
+    items,
+  } = body;
 
   if (!supplier_name || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json(
@@ -91,7 +97,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     unit_cost: item.unit_cost ?? null,
   }));
 
-  const { error: liError } = await supabaseAdmin.from("supplier_grn_line_items").insert(lineInserts);
+  const { error: liError } = await supabaseAdmin
+    .from("supplier_grn_line_items")
+    .insert(lineInserts);
   if (liError) throw liError;
 
   await writeAuditLog({

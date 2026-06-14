@@ -109,28 +109,48 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             id: 1,
             type: "critical",
             title: "Critical Stock Alert",
-            message: "SKU: HZ-9902-X has dropped below safety levels.",
+            message: "Stock level for SKU HZ-9902-X has dropped below the safety threshold of 50 units. Immediate replenishment required.",
             time: "10:42 AM",
             read: false,
+            entity: "HZ-9902-X",
+            entity_label: "View Product",
+            link: "/admin/products",
           },
           {
             id: 2,
             type: "delay",
-            title: "Outbound Delay Detected",
-            message: "Carrier SwiftLogistics reported a break-down.",
+            title: "Transfer Request Pending",
+            message: "Transfer request TR-2024-0042 from Finance & Admin SBU has been awaiting warehouse approval for over 24 hours.",
             time: "09:15 AM",
             read: false,
+            entity: "TR-2024-0042",
+            entity_label: "View Request",
+            link: "/warehouse/queue",
           },
           {
             id: 3,
+            type: "return",
+            title: "Return Request Submitted",
+            message: "IT Supplies SBU submitted return RET-0089 for 12 units of Engine Oil 10W-40. Pending BU Manager approval.",
+            time: "08:30 AM",
+            read: false,
+            entity: "RET-0089",
+            entity_label: "View Return",
+            link: "/returns/approvals",
+          },
+          {
+            id: 4,
             type: "system",
             title: "System Maintenance Completed",
-            message: "The Warehouse Optimization Engine v4.2.1 is now live.",
+            message: "The Warehouse Optimization Engine v4.2.1 is now live. Batch issuance performance improved by 30%.",
             time: "Yesterday",
             read: true,
+            entity: null,
+            entity_label: null,
+            link: null,
           },
         ]);
-        setUnreadCount(2);
+        setUnreadCount(3);
         return;
       }
       const res = await fetch("/api/notifications", {
@@ -277,7 +297,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <Menu className="w-6 h-6" />
             </button>
             <h2 className="font-bold text-lg md:text-xl text-on-surface">
-              Good morning, {userName.split(" ")[0]}
+              Good Day, {userName.split(" ")[0]}
             </h2>
             <div className="h-6 w-px bg-outline-variant hidden sm:block"></div>
             <div className="bg-surface-container-low border border-outline-variant text-[11px] md:text-xs text-on-surface-variant px-3 py-1 rounded-full font-bold hidden sm:flex items-center gap-2">
@@ -315,17 +335,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       All Alerts ({unreadCount})
                     </Link>
                   </div>
-                  <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                  <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
                     {notifications.map((n) => (
                       <div
                         key={n.id}
-                        className="p-2 bg-slate-50 border border-slate-100 rounded-lg flex flex-col gap-1"
+                        className={`p-2.5 border rounded-lg flex flex-col gap-1.5 ${
+                          n.read ? "bg-slate-50 border-slate-100" : "bg-white border-slate-200"
+                        }`}
                       >
                         <div className="flex justify-between items-center">
                           <span
                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
                               n.type === "critical"
                                 ? "bg-red-50 text-red-700"
+                                : n.type === "return"
+                                ? "bg-amber-50 text-amber-700"
+                                : n.type === "system"
+                                ? "bg-slate-100 text-slate-600"
                                 : "bg-blue-50 text-sky-700"
                             }`}
                           >
@@ -333,7 +359,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           </span>
                           <span className="text-[10px] text-slate-400 font-mono">{n.time}</span>
                         </div>
-                        <p className="text-xs text-slate-600 line-clamp-2">{n.message}</p>
+                        <p className="text-xs text-slate-600 line-clamp-3">{n.message}</p>
+                        {(n.entity || n.link) && (
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-0.5">
+                            {n.entity && (
+                              <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                                {n.entity}
+                              </span>
+                            )}
+                            {n.link && (
+                              <Link
+                                href={n.link}
+                                onClick={() => setNotificationsOpen(false)}
+                                className="text-[10px] font-bold text-primary hover:underline ml-auto"
+                              >
+                                {n.entity_label ?? "View"} →
+                              </Link>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
