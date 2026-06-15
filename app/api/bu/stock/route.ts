@@ -55,11 +55,23 @@ export async function GET(req: Request) {
       // Explicit filter takes precedence
       effectiveSbuId = sbuIdParam;
     } else {
-      // Fall back to the admin's own SBU assignment if present
+      // Try JWT metadata first (fast), then profiles table (always up to date)
       effectiveSbuId = (user.user_metadata as any)?.sbu_id ?? null;
+      if (!effectiveSbuId) {
+        const { data: profile, error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .select("sbu_id")
+          .eq("id", user.id)
+          .single();
+        if (profileError) {
+          console.error("Failed to fetch profile for fallback sbu_id:", profileError);
+          return NextResponse.json({ error: "Unable to determine SBU" }, { status: 500 });
+        }
+        effectiveSbuId = profile?.sbu_id ?? null;
+      }
     }
   }
-  // If privileged, no sbu_id param, and no sbu_id in metadata → return all SBUs
+  // If privileged, no sbu_id param, and no sbu_id anywhere → return all SBUs
 
   let query = supabaseAdmin
     .from("sbu_stock")

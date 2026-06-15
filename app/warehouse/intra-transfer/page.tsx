@@ -115,7 +115,9 @@ export default function IntraTransferPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create transfer");
-      setSuccess(`Intra-transfer ${data.reference_number} recorded`);
+      setSuccess(
+        `Intra-transfer ${data.reference_number} submitted — pending Finance approval`,
+      );
       setProductId("");
       setQuantity(0);
       setToSbuId("");
@@ -136,9 +138,9 @@ export default function IntraTransferPage() {
           <h1 className="text-xl font-extrabold text-slate-800">Intra-Warehouse Transfers</h1>
         </div>
         <p className="text-xs text-slate-500 max-w-2xl">
-          Reassign ownership of warehouse stock to a Strategic Business Unit. The transfer is
-          immediate — quantity is decremented from the warehouse pool and recorded against the
-          receiving SBU.
+          Reassign ownership of warehouse stock to a Strategic Business Unit. Transfers require
+          Finance approval before stock is decremented — the receiving SBU is notified once
+          approved.
         </p>
 
         {/* Form */}
@@ -300,8 +302,18 @@ export default function IntraTransferPage() {
                       <td className="px-4 py-2 text-right font-bold">{t.quantity}</td>
                       <td className="px-4 py-2">{t.to_sbu?.name ?? "—"}</td>
                       <td className="px-4 py-2">
-                        <span className="inline-block px-2 py-0.5 rounded bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold text-[10px]">
-                          {t.status}
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded font-bold text-[10px] ${
+                            t.status === "COMPLETED"
+                              ? "bg-emerald-50 border border-emerald-100 text-emerald-700"
+                              : t.status === "PENDING_FINANCE_APPROVAL"
+                                ? "bg-amber-50 border border-amber-200 text-amber-700"
+                                : "bg-slate-100 border border-slate-200 text-slate-500"
+                          }`}
+                        >
+                          {t.status === "PENDING_FINANCE_APPROVAL"
+                            ? "Pending Finance"
+                            : t.status}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-slate-500">

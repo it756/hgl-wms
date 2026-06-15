@@ -5,9 +5,10 @@ import { createNotification } from "../../../../lib/services/notificationService
 
 /**
  * POST /api/finance/approvals
- * Finance Manager approves or rejects a transfer request, supplier GRN, or return request.
+ * Finance Manager approves or rejects a transfer request, supplier GRN, return request,
+ * or intra-warehouse transfer.
  *
- * Body: { entity_type: "transfer_request" | "supplier_grn" | "return_request",
+ * Body: { entity_type: "transfer_request" | "supplier_grn" | "return_request" | "intra_transfer",
  *         entity_id: string, action: "approve" | "reject", notes?: string }
  */
 export async function POST(req: Request) {
@@ -257,6 +258,97 @@ export async function POST(req: Request) {
     });
   }
 
+  if (entity_type === "intra_transfer") {
+    const { data: iwt, error: fetchError } = await supabaseAdmin
+      .from("intra_warehouse_transfers")
+      .select(
+        `id, reference_number, status, product_id, quantity, from_sbu_id, to_sbu_id, notes,
+         products ( id, name, sku, unit_of_measure ),
+         to_sbu:sbus!intra_warehouse_transfers_to_sbu_id_fkey ( id, name, code ),
+         from_sbu:sbus!intra_warehouse_transfers_from_sbu_id_fkey ( id, name, code )`,
+      )
+      .eq("id", entity_id)
+      .single();
+
+    if (fetchError || !iwt) {
+      return NextResponse.json({ error: "Intra-transfer not found" }, { status: 404 });
+    }
+    if ((iwt as any).status !== "PENDING_FINANCE_APPROVAL") {
+      return NextResponse.json(
+        {
+          error: `Intra-transfer is not awaiting approval. Current status: ${(iwt as any).status}`,
+        },
+        { status: 409 },
+      );
+    }
+
+    const ref = (iwt as any).reference_number as string;
+
+    if (action === "approve") {
+      const { error: rpcError } = await supabaseAdmin.rpc("approve_intra_transfer", {
+        p_transfer_id: entity_id,
+        p_approved_by: user.id,
+        p_notes: notes ?? null,
+      });
+
+      if (rpcError) {
+        console.error("approve_intra_transfer RPC failed", rpcError);
+        return NextResponse.json({ error: rpcError.message }, { status: 400 });
+      }
+
+      // Notify both Warehouse Manager and BU Manager of the receiving SBU
+      await Promise.all([
+        createNotification({
+          user_role: "WAREHOUSE_MANAGER",
+          type: "intra_transfer_approved",
+          message: `Intra-transfer ${ref} approved by Finance — stock updated`,
+          related_entity_id: entity_id,
+          dispatchChannels: true,
+        }),
+        createNotification({
+          user_role: "BU_MANAGER",
+          type: "intra_transfer_approved",
+          message: `Intra-transfer ${ref} approved — stock has been allocated to your SBU`,
+          related_entity_id: entity_id,
+        }),
+      ]).catch((e) => console.error("intra-transfer approval notify failed", e));
+    } else {
+      const { error: updateError } = await supabaseAdmin
+        .from("intra_warehouse_transfers")
+        .update({
+          status: "CANCELLED",
+          finance_approved_by: user.id,
+          finance_approved_at: new Date().toISOString(),
+          finance_notes: notes ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", entity_id);
+
+      if (updateError) throw updateError;
+
+      await createNotification({
+        user_role: "WAREHOUSE_MANAGER",
+        type: "intra_transfer_rejected",
+        message: `Intra-transfer ${ref} rejected by Finance${notes ? `: ${notes}` : ""}`,
+        related_entity_id: entity_id,
+        dispatchChannels: true,
+      });
+    }
+
+    await writeAuditLog({
+      entity_type: "intra_warehouse_transfer",
+      entity_id,
+      action: `finance_${action}`,
+      performed_by: user.id,
+      new_value: { notes },
+    });
+
+    return NextResponse.json({
+      id: entity_id,
+      status: action === "approve" ? "COMPLETED" : "CANCELLED",
+    });
+  }
+
   return NextResponse.json({ error: `Unknown entity_type: ${entity_type}` }, { status: 400 });
 }
 
@@ -281,6 +373,7 @@ export async function GET(req: Request) {
     grnsResult,
     proposalsResult,
     returnsResult,
+    intraTransfersResult,
     approvedTodayResult,
     rejectedTodayResult,
   ] = await Promise.all([
@@ -321,6 +414,17 @@ export async function GET(req: Request) {
       .eq("status", "AWAITING_FINANCE_APPROVAL")
       .order("created_at", { ascending: false }),
     supabaseAdmin
+      .from("intra_warehouse_transfers")
+      .select(
+        `id, reference_number, status, product_id, quantity, from_sbu_id, to_sbu_id,
+         notes, transferred_by, transfer_date, created_at,
+         products ( id, name, sku, unit_of_measure, unit_cost ),
+         to_sbu:sbus!intra_warehouse_transfers_to_sbu_id_fkey ( id, name, code ),
+         from_sbu:sbus!intra_warehouse_transfers_from_sbu_id_fkey ( id, name, code )`,
+      )
+      .eq("status", "PENDING_FINANCE_APPROVAL")
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
       .from("transfer_requests")
       .select("id", { count: "exact", head: true })
       .eq("status", "APPROVED_FOR_ISSUE")
@@ -337,10 +441,16 @@ export async function GET(req: Request) {
   const raisedByIds = [...new Set(transfers.map((t: any) => t.raised_by).filter(Boolean))];
   let profileMap: Record<string, string> = {};
 
-  // Collect all user IDs needing name resolution (transfers + variance proposals)
+  // Collect all user IDs needing name resolution (transfers + variance proposals + intra-transfers)
   const proposals = proposalsResult.data ?? [];
+  const intraTransfers = intraTransfersResult.data ?? [];
   const proposerIds = [...new Set(proposals.map((p: any) => p.proposed_by).filter(Boolean))];
-  const allProfileIds = [...new Set([...raisedByIds, ...proposerIds])];
+  const intraTransferredByIds = [
+    ...new Set(intraTransfers.map((t: any) => t.transferred_by).filter(Boolean)),
+  ];
+  const allProfileIds = [
+    ...new Set([...raisedByIds, ...proposerIds, ...intraTransferredByIds]),
+  ];
 
   if (allProfileIds.length > 0) {
     const { data: profiles } = await supabaseAdmin
@@ -362,11 +472,17 @@ export async function GET(req: Request) {
     proposer_name: profileMap[p.proposed_by] ?? null,
   }));
 
+  const enrichedIntraTransfers = intraTransfers.map((t: any) => ({
+    ...t,
+    transferred_by_name: profileMap[t.transferred_by] ?? null,
+  }));
+
   return NextResponse.json({
     transfer_requests: enrichedTransfers,
     supplier_grns: grnsResult.data ?? [],
     variance_proposals: enrichedProposals,
     return_requests: returnsResult.data ?? [],
+    intra_transfers: enrichedIntraTransfers,
     approved_today: approvedTodayResult.count ?? 0,
     rejected_today: rejectedTodayResult.count ?? 0,
   });

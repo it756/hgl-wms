@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCurrency } from "@/lib/hooks/useCurrency";
-import { Package, Search, RefreshCw, AlertTriangle } from "lucide-react";
+import { Package, Search, RefreshCw, AlertTriangle, Building2 } from "lucide-react";
 
 interface SbuStockItem {
   sbu_id: string;
@@ -18,22 +18,58 @@ interface SbuStockItem {
   sbu_code: string;
 }
 
+interface Sbu {
+  id: string;
+  name: string;
+  code: string;
+}
+
+const PRIVILEGED_ROLES = ["ADMIN", "WAREHOUSE_MANAGER", "FINANCE_MANAGER"];
+
 export default function SbuStockPage() {
   const [items, setItems] = useState<SbuStockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sbus, setSbus] = useState<Sbu[]>([]);
+  const [sbuError, setSbuError] = useState(false);
+  const [selectedSbuId, setSelectedSbuId] = useState<string>("");
   const { currency, rate, fmt, toggleCurrency } = useCurrency();
 
   const token = () =>
     typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
+  const userRole = () =>
+    typeof window !== "undefined" ? (localStorage.getItem("user_role") ?? "") : "";
+  const storedSbuId = () =>
+    typeof window !== "undefined" ? (localStorage.getItem("user_sbu_id") ?? "") : "";
 
-  async function load() {
+  const isPrivileged = PRIVILEGED_ROLES.includes(userRole());
+
+  // Privileged roles: fetch all SBUs for the dropdown
+  useEffect(() => {
+    if (!isPrivileged) return;
+    fetch("/api/admin/sbus", { headers: { Authorization: `Bearer ${token()}` } })
+      .then((r) => r.json())
+      .then((data: Sbu[]) => {
+        setSbus(data ?? []);
+        // Default to first SBU if none selected yet
+        if (!selectedSbuId && data?.length > 0) setSelectedSbuId(data[0].id);
+      })
+      .catch(() => {
+        setSbuError(true);
+        setLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPrivileged]);
+
+  async function load(sbuOverride?: string) {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
+      const sbuId = sbuOverride ?? selectedSbuId ?? storedSbuId();
+      if (sbuId) params.set("sbu_id", sbuId);
       const res = await fetch(`/api/bu/stock?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token()}` },
       });
@@ -47,10 +83,12 @@ export default function SbuStockPage() {
     }
   }
 
+  // Load stock once selectedSbuId is set (or immediately for non-privileged)
   useEffect(() => {
+    if (isPrivileged && !selectedSbuId) return; // wait for SBU list
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedSbuId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -74,18 +112,41 @@ export default function SbuStockPage() {
         {/* Header */}
         <div>
           <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>My SBU</span>
+            <span>{isPrivileged ? "SBU Overview" : "My SBU"}</span>
             <span className="text-slate-300">/</span>
             <span className="text-primary font-bold">Stock Inventory</span>
           </div>
           <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans">
-            My Stock
+            {isPrivileged ? "SBU Stock" : "My Stock"}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Items currently held by your business unit. Only goods issued to
-            your SBU and not yet returned are shown here.
+            {isPrivileged
+              ? "Browse stock held by any SBU. Use the selector below to switch between units."
+              : "Items currently held by your business unit. Only goods issued to your SBU and not yet returned are shown here."}
           </p>
         </div>
+
+        {/* SBU selector — privileged roles only */}
+        {isPrivileged && (
+          <div className="flex items-center gap-3">
+            <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+            <select
+              value={selectedSbuId}
+              onChange={(e) => {
+                setSelectedSbuId(e.target.value);
+              }}
+              className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {sbus.length === 0 && !sbuError && <option value="">Loading SBUs…</option>}
+              {sbuError && <option value="">Failed to load SBUs</option>}
+              {sbus.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.code})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -161,7 +222,7 @@ export default function SbuStockPage() {
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
               <Package className="w-10 h-10 opacity-30" />
               <p className="text-sm font-medium">
-                {search ? "No items match your search." : "No stock held by your SBU yet."}
+                {search ? "No items match your search." : "No stock held by this SBU yet."}
               </p>
               {!search && (
                 <p className="text-xs text-slate-400 max-w-xs text-center">
@@ -177,6 +238,7 @@ export default function SbuStockPage() {
                   <th className="px-4 py-3 text-left">Product</th>
                   <th className="px-4 py-3 text-left">SKU</th>
                   <th className="px-4 py-3 text-left">UoM</th>
+                  {isPrivileged && <th className="px-4 py-3 text-left">SBU</th>}
                   <th className="px-4 py-3 text-right">Qty Held</th>
                   <th className="px-4 py-3 text-right">Unit Cost</th>
                   <th className="px-4 py-3 text-right">Total Value</th>
@@ -198,6 +260,13 @@ export default function SbuStockPage() {
                     </td>
                     <td className="px-4 py-3 text-slate-500 font-mono">{item.sku}</td>
                     <td className="px-4 py-3 text-slate-500">{item.unit_of_measure}</td>
+                    {isPrivileged && (
+                      <td className="px-4 py-3 text-slate-500">
+                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                          {item.sbu_code}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right font-semibold text-slate-800">
                       <span
                         className={
