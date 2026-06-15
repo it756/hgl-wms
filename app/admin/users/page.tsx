@@ -28,6 +28,8 @@ import {
   FileText,
   AlertCircle,
   CheckCircle2,
+  Pencil,
+  KeyRound,
 } from "lucide-react";
 
 interface UserRow {
@@ -37,6 +39,7 @@ interface UserRow {
   role: UserRole;
   sbu_id: string | null;
   is_active: boolean;
+  whatsapp_number: string | null;
 }
 
 interface SBU {
@@ -90,6 +93,20 @@ export default function UsersPage() {
 
   // CSV import state
   const [showCsvImport, setShowCsvImport] = useState(false);
+
+  // Edit user state
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editWhatsapp, setEditWhatsapp] = useState("");
+  const [editRole, setEditRole] = useState<UserRole>("UNIT_STAFF");
+  const [editSbu, setEditSbu] = useState("");
+  const [editActive, setEditActive] = useState(true);
+  const [editPassword, setEditPassword] = useState("");
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
   const [csvRows, setCsvRows] = useState<
     {
       full_name: string;
@@ -254,6 +271,51 @@ export default function UsersPage() {
       load();
     } catch (e: any) {
       setError(e.message);
+    }
+  }
+
+  function openEditModal(u: UserRow) {
+    setEditUser(u);
+    setEditName(u.full_name ?? "");
+    setEditEmail(u.email);
+    setEditWhatsapp(u.whatsapp_number ?? "");
+    setEditRole(u.role);
+    setEditSbu(u.sbu_id ?? "");
+    setEditActive(u.is_active);
+    setEditPassword("");
+    setShowEditPassword(false);
+    setEditError(null);
+  }
+
+  async function handleEditUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const body: Record<string, unknown> = {
+        full_name: editName,
+        email: editEmail,
+        whatsapp_number: editWhatsapp || null,
+        role: editRole,
+        sbu_id: editSbu || null,
+        is_active: editActive,
+      };
+      if (editPassword) body.password = editPassword;
+
+      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user");
+      setEditUser(null);
+      load();
+    } catch (e: any) {
+      setEditError(e.message);
+    } finally {
+      setEditLoading(false);
     }
   }
 
@@ -908,18 +970,26 @@ export default function UsersPage() {
                           </span>
                         </td>
                         <td className="px-6 py-3.5 text-right">
-                          {u.is_active ? (
+                          <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => handleDeactivate(u.id)}
-                              className="px-2 py-1 border border-rose-100 hover:bg-rose-50 text-rose-600 font-bold rounded-lg cursor-pointer transition-all flex items-center justify-end gap-1 text-[11px] ml-auto"
+                              onClick={() => openEditModal(u)}
+                              className="px-2 py-1 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[11px]"
                             >
-                              <Power className="w-3 h-3" /> Deactivate
+                              <Pencil className="w-3 h-3" /> Edit
                             </button>
-                          ) : (
-                            <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">
-                              Suspended
-                            </span>
-                          )}
+                            {u.is_active ? (
+                              <button
+                                onClick={() => handleDeactivate(u.id)}
+                                className="px-2 py-1 border border-rose-100 hover:bg-rose-50 text-rose-600 font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[11px]"
+                              >
+                                <Power className="w-3 h-3" /> Deactivate
+                              </button>
+                            ) : (
+                              <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">
+                                Suspended
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -930,6 +1000,227 @@ export default function UsersPage() {
           )}
         </div>
       </div>
+
+      {/* ── Edit Staff Modal ── */}
+      {editUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditUser(null);
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl border border-slate-200/80 flex flex-col max-h-[90vh] overflow-y-auto">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-[#005c55]" />
+                <h2 className="font-extrabold text-[#1E293B] text-sm">Edit Staff Account</h2>
+              </div>
+              <button
+                onClick={() => setEditUser(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditUser} className="p-6 flex flex-col gap-4">
+              {editError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-3.5 py-2 text-xs font-bold flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  {editError}
+                </div>
+              )}
+
+              {/* Name + WhatsApp */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      required
+                      placeholder="Full name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    WhatsApp Number
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="tel"
+                      placeholder="+260977000000"
+                      value={editWhatsapp}
+                      onChange={(e) => setEditWhatsapp(e.target.value)}
+                      className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    required
+                    type="email"
+                    placeholder="staff@harvest.co.ke"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Role + SBU */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    Access Role
+                  </label>
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value as UserRole)}
+                      className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_DISPLAY_NAMES[r]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    SBU Association
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={editSbu}
+                      onChange={(e) => setEditSbu(e.target.value)}
+                      className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
+                    >
+                      <option value="">— Independent —</option>
+                      {sbus.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active status toggle */}
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Account Status
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditActive(true)}
+                    className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-all ${
+                      editActive
+                        ? "bg-teal-50 border-teal-300 text-teal-800"
+                        : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditActive(false)}
+                    disabled={editUser?.id === undefined}
+                    className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-all ${
+                      !editActive
+                        ? "bg-rose-50 border-rose-300 text-rose-700"
+                        : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Deactivated
+                  </button>
+                </div>
+              </div>
+
+              {/* Password reset section */}
+              <div className="flex flex-col gap-1 border-t border-slate-100 pt-4">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                  Reset Password{" "}
+                  <span className="text-slate-300 font-normal normal-case tracking-normal">
+                    (leave blank to keep unchanged)
+                  </span>
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type={showEditPassword ? "text" : "password"}
+                    placeholder="New password (min 8 chars, 1 number, 1 special)"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    className="w-full pl-9 pr-10 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-400 font-medium text-slate-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword((s) => !s)}
+                    aria-label={showEditPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showEditPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 justify-end border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditUser(null)}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-1"
+                >
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="px-4 py-2 bg-[#005c55] hover:bg-[#004740] disabled:opacity-55 text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  {editLoading ? (
+                    <span className="animate-spin rounded-full h-3.5 w-3.5 border-t-2 border-white" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

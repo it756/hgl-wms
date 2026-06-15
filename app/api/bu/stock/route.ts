@@ -35,20 +35,37 @@ export async function GET(req: Request) {
   let effectiveSbuId: string | null = null;
 
   if (sbuScoped) {
-    // Non-privileged users are always scoped to their own SBU
+    // Non-privileged users are always scoped to their own SBU.
+    // Prefer user_metadata (fast, in JWT), fall back to profiles table (source of truth).
     effectiveSbuId = (user.user_metadata as any)?.sbu_id ?? null;
+    if (!effectiveSbuId) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("sbu_id")
+        .eq("id", user.id)
+        .single();
+      effectiveSbuId = profile?.sbu_id ?? null;
+    }
     if (!effectiveSbuId) {
       // User has no SBU assigned — return empty stock list
       return NextResponse.json([], { status: 200 });
     }
-  } else if (privileged && sbuIdParam) {
-    effectiveSbuId = sbuIdParam;
+  } else if (privileged) {
+    if (sbuIdParam) {
+      // Explicit filter takes precedence
+      effectiveSbuId = sbuIdParam;
+    } else {
+      // Fall back to the admin's own SBU assignment if present
+      effectiveSbuId = (user.user_metadata as any)?.sbu_id ?? null;
+    }
   }
-  // If privileged and no sbu_id param, effectiveSbuId remains null → return all SBUs
+  // If privileged, no sbu_id param, and no sbu_id in metadata → return all SBUs
 
   let query = supabaseAdmin
     .from("sbu_stock")
-    .select("sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, sbu_name, sbu_code")
+    .select(
+      "sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, sbu_name, sbu_code",
+    )
     .order("product_name", { ascending: true });
 
   if (effectiveSbuId) {

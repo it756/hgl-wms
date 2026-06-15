@@ -35,6 +35,14 @@ export async function GET(req: Request) {
   if (sbuScoped) {
     effectiveSbuId = (user.user_metadata as any)?.sbu_id ?? null;
     if (!effectiveSbuId) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("sbu_id")
+        .eq("id", user.id)
+        .single();
+      effectiveSbuId = profile?.sbu_id ?? null;
+    }
+    if (!effectiveSbuId) {
       return NextResponse.json([], { status: 200 });
     }
   } else if (privileged && sbuIdParam) {

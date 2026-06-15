@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -48,6 +48,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Listen for auth state changes (token expiry, sign-out, etc.)
@@ -98,6 +100,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     return () => subscription.unsubscribe();
   }, [pathname]);
+
+  // Close avatar popover when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   async function fetchNotifications() {
     try {
@@ -273,16 +286,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           })}
         </nav>
 
-        {/* Bottom profile actions */}
-        <div className="p-4 border-t border-white/10 mt-auto flex flex-col gap-1">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3.5 py-3 px-4 w-full rounded text-sm text-rose-300 hover:bg-slate-800 transition-all font-semibold"
-          >
-            <LogOut className="w-5 h-5 text-rose-400" />
-            Sign Out
-          </button>
-        </div>
+
       </aside>
 
       {/* Main content wrapper */}
@@ -385,22 +389,56 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               )}
             </div>
 
-            {/* Profile Avatar */}
-            <div className="flex items-center gap-3 border-l border-outline-variant pl-4 py-1">
+            {/* Profile Avatar with popover */}
+            <div className="relative flex items-center gap-3 border-l border-outline-variant pl-4 py-1" ref={avatarRef}>
               <div className="text-right hidden md:block">
                 <p className="font-semibold text-sm text-on-surface leading-none">{userName}</p>
                 <p className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2.5 py-0.5 rounded-full mt-1 inline-block border border-slate-200">
                   {userRole}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold border-2 border-primary font-mono text-sm shadow-sm select-none">
+              <button
+                onClick={() => setAvatarMenuOpen((v) => !v)}
+                className="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold border-2 border-primary font-mono text-sm shadow-sm select-none hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Open profile menu"
+              >
                 {userName
                   .split(" ")
                   .map((w) => w[0])
                   .join("")
                   .slice(0, 2)
                   .toUpperCase()}
-              </div>
+              </button>
+
+              {/* Avatar popover */}
+              {avatarMenuOpen && (
+                <div className="absolute right-0 top-14 w-64 bg-white border border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                    <p className="font-bold text-sm text-[#1E293B] truncate">{userName}</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">{userRole}</p>
+                  </div>
+                  {/* Actions */}
+                  <div className="py-1">
+                    <Link
+                      href="/profile"
+                      onClick={() => setAvatarMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                    >
+                      <User className="w-4 h-4 text-slate-500" />
+                      My Profile
+                    </Link>
+                    <div className="border-t border-slate-100 my-1" />
+                    <button
+                      onClick={() => { setAvatarMenuOpen(false); handleLogout(); }}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 transition-colors font-medium w-full text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -446,7 +484,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 );
               })}
             </nav>
-            <div className="border-t border-white/10 pt-4 mt-auto">
+            <div className="border-t border-white/10 pt-4 mt-auto flex flex-col gap-1">
+              <Link
+                href="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3.5 py-2.5 px-4 text-sm text-slate-300 opacity-80 hover:opacity-100 hover:bg-slate-800 rounded transition-all font-semibold"
+              >
+                <User className="w-5 h-5" />
+                My Profile
+              </Link>
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);

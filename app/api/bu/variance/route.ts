@@ -15,8 +15,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const sbuId = (user.user_metadata as any)?.sbu_id ?? null;
+  let sbuId = (user.user_metadata as any)?.sbu_id ?? null;
   // BU_MANAGER must be scoped to their SBU; ADMIN sees all
+  if (role === "BU_MANAGER" && !sbuId) {
+    // Fall back to profiles table (source of truth)
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("sbu_id")
+      .eq("id", user.id)
+      .single();
+    sbuId = profile?.sbu_id ?? null;
+  }
   if (role === "BU_MANAGER" && !sbuId) {
     return NextResponse.json({ error: "No SBU assigned to this account" }, { status: 400 });
   }
