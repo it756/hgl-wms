@@ -37,6 +37,19 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+interface HeaderNotification {
+  id: string | number;
+  type: string;
+  title: string;
+  message: string;
+  time?: string;
+  read?: boolean;
+  is_read?: boolean;
+  entity?: string | null;
+  entity_label?: string | null;
+  link?: string | null;
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -46,10 +59,87 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportName, setSupportName] = useState("");
+  const [supportIssue, setSupportIssue] = useState("");
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [supportError, setSupportError] = useState<string | null>(null);
+  const [supportSuccess, setSupportSuccess] = useState<string | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
+
+  async function fetchNotifications() {
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        // dummy mock notifications if no live backend response
+        setNotifications([
+          {
+            id: 1,
+            type: "critical",
+            title: "Critical Stock Alert",
+            message:
+              "Stock level for SKU HZ-9902-X has dropped below the safety threshold of 50 units. Immediate replenishment required.",
+            time: "10:42 AM",
+            read: false,
+            entity: "HZ-9902-X",
+            entity_label: "View Product",
+            link: "/admin/products",
+          },
+          {
+            id: 2,
+            type: "delay",
+            title: "Transfer Request Pending",
+            message:
+              "Transfer request TR-2024-0042 from Finance & Admin SBU has been awaiting warehouse approval for over 24 hours.",
+            time: "09:15 AM",
+            read: false,
+            entity: "TR-2024-0042",
+            entity_label: "View Request",
+            link: "/warehouse/queue",
+          },
+          {
+            id: 3,
+            type: "return",
+            title: "Return Request Submitted",
+            message:
+              "IT Supplies SBU submitted return RET-0089 for 12 units of Engine Oil 10W-40. Pending BU Manager approval.",
+            time: "08:30 AM",
+            read: false,
+            entity: "RET-0089",
+            entity_label: "View Return",
+            link: "/returns/approvals",
+          },
+          {
+            id: 4,
+            type: "system",
+            title: "System Maintenance Completed",
+            message:
+              "The Warehouse Optimization Engine v4.2.1 is now live. Batch issuance performance improved by 30%.",
+            time: "Yesterday",
+            read: true,
+            entity: null,
+            entity_label: null,
+            link: null,
+          },
+        ]);
+        setUnreadCount(3);
+        return;
+      }
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as HeaderNotification[];
+        setNotifications(data || []);
+        setUnreadCount(data.filter((n) => !n.is_read).length);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   useEffect(() => {
     // Listen for auth state changes (token expiry, sign-out, etc.)
@@ -65,7 +155,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     });
 
     // Verify session is still valid on mount
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (
         !session &&
         localStorage.getItem("access_token") &&
@@ -99,7 +189,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     });
 
     return () => subscription.unsubscribe();
-  }, [pathname]);
+  }, [pathname, router]);
 
   // Close avatar popover when clicking outside
   useEffect(() => {
@@ -112,77 +202,61 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  async function fetchNotifications() {
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        // dummy mock notifications if no live backend response
-        setNotifications([
-          {
-            id: 1,
-            type: "critical",
-            title: "Critical Stock Alert",
-            message: "Stock level for SKU HZ-9902-X has dropped below the safety threshold of 50 units. Immediate replenishment required.",
-            time: "10:42 AM",
-            read: false,
-            entity: "HZ-9902-X",
-            entity_label: "View Product",
-            link: "/admin/products",
-          },
-          {
-            id: 2,
-            type: "delay",
-            title: "Transfer Request Pending",
-            message: "Transfer request TR-2024-0042 from Finance & Admin SBU has been awaiting warehouse approval for over 24 hours.",
-            time: "09:15 AM",
-            read: false,
-            entity: "TR-2024-0042",
-            entity_label: "View Request",
-            link: "/warehouse/queue",
-          },
-          {
-            id: 3,
-            type: "return",
-            title: "Return Request Submitted",
-            message: "IT Supplies SBU submitted return RET-0089 for 12 units of Engine Oil 10W-40. Pending BU Manager approval.",
-            time: "08:30 AM",
-            read: false,
-            entity: "RET-0089",
-            entity_label: "View Return",
-            link: "/returns/approvals",
-          },
-          {
-            id: 4,
-            type: "system",
-            title: "System Maintenance Completed",
-            message: "The Warehouse Optimization Engine v4.2.1 is now live. Batch issuance performance improved by 30%.",
-            time: "Yesterday",
-            read: true,
-            entity: null,
-            entity_label: null,
-            link: null,
-          },
-        ]);
-        setUnreadCount(3);
-        return;
-      }
-      const res = await fetch("/api/notifications", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data || []);
-        setUnreadCount(data.filter((n: any) => !n.is_read).length);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   async function handleLogout() {
     await supabase.auth.signOut();
     localStorage.clear();
     router.push("/");
+  }
+
+  function openSupportDialog() {
+    setSupportName(userName === "User" ? "" : userName);
+    setSupportIssue("");
+    setSupportError(null);
+    setSupportSuccess(null);
+    setSupportOpen(true);
+    setNotificationsOpen(false);
+  }
+
+  async function handleSupportSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSupportError(null);
+    setSupportSuccess(null);
+
+    const name = supportName.trim();
+    const issue = supportIssue.trim();
+
+    if (!name || !issue) {
+      setSupportError("Please enter your name and the issue you need support with.");
+      return;
+    }
+
+    setSupportSubmitting(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("/api/support/issues", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name,
+          issue,
+          role: userRole,
+          sbu: sbuName,
+          path: pathname,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send support request");
+
+      setSupportSuccess("Support request sent.");
+      setSupportIssue("");
+    } catch (err: unknown) {
+      setSupportError(err instanceof Error ? err.message : "Could not send support request");
+    } finally {
+      setSupportSubmitting(false);
+    }
   }
 
   // Define sidebar menu options by role
@@ -285,8 +359,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             );
           })}
         </nav>
-
-
       </aside>
 
       {/* Main content wrapper */}
@@ -322,7 +394,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse"></span>
                 )}
               </button>
-              <button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors hidden sm:block">
+              <button
+                onClick={openSupportDialog}
+                className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors hidden sm:block"
+                aria-label="Open support request dialog"
+                type="button"
+              >
                 <HelpCircle className="w-5 h-5" />
               </button>
 
@@ -353,10 +430,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                               n.type === "critical"
                                 ? "bg-red-50 text-red-700"
                                 : n.type === "return"
-                                ? "bg-amber-50 text-amber-700"
-                                : n.type === "system"
-                                ? "bg-slate-100 text-slate-600"
-                                : "bg-blue-50 text-sky-700"
+                                  ? "bg-amber-50 text-amber-700"
+                                  : n.type === "system"
+                                    ? "bg-slate-100 text-slate-600"
+                                    : "bg-blue-50 text-sky-700"
                             }`}
                           >
                             {n.title}
@@ -390,7 +467,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Profile Avatar with popover */}
-            <div className="relative flex items-center gap-3 border-l border-outline-variant pl-4 py-1" ref={avatarRef}>
+            <div
+              className="relative flex items-center gap-3 border-l border-outline-variant pl-4 py-1"
+              ref={avatarRef}
+            >
               <div className="text-right hidden md:block">
                 <p className="font-semibold text-sm text-on-surface leading-none">{userName}</p>
                 <p className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2.5 py-0.5 rounded-full mt-1 inline-block border border-slate-200">
@@ -430,7 +510,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </Link>
                     <div className="border-t border-slate-100 my-1" />
                     <button
-                      onClick={() => { setAvatarMenuOpen(false); handleLogout(); }}
+                      onClick={() => {
+                        setAvatarMenuOpen(false);
+                        handleLogout();
+                      }}
                       className="flex items-center gap-3 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 transition-colors font-medium w-full text-left"
                     >
                       <LogOut className="w-4 h-4" />
@@ -446,6 +529,89 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Actual Dynamic Workspace */}
         <main className="flex-1 p-5 md:p-8 max-w-[1400px] w-full mx-auto">{children}</main>
       </div>
+
+      {supportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4">
+          <div className="w-full max-w-md rounded-xl border border-outline-variant bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-outline-variant px-5 py-4">
+              <div>
+                <h3 className="text-base font-bold text-on-surface">Log a support issue</h3>
+              </div>
+              <button
+                onClick={() => setSupportOpen(false)}
+                className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close support request dialog"
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSupportSubmit} className="flex flex-col gap-4 px-5 py-5">
+              {supportError && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+                  {supportError}
+                </div>
+              )}
+              {supportSuccess && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
+                  {supportSuccess}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label
+                  className="text-xs font-bold uppercase tracking-wider text-slate-600"
+                  htmlFor="support-name"
+                >
+                  Name
+                </label>
+                <input
+                  id="support-name"
+                  className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2.5 text-sm text-on-surface transition-all placeholder:text-outline-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  value={supportName}
+                  onChange={(e) => setSupportName(e.target.value)}
+                  placeholder="Your name"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label
+                  className="text-xs font-bold uppercase tracking-wider text-slate-600"
+                  htmlFor="support-issue"
+                >
+                  Issue
+                </label>
+                <textarea
+                  id="support-issue"
+                  className="min-h-32 w-full resize-y rounded-lg border border-outline-variant bg-white px-3 py-2.5 text-sm text-on-surface transition-all placeholder:text-outline-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  value={supportIssue}
+                  onChange={(e) => setSupportIssue(e.target.value)}
+                  placeholder="Describe the issue you need support with"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSupportOpen(false)}
+                  className="rounded-lg border border-outline-variant px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={supportSubmitting}
+                  className="rounded-lg bg-[#0F766E] px-4 py-2 text-sm font-bold text-white hover:bg-primary disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {supportSubmitting ? "Sending..." : "Send issue"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Drawer Slide-out */}
       {mobileMenuOpen && (

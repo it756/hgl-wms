@@ -17,6 +17,8 @@ import {
   Loader2,
   UserPlus,
   Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface SBUUnit {
@@ -68,6 +70,7 @@ export default function BUUnitsPage() {
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffEmail, setNewStaffEmail] = useState("");
   const [newStaffPassword, setNewStaffPassword] = useState("");
+  const [showNewStaffPassword, setShowNewStaffPassword] = useState(false);
   const [newStaffUnitId, setNewStaffUnitId] = useState("");
   const [staffFormError, setStaffFormError] = useState<string | null>(null);
   const [staffFormLoading, setStaffFormLoading] = useState(false);
@@ -599,12 +602,24 @@ export default function BUUnitsPage() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                       <input
                         required
-                        type="password"
+                        type={showNewStaffPassword ? "text" : "password"}
                         value={newStaffPassword}
                         onChange={(e) => setNewStaffPassword(e.target.value)}
                         placeholder="Min 8 chars, 1 number, 1 special"
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
+                        className="w-full pl-9 pr-10 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewStaffPassword((show) => !show)}
+                        aria-label={showNewStaffPassword ? "Hide password" : "Show password"}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                      >
+                        {showNewStaffPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
