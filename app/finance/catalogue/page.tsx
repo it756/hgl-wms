@@ -73,7 +73,9 @@ export default function FinanceCataloguePage() {
         setSbus(data ?? []);
         if (data?.length > 0) setCpSbuId(data[0].id);
       })
-      .catch(() => {/* non-critical */});
+      .catch(() => {
+        /* non-critical */
+      });
   }, []);
 
   const filtered = useMemo(() => {
@@ -136,7 +138,6 @@ export default function FinanceCataloguePage() {
             <Plus className="w-4 h-4" />
             Add New Product
           </button>
-        </div>
         </div>
         <p className="text-xs text-slate-500 max-w-2xl">
           View warehouse stock, write off damaged inventory, or add new products to an SBU.
