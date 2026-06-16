@@ -44,25 +44,30 @@ export default function NotificationsPage() {
   const [markingAll, setMarkingAll] = useState(false);
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    let cancelled = false;
 
-  async function fetchNotifications() {
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch("/api/notifications", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data: Notification[] = await res.json();
-        setNotifications(data);
+    async function loadNotifications() {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch("/api/notifications", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data: Notification[] = await res.json();
+          if (!cancelled) setNotifications(data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
     }
-  }
+
+    void loadNotifications();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function markRead(id: string) {
     const token = localStorage.getItem("access_token");
@@ -149,7 +154,9 @@ export default function NotificationsPage() {
                         {formatDate(n.created_at)}
                       </span>
                     </div>
-                    <p className="text-sm text-on-surface leading-snug">{n.message}</p>
+                    <p className="text-sm text-on-surface leading-snug whitespace-pre-line">
+                      {n.message}
+                    </p>
                   </div>
                   {!n.is_read && (
                     <button

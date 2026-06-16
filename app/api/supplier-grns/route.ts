@@ -2,7 +2,16 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../lib/services/auditService";
 import { createNotification } from "../../../lib/services/notificationService";
+import { buildSupplierGrnNotificationMessage } from "../../../lib/notifications/messages";
 import type { SupplierGRNCreateInput } from "../../../lib/models/grn";
+
+interface AuthMetadata {
+  role?: string;
+}
+
+interface CreatedSupplierGrnRow {
+  id: string;
+}
 
 function generateSupplierGRNReference(): string {
   const year = new Date().getFullYear();
@@ -19,7 +28,7 @@ export async function POST(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const role = (user.user_metadata as any)?.role ?? "";
+  const role = (user.user_metadata as AuthMetadata | null)?.role ?? "";
   if (role !== "WAREHOUSE_MANAGER" && role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden: Warehouse Manager only" }, { status: 403 });
   }
@@ -61,7 +70,7 @@ export async function POST(req: Request) {
     .single();
 
   if (grnError) throw grnError;
-  const grnId = (grn as any).id;
+  const grnId = (grn as CreatedSupplierGrnRow).id;
 
   // Detect packing-list variance: any line with quantity_expected != quantity_received
   let hasPackingVariance = false;
@@ -87,28 +96,45 @@ export async function POST(req: Request) {
     .insert(lineInserts);
   if (liError) throw liError;
 
+  const baseMessage = await buildSupplierGrnNotificationMessage({
+    grnId,
+    headline: `Supplier GRN ${reference_number} requires Finance approval before stock can be updated`,
+    actorId: user.id,
+    actorLabel: role === "ADMIN" ? "Admin recorder" : "Received by",
+  });
+
   // Notify Finance Manager for approval
   await createNotification({
     user_role: "FINANCE_MANAGER",
     type: "supplier_grn_awaiting_approval",
-    message: `Supplier GRN ${reference_number} requires Finance approval before stock can be updated`,
+    message: baseMessage,
     related_entity_id: grnId,
+    dispatchChannels: true,
   });
 
   // Notify Admin + Finance silently if there was a packing variance
   if (hasPackingVariance) {
+    const varianceMessage = await buildSupplierGrnNotificationMessage({
+      grnId,
+      headline: `Packing variance detected on Supplier GRN ${reference_number}`,
+      actorId: user.id,
+      actorLabel: role === "ADMIN" ? "Admin recorder" : "Received by",
+    });
+
     await Promise.all([
       createNotification({
         user_role: "ADMIN",
         type: "supplier_grn_packing_variance",
-        message: `Packing variance detected on Supplier GRN ${reference_number}`,
+        message: varianceMessage,
         related_entity_id: grnId,
+        dispatchChannels: true,
       }),
       createNotification({
         user_role: "FINANCE_MANAGER",
         type: "supplier_grn_packing_variance",
-        message: `Packing variance detected on Supplier GRN ${reference_number}`,
+        message: varianceMessage,
         related_entity_id: grnId,
+        dispatchChannels: true,
       }),
     ]);
   }
@@ -140,7 +166,7 @@ export async function GET(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const role = (user.user_metadata as any)?.role ?? "";
+  const role = (user.user_metadata as AuthMetadata | null)?.role ?? "";
   if (!["WAREHOUSE_MANAGER", "FINANCE_MANAGER", "ADMIN"].includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

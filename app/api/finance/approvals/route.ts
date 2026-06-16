@@ -2,6 +2,45 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../lib/services/auditService";
 import { createNotification } from "../../../../lib/services/notificationService";
+import {
+  buildIntraTransferNotificationMessage,
+  buildReturnNotificationMessage,
+  buildSupplierGrnNotificationMessage,
+  buildTransferNotificationMessage,
+} from "../../../../lib/notifications/messages";
+
+interface AuthMetadata {
+  role?: string;
+}
+
+interface FinanceApprovalBody {
+  entity_type?: string;
+  entity_id?: string;
+  action?: string;
+  notes?: string;
+}
+
+interface StatusReferenceRow {
+  status: string;
+  reference_number: string;
+}
+
+interface ProfileRow {
+  id: string;
+  full_name?: string | null;
+}
+
+interface RequesterRow extends Record<string, unknown> {
+  raised_by?: string | null;
+}
+
+interface ProposalRow extends Record<string, unknown> {
+  proposed_by?: string | null;
+}
+
+interface IntraTransferListRow extends Record<string, unknown> {
+  transferred_by?: string | null;
+}
 
 /**
  * POST /api/finance/approvals
@@ -15,12 +54,12 @@ export async function POST(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const role = (user.user_metadata as any)?.role ?? "";
+  const role = (user.user_metadata as AuthMetadata | null)?.role ?? "";
   if (role !== "FINANCE_MANAGER" && role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden: Finance Manager only" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = (await req.json()) as FinanceApprovalBody;
   const { entity_type, entity_id, action, notes } = body;
 
   if (!entity_type || !entity_id || !action) {
@@ -43,9 +82,10 @@ export async function POST(req: Request) {
     if (fetchError || !tr) {
       return NextResponse.json({ error: "Transfer request not found" }, { status: 404 });
     }
-    if ((tr as any).status !== "PENDING_APPROVAL") {
+    const transfer = tr as StatusReferenceRow;
+    if (transfer.status !== "PENDING_APPROVAL") {
       return NextResponse.json(
-        { error: `Transfer is not awaiting approval. Current status: ${(tr as any).status}` },
+        { error: `Transfer is not awaiting approval. Current status: ${transfer.status}` },
         { status: 409 },
       );
     }
@@ -64,13 +104,21 @@ export async function POST(req: Request) {
 
     if (updateError) throw updateError;
 
+    const message = await buildTransferNotificationMessage({
+      transferId: entity_id,
+      headline:
+        action === "approve"
+          ? `Transfer ${transfer.reference_number} approved for issuance`
+          : `Transfer ${transfer.reference_number} rejected by Finance`,
+      actorId: user.id,
+      actorLabel: role === "ADMIN" ? "Admin approver" : "Finance approver",
+      notes,
+    });
+
     await createNotification({
       user_role: "WAREHOUSE_MANAGER",
       type: action === "approve" ? "transfer_approved_for_issue" : "transfer_rejected",
-      message:
-        action === "approve"
-          ? `Transfer ${(tr as any).reference_number} approved for issuance`
-          : `Transfer ${(tr as any).reference_number} rejected by Finance`,
+      message,
       related_entity_id: entity_id,
       dispatchChannels: true,
     });
@@ -96,9 +144,10 @@ export async function POST(req: Request) {
     if (fetchError || !grn) {
       return NextResponse.json({ error: "Supplier GRN not found" }, { status: 404 });
     }
-    if ((grn as any).status !== "AWAITING_FINANCE_APPROVAL") {
+    const supplierGrn = grn as StatusReferenceRow;
+    if (supplierGrn.status !== "AWAITING_FINANCE_APPROVAL") {
       return NextResponse.json(
-        { error: `Supplier GRN is not awaiting approval. Current status: ${(grn as any).status}` },
+        { error: `Supplier GRN is not awaiting approval. Current status: ${supplierGrn.status}` },
         { status: 409 },
       );
     }
@@ -158,13 +207,21 @@ export async function POST(req: Request) {
         .eq("id", entity_id);
     }
 
+    const message = await buildSupplierGrnNotificationMessage({
+      grnId: entity_id,
+      headline:
+        action === "approve"
+          ? `Supplier GRN ${supplierGrn.reference_number} approved - stock updated`
+          : `Supplier GRN ${supplierGrn.reference_number} rejected by Finance`,
+      actorId: user.id,
+      actorLabel: role === "ADMIN" ? "Admin approver" : "Finance approver",
+      notes,
+    });
+
     await createNotification({
       user_role: "WAREHOUSE_MANAGER",
       type: action === "approve" ? "supplier_grn_approved" : "supplier_grn_rejected",
-      message:
-        action === "approve"
-          ? `Supplier GRN ${(grn as any).reference_number} approved — stock updated`
-          : `Supplier GRN ${(grn as any).reference_number} rejected by Finance`,
+      message,
       related_entity_id: entity_id,
       dispatchChannels: true,
     });
@@ -193,14 +250,15 @@ export async function POST(req: Request) {
     if (fetchError || !rr) {
       return NextResponse.json({ error: "Return request not found" }, { status: 404 });
     }
-    if ((rr as any).status !== "AWAITING_FINANCE_APPROVAL") {
+    const returnRequest = rr as StatusReferenceRow;
+    if (returnRequest.status !== "AWAITING_FINANCE_APPROVAL") {
       return NextResponse.json(
-        { error: `Return is not awaiting Finance approval. Current status: ${(rr as any).status}` },
+        { error: `Return is not awaiting Finance approval. Current status: ${returnRequest.status}` },
         { status: 409 },
       );
     }
 
-    const ref = (rr as any).reference_number;
+    const ref = returnRequest.reference_number;
 
     if (action === "approve") {
       const { error: rpcError } = await supabaseAdmin.rpc("process_return_stock_credit", {
@@ -210,11 +268,19 @@ export async function POST(req: Request) {
       });
       if (rpcError) throw rpcError;
 
+      const message = await buildReturnNotificationMessage({
+        returnId: entity_id,
+        headline: `Return ${ref} approved by Finance - stock restored`,
+        actorId: user.id,
+        actorLabel: role === "ADMIN" ? "Admin approver" : "Finance approver",
+        notes,
+      });
+
       for (const r of ["BU_MANAGER", "UNIT_STAFF", "WAREHOUSE_MANAGER"] as const) {
         await createNotification({
           user_role: r,
           type: "return_stock_restored",
-          message: `Return ${ref} approved by Finance — stock restored`,
+          message,
           related_entity_id: entity_id,
           dispatchChannels: true,
         });
@@ -233,11 +299,19 @@ export async function POST(req: Request) {
 
       if (updateError) throw updateError;
 
+      const message = await buildReturnNotificationMessage({
+        returnId: entity_id,
+        headline: `Return ${ref} was rejected by Finance`,
+        actorId: user.id,
+        actorLabel: role === "ADMIN" ? "Admin approver" : "Finance approver",
+        notes,
+      });
+
       for (const r of ["BU_MANAGER", "WAREHOUSE_MANAGER"] as const) {
         await createNotification({
           user_role: r,
           type: "return_rejected_by_finance",
-          message: `Return ${ref} was rejected by Finance${notes ? `: ${notes}` : ""}`,
+          message,
           related_entity_id: entity_id,
           dispatchChannels: true,
         });
@@ -273,16 +347,17 @@ export async function POST(req: Request) {
     if (fetchError || !iwt) {
       return NextResponse.json({ error: "Intra-transfer not found" }, { status: 404 });
     }
-    if ((iwt as any).status !== "PENDING_FINANCE_APPROVAL") {
+    const intraTransfer = iwt as StatusReferenceRow;
+    if (intraTransfer.status !== "PENDING_FINANCE_APPROVAL") {
       return NextResponse.json(
         {
-          error: `Intra-transfer is not awaiting approval. Current status: ${(iwt as any).status}`,
+          error: `Intra-transfer is not awaiting approval. Current status: ${intraTransfer.status}`,
         },
         { status: 409 },
       );
     }
 
-    const ref = (iwt as any).reference_number as string;
+    const ref = intraTransfer.reference_number;
 
     if (action === "approve") {
       const { error: rpcError } = await supabaseAdmin.rpc("approve_intra_transfer", {
@@ -297,18 +372,26 @@ export async function POST(req: Request) {
       }
 
       // Notify both Warehouse Manager and BU Manager of the receiving SBU
+      const message = await buildIntraTransferNotificationMessage({
+        transferId: entity_id,
+        headline: `Intra-transfer ${ref} approved by Finance - stock updated`,
+        actorId: user.id,
+        actorLabel: role === "ADMIN" ? "Admin approver" : "Finance approver",
+        notes,
+      });
+
       await Promise.all([
         createNotification({
           user_role: "WAREHOUSE_MANAGER",
           type: "intra_transfer_approved",
-          message: `Intra-transfer ${ref} approved by Finance — stock updated`,
+          message,
           related_entity_id: entity_id,
           dispatchChannels: true,
         }),
         createNotification({
           user_role: "BU_MANAGER",
           type: "intra_transfer_approved",
-          message: `Intra-transfer ${ref} approved — stock has been allocated to your SBU`,
+          message,
           related_entity_id: entity_id,
         }),
       ]).catch((e) => console.error("intra-transfer approval notify failed", e));
@@ -326,10 +409,18 @@ export async function POST(req: Request) {
 
       if (updateError) throw updateError;
 
+      const message = await buildIntraTransferNotificationMessage({
+        transferId: entity_id,
+        headline: `Intra-transfer ${ref} rejected by Finance`,
+        actorId: user.id,
+        actorLabel: role === "ADMIN" ? "Admin approver" : "Finance approver",
+        notes,
+      });
+
       await createNotification({
         user_role: "WAREHOUSE_MANAGER",
         type: "intra_transfer_rejected",
-        message: `Intra-transfer ${ref} rejected by Finance${notes ? `: ${notes}` : ""}`,
+        message,
         related_entity_id: entity_id,
         dispatchChannels: true,
       });
@@ -360,7 +451,7 @@ export async function GET(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const role = (user.user_metadata as any)?.role ?? "";
+  const role = (user.user_metadata as AuthMetadata | null)?.role ?? "";
   if (role !== "FINANCE_MANAGER" && role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -437,16 +528,16 @@ export async function GET(req: Request) {
   ]);
 
   // Enrich transfer requests with requester full_name from profiles
-  const transfers = transfersResult.data ?? [];
-  const raisedByIds = [...new Set(transfers.map((t: any) => t.raised_by).filter(Boolean))];
+  const transfers = (transfersResult.data ?? []) as RequesterRow[];
+  const raisedByIds = [...new Set(transfers.map((t) => t.raised_by).filter(Boolean))];
   let profileMap: Record<string, string> = {};
 
   // Collect all user IDs needing name resolution (transfers + variance proposals + intra-transfers)
-  const proposals = proposalsResult.data ?? [];
-  const intraTransfers = intraTransfersResult.data ?? [];
-  const proposerIds = [...new Set(proposals.map((p: any) => p.proposed_by).filter(Boolean))];
+  const proposals = (proposalsResult.data ?? []) as ProposalRow[];
+  const intraTransfers = (intraTransfersResult.data ?? []) as IntraTransferListRow[];
+  const proposerIds = [...new Set(proposals.map((p) => p.proposed_by).filter(Boolean))];
   const intraTransferredByIds = [
-    ...new Set(intraTransfers.map((t: any) => t.transferred_by).filter(Boolean)),
+    ...new Set(intraTransfers.map((t) => t.transferred_by).filter(Boolean)),
   ];
   const allProfileIds = [
     ...new Set([...raisedByIds, ...proposerIds, ...intraTransferredByIds]),
@@ -458,23 +549,25 @@ export async function GET(req: Request) {
       .select("id, full_name")
       .in("id", allProfileIds);
     if (profiles) {
-      profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name ?? ""]));
+      profileMap = Object.fromEntries(
+        (profiles as ProfileRow[]).map((p) => [p.id, p.full_name ?? ""]),
+      );
     }
   }
 
-  const enrichedTransfers = transfers.map((t: any) => ({
+  const enrichedTransfers = transfers.map((t) => ({
     ...t,
-    requester_name: profileMap[t.raised_by] ?? null,
+    requester_name: t.raised_by ? (profileMap[t.raised_by] ?? null) : null,
   }));
 
-  const enrichedProposals = proposals.map((p: any) => ({
+  const enrichedProposals = proposals.map((p) => ({
     ...p,
-    proposer_name: profileMap[p.proposed_by] ?? null,
+    proposer_name: p.proposed_by ? (profileMap[p.proposed_by] ?? null) : null,
   }));
 
-  const enrichedIntraTransfers = intraTransfers.map((t: any) => ({
+  const enrichedIntraTransfers = intraTransfers.map((t) => ({
     ...t,
-    transferred_by_name: profileMap[t.transferred_by] ?? null,
+    transferred_by_name: t.transferred_by ? (profileMap[t.transferred_by] ?? null) : null,
   }));
 
   return NextResponse.json({

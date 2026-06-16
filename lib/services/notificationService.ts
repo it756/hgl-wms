@@ -2,6 +2,13 @@ import { supabaseAdmin } from "../supabaseServer";
 import type { Notification } from "../models/shared";
 import { dispatchToChannels } from "../notifications/channels";
 
+interface NotificationRecipientProfile {
+  id: string;
+  whatsapp_number?: string | null;
+}
+
+type SbuLookupRow = Record<string, string | null | undefined>;
+
 export interface NotifyInput {
   /** Target a specific user by ID */
   user_id?: string;
@@ -98,59 +105,36 @@ async function resolveRecipients(opts: {
     } catch (e) {
       console.error("resolveRecipients: getUserById failed", e);
     }
-    return [{ email, whatsapp_number: (profile as any)?.whatsapp_number ?? null }];
+    const profileRow = profile as NotificationRecipientProfile | null;
+    return [{ email, whatsapp_number: profileRow?.whatsapp_number ?? null }];
   }
 
   if (opts.user_role) {
     // Try to infer SBU from a related entity (transfer, grn, etc.) so we notify
     // role-holders for the correct SBU only.
-    let sbuId: string | null = null;
-    if (opts.related_entity_id) {
-      try {
-        // transfer_requests have sbu_id directly
-        const { data: tr } = await supabaseAdmin
-          .from("transfer_requests")
-          .select("sbu_id")
-          .eq("id", opts.related_entity_id)
-          .maybeSingle();
-        if (tr && (tr as any).sbu_id) sbuId = (tr as any).sbu_id;
-        else {
-          // grns point to transfer_request_id
-          const { data: grn } = await supabaseAdmin
-            .from("grns")
-            .select("transfer_request_id")
-            .eq("id", opts.related_entity_id)
-            .maybeSingle();
-          if (grn && (grn as any).transfer_request_id) {
-            const { data: tr2 } = await supabaseAdmin
-              .from("transfer_requests")
-              .select("sbu_id")
-              .eq("id", (grn as any).transfer_request_id)
-              .maybeSingle();
-            if (tr2 && (tr2 as any).sbu_id) sbuId = (tr2 as any).sbu_id;
-          }
-        }
-      } catch (e) {
-        // best-effort: fall back to global role broadcast
-      }
-    }
+    const sbuId = await inferSbuId(opts.related_entity_id);
 
-    let q: any = supabaseAdmin
-      .from("profiles")
-      .select("id, whatsapp_number")
-      .eq("role", opts.user_role)
-      .eq("is_active", true);
-    if (sbuId) q = q.eq("sbu_id", sbuId);
-    const { data: profiles } = await q;
+    const { data: profiles } = sbuId
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("id, whatsapp_number")
+          .eq("role", opts.user_role)
+          .eq("is_active", true)
+          .eq("sbu_id", sbuId)
+      : await supabaseAdmin
+          .from("profiles")
+          .select("id, whatsapp_number")
+          .eq("role", opts.user_role)
+          .eq("is_active", true);
     if (!profiles || profiles.length === 0) return [];
 
     const out = await Promise.all(
-      (profiles as any[]).map(async (p: any) => {
+      (profiles as NotificationRecipientProfile[]).map(async (p) => {
         let email: string | null = null;
         try {
           const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);
           email = authUser.user?.email ?? null;
-        } catch (e) {
+        } catch {
           // ignore — leave email null
         }
         return { email, whatsapp_number: p.whatsapp_number ?? null };
@@ -160,6 +144,65 @@ async function resolveRecipients(opts: {
   }
 
   return [];
+}
+
+async function inferSbuId(relatedEntityId?: string | null): Promise<string | null> {
+  if (!relatedEntityId) return null;
+
+  try {
+    const directLookups = [
+      { table: "transfer_requests", column: "sbu_id" },
+      { table: "supplier_grns", column: "sbu_id" },
+      { table: "return_requests", column: "sbu_id" },
+      { table: "intra_warehouse_transfers", column: "to_sbu_id" },
+    ];
+
+    for (const lookup of directLookups) {
+      const { data } = await supabaseAdmin
+        .from(lookup.table)
+        .select(lookup.column)
+        .eq("id", relatedEntityId)
+        .maybeSingle();
+      const sbuId = (data as SbuLookupRow | null)?.[lookup.column];
+      if (sbuId) return sbuId;
+    }
+
+    const { data: grn } = await supabaseAdmin
+      .from("grns")
+      .select("transfer_request_id")
+      .eq("id", relatedEntityId)
+      .maybeSingle();
+    const grnRow = grn as { transfer_request_id?: string | null } | null;
+    if (grnRow?.transfer_request_id) {
+      const { data: transfer } = await supabaseAdmin
+        .from("transfer_requests")
+        .select("sbu_id")
+        .eq("id", grnRow.transfer_request_id)
+        .maybeSingle();
+      const transferRow = transfer as { sbu_id?: string | null } | null;
+      if (transferRow?.sbu_id) return transferRow.sbu_id;
+    }
+
+    const { data: proposal } = await supabaseAdmin
+      .from("variance_proposals")
+      .select("transfer_request_id")
+      .eq("id", relatedEntityId)
+      .maybeSingle();
+    const proposalRow = proposal as { transfer_request_id?: string | null } | null;
+    if (proposalRow?.transfer_request_id) {
+      const { data: transfer } = await supabaseAdmin
+        .from("transfer_requests")
+        .select("sbu_id")
+        .eq("id", proposalRow.transfer_request_id)
+        .maybeSingle();
+      const transferRow = transfer as { sbu_id?: string | null } | null;
+      if (transferRow?.sbu_id) return transferRow.sbu_id;
+    }
+  } catch {
+    // best-effort: fall back to global role broadcast
+  }
+
+  return null;
 }
 
 /** Mark a notification as read for a given user.
@@ -197,4 +240,6 @@ export async function getUnreadNotifications(
   return (data as Notification[]) ?? [];
 }
 
-export default { createNotification, markNotificationRead, getUnreadNotifications };
+const notificationService = { createNotification, markNotificationRead, getUnreadNotifications };
+
+export default notificationService;

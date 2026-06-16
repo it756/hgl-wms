@@ -43,7 +43,6 @@ interface HeaderNotification {
   title: string;
   message: string;
   time?: string;
-  read?: boolean;
   is_read?: boolean;
   entity?: string | null;
   entity_label?: string | null;
@@ -83,7 +82,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "Stock level for SKU HZ-9902-X has dropped below the safety threshold of 50 units. Immediate replenishment required.",
             time: "10:42 AM",
-            read: false,
+              is_read: false,
             entity: "HZ-9902-X",
             entity_label: "View Product",
             link: "/admin/products",
@@ -95,7 +94,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "Transfer request TR-2024-0042 from Finance & Admin SBU has been awaiting warehouse approval for over 24 hours.",
             time: "09:15 AM",
-            read: false,
+              is_read: false,
             entity: "TR-2024-0042",
             entity_label: "View Request",
             link: "/warehouse/queue",
@@ -107,7 +106,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "IT Supplies SBU submitted return RET-0089 for 12 units of Engine Oil 10W-40. Pending BU Manager approval.",
             time: "08:30 AM",
-            read: false,
+              is_read: false,
             entity: "RET-0089",
             entity_label: "View Return",
             link: "/returns/approvals",
@@ -119,7 +118,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "The Warehouse Optimization Engine v4.2.1 is now live. Batch issuance performance improved by 30%.",
             time: "Yesterday",
-            read: true,
+              is_read: true,
             entity: null,
             entity_label: null,
             link: null,
@@ -421,7 +420,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <div
                         key={n.id}
                         className={`p-2.5 border rounded-lg flex flex-col gap-1.5 ${
-                          n.read ? "bg-slate-50 border-slate-100" : "bg-white border-slate-200"
+                            n.is_read ? "bg-slate-50 border-slate-100" : "bg-white border-slate-200"
                         }`}
                       >
                         <div className="flex justify-between items-center">
