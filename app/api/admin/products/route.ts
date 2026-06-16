@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
+import { createNotification } from "../../../../lib/services/notificationService";
+import { writeAuditLog } from "../../../../lib/services/auditService";
 
 /** GET /api/admin/products — all roles can read; write requires ADMIN/WH_MANAGER */
 export async function GET(req: Request) {
@@ -115,13 +117,13 @@ export async function GET(req: Request) {
   return NextResponse.json(data ?? []);
 }
 
-/** POST /api/admin/products — ADMIN or WAREHOUSE_MANAGER only */
+/** POST /api/admin/products — ADMIN, WAREHOUSE_MANAGER, BU_MANAGER, FINANCE_MANAGER */
 export async function POST(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const role = (user.user_metadata as any)?.role ?? "";
-  if (!["ADMIN", "WAREHOUSE_MANAGER"].includes(role)) {
+  if (!["ADMIN", "WAREHOUSE_MANAGER", "BU_MANAGER", "FINANCE_MANAGER"].includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -131,10 +133,12 @@ export async function POST(req: Request) {
     sku,
     description,
     unit_of_measure,
+    initial_quantity,
     stock_quantity,
     low_stock_threshold,
     unit_cost,
     warehouse_location,
+    sbu_id: bodySbuId,
   } = body;
 
   if (!name || !sku) {
@@ -151,14 +155,68 @@ export async function POST(req: Request) {
     );
   }
 
+  // For SBU-scoped roles, resolve the SBU and auto-prefix the SKU
+  let finalSku = sku as string;
+  let resolvedSbuId: string | null = null;
+  let resolvedSbuName: string | null = null;
+
+  if (role === "BU_MANAGER" || role === "FINANCE_MANAGER") {
+    if (role === "FINANCE_MANAGER") {
+      if (!bodySbuId) {
+        return NextResponse.json(
+          { error: "sbu_id is required for Finance Manager" },
+          { status: 400 },
+        );
+      }
+      resolvedSbuId = bodySbuId;
+    } else {
+      // BU_MANAGER: derive SBU from user metadata then profile
+      resolvedSbuId = (user.user_metadata as any)?.sbu_id ?? null;
+      if (!resolvedSbuId) {
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("sbu_id")
+          .eq("id", user.id)
+          .single();
+        resolvedSbuId = profile?.sbu_id ?? null;
+      }
+      if (!resolvedSbuId) {
+        return NextResponse.json(
+          { error: "Could not resolve your SBU. Contact an administrator." },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Fetch SBU code + name for SKU prefix and notification
+    const { data: sbu, error: sbuErr } = await supabaseAdmin
+      .from("sbus")
+      .select("code, name")
+      .eq("id", resolvedSbuId)
+      .single();
+
+    if (sbuErr || !sbu) {
+      return NextResponse.json({ error: "SBU not found" }, { status: 404 });
+    }
+
+    resolvedSbuName = sbu.name;
+    const prefix = `${sbu.code}-`;
+    if (!finalSku.startsWith(prefix)) {
+      finalSku = `${prefix}${finalSku}`;
+    }
+  }
+
+  // Resolve initial stock quantity (initial_quantity takes precedence; fall back to stock_quantity for backward compat)
+  const resolvedQty = initial_quantity != null ? Number(initial_quantity) : (stock_quantity ?? 0);
+
   const { data, error } = await supabaseAdmin
     .from("products")
     .insert({
       name,
-      sku,
+      sku: finalSku,
       description: description ?? null,
       unit_of_measure: unit_of_measure ?? "unit",
-      stock_quantity: stock_quantity ?? 0,
+      stock_quantity: resolvedQty,
       low_stock_threshold: low_stock_threshold ?? 0,
       unit_cost: unit_cost ?? null,
       warehouse_location,
@@ -168,5 +226,30 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // For SBU-scoped roles: audit log + notify Warehouse Manager
+  if (role === "BU_MANAGER" || role === "FINANCE_MANAGER") {
+    const actorName = (user.user_metadata as any)?.full_name ?? user.email ?? "Unknown user";
+
+    if (resolvedQty > 0) {
+      await writeAuditLog({
+        entity_type: "product",
+        entity_id: data.id,
+        action: "product_created",
+        performed_by: user.id,
+        details: { initial_quantity: resolvedQty, sbu_id: resolvedSbuId, sku: finalSku },
+      });
+    }
+
+    await createNotification({
+      user_role: "WAREHOUSE_MANAGER",
+      type: "new_product_created",
+      subject: "New product added to catalogue",
+      message: `${actorName} added "${name}" (SKU: ${finalSku}) with an initial stock of ${resolvedQty} units for ${resolvedSbuName}.`,
+      related_entity_id: data.id,
+      dispatchChannels: true,
+    });
+  }
+
   return NextResponse.json(data, { status: 201 });
 }

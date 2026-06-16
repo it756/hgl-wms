@@ -20,6 +20,7 @@ import {
   ArrowLeftRight,
   RefreshCw,
   Flame,
+  Pencil,
 } from "lucide-react";
 
 interface SBU {
@@ -57,6 +58,7 @@ export default function ProductsPage() {
   const [newCost, setNewCost] = useState("");
   const [newThreshold, setNewThreshold] = useState("0");
   const [newLocation, setNewLocation] = useState("");
+  const [newInitialQty, setNewInitialQty] = useState("0");
   const [createError, setCreateError] = useState<string | null>(null);
 
   // Stock adjustment modal
@@ -68,6 +70,57 @@ export default function ProductsPage() {
 
   // Direct damage write-off modal
   const [damageProduct, setDamageProduct] = useState<Product | null>(null);
+
+  // Edit product modal
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSku, setEditSku] = useState("");
+  const [editUom, setEditUom] = useState("");
+  const [editCost, setEditCost] = useState("");
+  const [editThreshold, setEditThreshold] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  function openEdit(p: Product) {
+    setEditProduct(p);
+    setEditName(p.name);
+    setEditSku(p.sku);
+    setEditUom(p.unit_of_measure);
+    setEditCost(p.unit_cost != null ? String(p.unit_cost) : "");
+    setEditThreshold(String(p.low_stock_threshold));
+    setEditLocation(p.warehouse_location);
+    setEditError(null);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editProduct) return;
+    setEditError(null);
+    setEditSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/products/${editProduct.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({
+          name: editName,
+          sku: editSku,
+          unit_of_measure: editUom,
+          unit_cost: editCost !== "" ? Number(editCost) : null,
+          low_stock_threshold: Number(editThreshold),
+          warehouse_location: editLocation.toUpperCase(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setEditProduct(null);
+      load();
+    } catch (err: any) {
+      setEditError(err.message);
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
 
   const token = () => localStorage.getItem("access_token") ?? "";
 
@@ -131,6 +184,7 @@ export default function ProductsPage() {
           unit_cost: newCost ? Number(newCost) : undefined,
           low_stock_threshold: Number(newThreshold),
           warehouse_location: newLocation.toUpperCase(),
+          initial_quantity: Number(newInitialQty),
         }),
       });
       const data = await res.json();
@@ -142,6 +196,7 @@ export default function ProductsPage() {
       setNewCost("");
       setNewThreshold("0");
       setNewLocation("");
+      setNewInitialQty("0");
       load();
     } catch (e: any) {
       setCreateError(e.message);
@@ -384,6 +439,19 @@ export default function ProductsPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Initial Quantity
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="e.g. 100"
+                  value={newInitialQty}
+                  onChange={(e) => setNewInitialQty(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-202 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-805"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                   Warehouse Location <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -565,6 +633,12 @@ export default function ProductsPage() {
                         <td className="px-6 py-3.5 text-right font-semibold">
                           <div className="flex items-center justify-end gap-2.5">
                             <button
+                              onClick={() => openEdit(p)}
+                              className="px-2.5 py-1 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg transition-all text-[11px] cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <Pencil className="w-3 h-3" /> Edit
+                            </button>
+                            <button
                               onClick={() => {
                                 setAdjustProduct(p);
                                 setAdjustType("add");
@@ -714,6 +788,125 @@ export default function ProductsPage() {
                 className="px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all shadow-sm"
               >
                 Confirm Adjust
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      {/* Edit product modal */}
+      {editProduct && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <form
+            onSubmit={handleEditSubmit}
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg border border-slate-150 flex flex-col gap-4"
+          >
+            <div>
+              <div className="flex items-center gap-1 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                <span>Catalogue Manager</span>
+                <span>/</span>
+                <span>Edit Product</span>
+              </div>
+              <h2 className="font-extrabold text-[#1E293B] text-lg flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-slate-500" />
+                Edit Product
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Finance will be notified of any changes you save.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1 sm:col-span-2">
+                <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  Product Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  SKU <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  required
+                  value={editSku}
+                  onChange={(e) => setEditSku(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  Unit of Measure
+                </label>
+                <input
+                  value={editUom}
+                  onChange={(e) => setEditUom(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  Unit Cost (ZMW)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  placeholder="Leave blank to clear"
+                  value={editCost}
+                  onChange={(e) => setEditCost(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  Low Stock Threshold
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={editThreshold}
+                  onChange={(e) => setEditThreshold(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  Warehouse Location <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  required
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value.toUpperCase())}
+                  pattern="^[A-Z][12]$"
+                  title="One letter A-Z followed by 1 or 2 (e.g. A1, B2)"
+                  maxLength={2}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] uppercase"
+                />
+              </div>
+            </div>
+
+            {editError && <p className="text-rose-600 font-semibold text-xs">{editError}</p>}
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-1">
+              <button
+                type="button"
+                onClick={() => setEditProduct(null)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={editSubmitting}
+                className="px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all shadow-sm disabled:opacity-60 flex items-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                {editSubmitting ? "Saving…" : "Save Changes"}
               </button>
             </div>
           </form>

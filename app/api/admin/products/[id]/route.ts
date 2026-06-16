@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../lib/services/auditService";
+import { createNotification } from "../../../../../lib/services/notificationService";
 
 /** PATCH /api/admin/products/[id] — edit product or adjust stock */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -80,6 +81,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     );
   }
 
+  // Fetch current values before update so we can diff changes
+  const { data: before, error: fetchErr } = await supabaseAdmin
+    .from("products")
+    .select(
+      "name, sku, description, unit_of_measure, low_stock_threshold, unit_cost, is_active, warehouse_location",
+    )
+    .eq("id", id)
+    .single();
+
+  if (fetchErr || !before) {
+    return NextResponse.json({ error: "Product not found" }, { status: 404 });
+  }
+
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (name !== undefined) updates.name = name;
   if (sku !== undefined) updates.sku = sku;
@@ -98,5 +112,46 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Build a human-readable summary of changed fields
+  const fieldLabels: Record<string, string> = {
+    name: "Name",
+    sku: "SKU",
+    description: "Description",
+    unit_of_measure: "Unit of Measure",
+    low_stock_threshold: "Low Stock Threshold",
+    unit_cost: "Unit Cost",
+    is_active: "Active Status",
+    warehouse_location: "Warehouse Location",
+  };
+
+  const changedFields: string[] = [];
+  for (const [key, label] of Object.entries(fieldLabels)) {
+    if (updates[key] !== undefined && String(updates[key]) !== String((before as any)[key])) {
+      changedFields.push(`${label}: ${(before as any)[key]} → ${updates[key]}`);
+    }
+  }
+
+  if (changedFields.length > 0) {
+    const actorName = (user.user_metadata as any)?.full_name ?? user.email ?? "An administrator";
+
+    await writeAuditLog({
+      entity_type: "product",
+      entity_id: id,
+      action: "product_edited",
+      performed_by: user.id,
+      details: { changes: changedFields, before, after: updates },
+    });
+
+    await createNotification({
+      user_role: "FINANCE_MANAGER",
+      type: "product_updated",
+      subject: `Product updated: ${data.name}`,
+      message: `${actorName} updated product "${data.name}" (SKU: ${data.sku}). Changes: ${changedFields.join("; ")}.`,
+      related_entity_id: id,
+      dispatchChannels: true,
+    });
+  }
+
   return NextResponse.json(data);
 }
