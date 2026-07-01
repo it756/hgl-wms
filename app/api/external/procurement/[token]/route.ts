@@ -7,14 +7,15 @@ import { validateToken } from "../../../../../lib/services/externalTokenService"
  * Public route — no WMS login required.
  * Validates the procurement token and returns a redacted view of the purchase request.
  */
-export async function GET(req: Request, { params }: { params: { token: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const { token: rawToken } = await params;
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
     undefined;
   const userAgent = req.headers.get("user-agent") ?? undefined;
 
-  const result = await validateToken(params.token, { ip, userAgent });
+  const result = await validateToken(rawToken, { ip, userAgent });
 
   if (!result.valid) {
     const messages: Record<string, string> = {

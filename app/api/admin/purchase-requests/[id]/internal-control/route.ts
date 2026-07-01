@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
-import { supabaseAdmin } from "../../../../../lib/supabaseServer";
-import { applyInternalControlAction } from "../../../../../lib/services/purchaseRequestService";
+import { getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
+import { supabaseAdmin } from "../../../../../../lib/supabaseServer";
+import { applyInternalControlAction } from "../../../../../../lib/services/purchaseRequestService";
 
 interface AuthMetadata {
   role?: string;
@@ -16,7 +16,8 @@ interface InternalControlBody {
  * POST /api/admin/purchase-requests/[id]/internal-control
  * ADMIN approves or rejects a purchase request at the internal control stage.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -39,7 +40,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   try {
     const updated = await applyInternalControlAction(
-      params.id,
+      id,
       action === "approve" ? "APPROVED" : "REJECTED",
       { notes, adminId: user.id },
     );

@@ -21,14 +21,15 @@ type ValidAction = (typeof VALID_ACTIONS)[number];
  * Approve/Reject actions consume the token (single-use).
  * CHANGES_REQUESTED does NOT consume the token so procurement can resubmit if needed.
  */
-export async function POST(req: Request, { params }: { params: { token: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const { token: rawToken } = await params;
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
     undefined;
   const userAgent = req.headers.get("user-agent") ?? undefined;
 
-  const result = await validateToken(params.token, { ip, userAgent });
+  const result = await validateToken(rawToken, { ip, userAgent });
 
   if (!result.valid) {
     const messages: Record<string, string> = {
@@ -81,8 +82,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
     );
   }
 
+  const serviceAction =
+    action === "APPROVE" ? "APPROVED" : action === "REJECT" ? "REJECTED" : "CHANGES_REQUESTED";
+
   try {
-    const updated = await applyProcurementAction(token.entity_id, action, {
+    const updated = await applyProcurementAction(token.entity_id, serviceAction, {
       notes: body.notes,
       documentUrl: body.document_url,
       actorEmail: token.actor_email,
@@ -126,7 +130,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
 
       if (pr) {
         const row = pr as { reference_number: string; procurement_email: string };
-        await sendProcurementConfirmationEmail(row.procurement_email, row.reference_number, action);
+        await sendProcurementConfirmationEmail(
+          row.procurement_email,
+          row.reference_number,
+          serviceAction,
+        );
       }
     } catch (emailErr) {
       console.error("[external/procurement/action] confirmation email failed", emailErr);

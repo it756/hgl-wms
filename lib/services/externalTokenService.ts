@@ -101,8 +101,9 @@ export async function validateToken(
       last_user_agent: opts?.userAgent ?? null,
     })
     .eq("id", token.id)
-    .then(() => {})
-    .catch((e) => console.error("[externalTokenService] view update failed", e));
+    .then(({ error }) => {
+      if (error) console.error("[externalTokenService] view update failed", error);
+    });
 
   return { valid: true, token };
 }

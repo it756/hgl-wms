@@ -32,7 +32,8 @@ interface PurchaseRequestRow {
  * SBU_MANAGER submits a DRAFT or PROCUREMENT_CHANGES_REQUESTED purchase request to procurement.
  * Generates a secure external token link and emails procurement.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -46,7 +47,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { data: existing } = await supabaseAdmin
       .from("purchase_requests")
       .select("created_by")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
     if (!existing)
       return NextResponse.json({ error: "Purchase request not found" }, { status: 404 });
@@ -58,11 +59,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   try {
-    const { purchaseRequest, procurementLink } = await submitToProcurement(
-      params.id,
-      user.id,
-      appBaseUrl,
-    );
+    const { purchaseRequest, procurementLink } = await submitToProcurement(id, user.id, appBaseUrl);
 
     // Fetch enriched data for the email — best-effort, don't fail the submission
     try {
@@ -73,11 +70,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
          sbus(name),
          purchase_request_line_items(product_name, sku, quantity_requested, unit_of_measure, unit_cost)`,
         )
-        .eq("id", params.id)
+        .eq("id", id)
         .single();
 
       if (enriched) {
-        const row = enriched as PurchaseRequestRow;
+        const row = enriched as unknown as PurchaseRequestRow;
         await sendProcurementReviewEmail(row.procurement_email, {
           reference: row.reference_number,
           sbuName: row.sbus?.name ?? "Unknown SBU",

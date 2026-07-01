@@ -11,7 +11,8 @@ interface AuthMetadata {
  * GET /api/purchase-requests/[id]
  * Returns a single purchase request with line items.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -27,7 +28,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       `*, sbus(id, name, code),
        purchase_request_line_items(*)`,
     )
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (error || !data)
@@ -52,7 +53,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
  * PATCH /api/purchase-requests/[id]
  * BU_MANAGER can edit while in DRAFT or PROCUREMENT_CHANGES_REQUESTED.
  */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -66,7 +68,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const { data: existing } = await supabaseAdmin
       .from("purchase_requests")
       .select("created_by, sbu_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
     if (!existing)
       return NextResponse.json({ error: "Purchase request not found" }, { status: 404 });
@@ -95,7 +97,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   try {
-    const updated = await updatePurchaseRequest(params.id, body, user.id);
+    const updated = await updatePurchaseRequest(id, body, user.id);
     return NextResponse.json(updated);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
