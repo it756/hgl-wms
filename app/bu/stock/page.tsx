@@ -49,10 +49,7 @@ export default function SbuStockPage() {
   const [cpName, setCpName] = useState("");
   const [cpSku, setCpSku] = useState("");
   const [cpUom, setCpUom] = useState("unit");
-  const [cpCost, setCpCost] = useState("");
   const [cpThreshold, setCpThreshold] = useState("0");
-  const [cpLocation, setCpLocation] = useState("");
-  const [cpInitialQty, setCpInitialQty] = useState("0");
   const [cpError, setCpError] = useState<string | null>(null);
   const [cpSubmitting, setCpSubmitting] = useState(false);
 
@@ -137,10 +134,7 @@ export default function SbuStockPage() {
           name: cpName,
           sku: cpSku,
           unit_of_measure: cpUom,
-          unit_cost: cpCost ? Number(cpCost) : undefined,
           low_stock_threshold: Number(cpThreshold),
-          warehouse_location: cpLocation.toUpperCase(),
-          initial_quantity: Number(cpInitialQty),
         }),
       });
       const data = await res.json();
@@ -149,10 +143,7 @@ export default function SbuStockPage() {
       setCpName("");
       setCpSku("");
       setCpUom("unit");
-      setCpCost("");
       setCpThreshold("0");
-      setCpLocation("");
-      setCpInitialQty("0");
       load();
     } catch (err: any) {
       setCpError(err.message);
@@ -285,20 +276,7 @@ export default function SbuStockPage() {
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Unit Cost (ZMW)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  placeholder="e.g. 230"
-                  value={cpCost}
-                  onChange={(e) => setCpCost(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
+
               <div className="flex flex-col gap-1">
                 <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                   Low Stock Threshold
@@ -312,34 +290,7 @@ export default function SbuStockPage() {
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Initial Quantity
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="e.g. 100"
-                  value={cpInitialQty}
-                  onChange={(e) => setCpInitialQty(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Warehouse Location <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  required
-                  placeholder="e.g. A1, B2"
-                  value={cpLocation}
-                  onChange={(e) => setCpLocation(e.target.value.toUpperCase())}
-                  pattern="^[A-Z][12]$"
-                  title="One letter A-Z followed by 1 or 2 (e.g. A1, B2)"
-                  maxLength={2}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] uppercase"
-                />
-              </div>
+
               {cpError && (
                 <p className="text-rose-600 text-xs font-semibold md:col-span-3">{cpError}</p>
               )}

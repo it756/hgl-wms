@@ -218,13 +218,15 @@ export async function POST(req: Request) {
       notes,
     });
 
-    await createNotification({
-      user_role: "WAREHOUSE_MANAGER",
-      type: action === "approve" ? "supplier_grn_approved" : "supplier_grn_rejected",
-      message,
-      related_entity_id: entity_id,
-      dispatchChannels: true,
-    });
+    for (const r of ["WAREHOUSE_MANAGER", "ADMIN"] as const) {
+      await createNotification({
+        user_role: r,
+        type: action === "approve" ? "supplier_grn_approved" : "supplier_grn_rejected",
+        message,
+        related_entity_id: entity_id,
+        dispatchChannels: true,
+      });
+    }
 
     await writeAuditLog({
       entity_type: "supplier_grn",
@@ -253,7 +255,9 @@ export async function POST(req: Request) {
     const returnRequest = rr as StatusReferenceRow;
     if (returnRequest.status !== "AWAITING_FINANCE_APPROVAL") {
       return NextResponse.json(
-        { error: `Return is not awaiting Finance approval. Current status: ${returnRequest.status}` },
+        {
+          error: `Return is not awaiting Finance approval. Current status: ${returnRequest.status}`,
+        },
         { status: 409 },
       );
     }
@@ -539,9 +543,7 @@ export async function GET(req: Request) {
   const intraTransferredByIds = [
     ...new Set(intraTransfers.map((t) => t.transferred_by).filter(Boolean)),
   ];
-  const allProfileIds = [
-    ...new Set([...raisedByIds, ...proposerIds, ...intraTransferredByIds]),
-  ];
+  const allProfileIds = [...new Set([...raisedByIds, ...proposerIds, ...intraTransferredByIds])];
 
   if (allProfileIds.length > 0) {
     const { data: profiles } = await supabaseAdmin

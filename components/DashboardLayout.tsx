@@ -30,6 +30,8 @@ import {
   ClipboardCheck,
   Flame,
   TrendingDown,
+  ShoppingCart,
+  Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -82,7 +84,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "Stock level for SKU HZ-9902-X has dropped below the safety threshold of 50 units. Immediate replenishment required.",
             time: "10:42 AM",
-              is_read: false,
+            is_read: false,
             entity: "HZ-9902-X",
             entity_label: "View Product",
             link: "/admin/products",
@@ -94,7 +96,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "Transfer request TR-2024-0042 from Finance & Admin SBU has been awaiting warehouse approval for over 24 hours.",
             time: "09:15 AM",
-              is_read: false,
+            is_read: false,
             entity: "TR-2024-0042",
             entity_label: "View Request",
             link: "/warehouse/queue",
@@ -106,7 +108,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "IT Supplies SBU submitted return RET-0089 for 12 units of Engine Oil 10W-40. Pending BU Manager approval.",
             time: "08:30 AM",
-              is_read: false,
+            is_read: false,
             entity: "RET-0089",
             entity_label: "View Return",
             link: "/returns/approvals",
@@ -118,7 +120,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             message:
               "The Warehouse Optimization Engine v4.2.1 is now live. Batch issuance performance improved by 30%.",
             time: "Yesterday",
-              is_read: true,
+            is_read: true,
             entity: null,
             entity_label: null,
             link: null,
@@ -273,6 +275,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/admin/variance", label: "Variance Resolution", icon: AlertTriangle },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
           { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
+          { href: "/admin/purchase-requests", label: "Internal Control", icon: ShoppingCart },
         ];
       case "BU_MANAGER":
         return [
@@ -283,12 +286,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/returns/approvals", label: "Returns Approval", icon: ClipboardCheck },
           { href: "/variance", label: "Variance Decisions", icon: AlertTriangle },
           { href: "/bu/stock", label: "My Stock", icon: Layers },
+          { href: "/purchase-requests", label: "Purchase Requests", icon: ShoppingCart },
         ];
       case "WAREHOUSE_MANAGER":
         return [
           { href: "/warehouse", label: "Dashboard", icon: LayoutDashboard },
           { href: "/warehouse/queue", label: "Warehouse Queue", icon: ClipboardList },
           { href: "/warehouse/supplier-grn", label: "Supplier GRN Queue", icon: FileText },
+          { href: "/warehouse/expected-orders", label: "Expected Orders", icon: Truck },
           { href: "/warehouse/returns", label: "Returns Incoming", icon: PackageCheck },
           { href: "/warehouse/intra-transfer", label: "Intra Transfers", icon: ArrowLeftRight },
           { href: "/warehouse/losses", label: "Loss Account", icon: TrendingDown },
@@ -420,7 +425,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <div
                         key={n.id}
                         className={`p-2.5 border rounded-lg flex flex-col gap-1.5 ${
-                            n.is_read ? "bg-slate-50 border-slate-100" : "bg-white border-slate-200"
+                          n.is_read ? "bg-slate-50 border-slate-100" : "bg-white border-slate-200"
                         }`}
                       >
                         <div className="flex justify-between items-center">

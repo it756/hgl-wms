@@ -145,13 +145,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "name and sku are required" }, { status: 400 });
   }
 
-  if (!warehouse_location || !/^[A-Z][12]$/.test(warehouse_location)) {
+  // BU_MANAGER does not pick warehouse locations — default to A1 (warehouse team assigns later).
+  const effectiveLocation: string =
+    role === "BU_MANAGER" ? "A1" : ((warehouse_location as string | undefined) ?? "");
+  if (!effectiveLocation || !/^[A-Z][12]$/.test(effectiveLocation)) {
     return NextResponse.json(
       {
         error:
           "warehouse_location is required and must be a letter A-Z followed by 1 or 2 (e.g. A1, B2)",
       },
       { status: 400 },
+    );
+  }
+
+  // BU_MANAGER may only register products in the catalogue with zero initial stock.
+  // Stock additions must flow through the purchase request → supplier GRN → finance approval path.
+  const resolvedInitialQty =
+    initial_quantity != null ? Number(initial_quantity) : (stock_quantity ?? 0);
+  if (role === "BU_MANAGER" && resolvedInitialQty > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Business unit managers cannot add stock directly. Create a purchase request to procure goods through the approved workflow.",
+      },
+      { status: 403 },
     );
   }
 
@@ -207,7 +224,7 @@ export async function POST(req: Request) {
   }
 
   // Resolve initial stock quantity (initial_quantity takes precedence; fall back to stock_quantity for backward compat)
-  const resolvedQty = initial_quantity != null ? Number(initial_quantity) : (stock_quantity ?? 0);
+  const resolvedQty = resolvedInitialQty;
 
   const { data, error } = await supabaseAdmin
     .from("products")
@@ -219,7 +236,7 @@ export async function POST(req: Request) {
       stock_quantity: resolvedQty,
       low_stock_threshold: low_stock_threshold ?? 0,
       unit_cost: unit_cost ?? null,
-      warehouse_location,
+      warehouse_location: effectiveLocation,
       is_active: true,
     })
     .select()
