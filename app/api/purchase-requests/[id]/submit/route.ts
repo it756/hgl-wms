@@ -64,29 +64,33 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       appBaseUrl,
     );
 
-    // Fetch enriched data for the email
-    const { data: enriched } = await supabaseAdmin
-      .from("purchase_requests")
-      .select(
-        `reference_number, supplier_name, notes, estimated_total, procurement_email,
+    // Fetch enriched data for the email — best-effort, don't fail the submission
+    try {
+      const { data: enriched } = await supabaseAdmin
+        .from("purchase_requests")
+        .select(
+          `reference_number, supplier_name, notes, estimated_total, procurement_email,
          sbus(name),
          purchase_request_line_items(product_name, sku, quantity_requested, unit_of_measure, unit_cost)`,
-      )
-      .eq("id", params.id)
-      .single();
+        )
+        .eq("id", params.id)
+        .single();
 
-    if (enriched) {
-      const row = enriched as PurchaseRequestRow;
-      await sendProcurementReviewEmail(row.procurement_email, {
-        reference: row.reference_number,
-        sbuName: row.sbus?.name ?? "Unknown SBU",
-        supplierName: row.supplier_name,
-        notes: row.notes,
-        estimatedTotal: row.estimated_total,
-        lines: row.purchase_request_line_items ?? [],
-        reviewLink: procurementLink,
-        expiryDays: 7,
-      });
+      if (enriched) {
+        const row = enriched as PurchaseRequestRow;
+        await sendProcurementReviewEmail(row.procurement_email, {
+          reference: row.reference_number,
+          sbuName: row.sbus?.name ?? "Unknown SBU",
+          supplierName: row.supplier_name,
+          notes: row.notes,
+          estimatedTotal: row.estimated_total,
+          lines: row.purchase_request_line_items ?? [],
+          reviewLink: procurementLink,
+          expiryDays: 7,
+        });
+      }
+    } catch (emailErr) {
+      console.error("[submit] procurement review email failed", emailErr);
     }
 
     return NextResponse.json({
@@ -96,7 +100,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
-    const status = message.includes("Cannot submit") ? 409 : 500;
+    const status = message.includes("Cannot submit")
+      ? 409
+      : message.includes("not found")
+        ? 404
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

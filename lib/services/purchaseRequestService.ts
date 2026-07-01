@@ -7,14 +7,18 @@ import type {
 } from "../models/purchaseRequest";
 import { writeAuditLog } from "./auditService";
 import { createNotification } from "./notificationService";
-import { createExternalToken } from "./externalTokenService";
+import { createExternalToken, revokeTokensForEntity } from "./externalTokenService";
 
 const EDITABLE: string[] = ["DRAFT", "PROCUREMENT_CHANGES_REQUESTED"];
 
 function generateReference(): string {
   const year = new Date().getFullYear();
-  const seq = Math.floor(Math.random() * 90000 + 10000);
-  return `PR-${year}-${seq}`;
+  // Combine last 6 ms-timestamp digits with 3 random digits to reduce collision risk
+  const ts = (Date.now() % 1000000).toString().padStart(6, "0");
+  const rand = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `PR-${year}-${ts}${rand}`;
 }
 
 function calcEstimatedTotal(
@@ -74,7 +78,11 @@ export async function createPurchaseRequest(
     .from("purchase_request_line_items")
     .insert(lineInserts);
 
-  if (lineError) throw lineError;
+  if (lineError) {
+    // Compensate: delete the purchase request to avoid orphaned rows
+    await supabaseAdmin.from("purchase_requests").delete().eq("id", purchaseRequest.id);
+    throw lineError;
+  }
 
   await writeAuditLog({
     entity_type: "purchase_request",
@@ -115,8 +123,16 @@ export async function updatePurchaseRequest(
   if (input.notes !== undefined) updates.notes = input.notes;
 
   if (input.lines) {
+    if (input.lines.length === 0) throw new Error("At least one line item is required");
+
     const estimated_total = calcEstimatedTotal(input.lines);
     updates.estimated_total = estimated_total;
+
+    // Fetch existing lines for compensating rollback on insert failure
+    const { data: existingLines } = await supabaseAdmin
+      .from("purchase_request_line_items")
+      .select("*")
+      .eq("purchase_request_id", id);
 
     // Replace all line items
     await supabaseAdmin.from("purchase_request_line_items").delete().eq("purchase_request_id", id);
@@ -135,7 +151,13 @@ export async function updatePurchaseRequest(
     const { error: lineError } = await supabaseAdmin
       .from("purchase_request_line_items")
       .insert(lineInserts);
-    if (lineError) throw lineError;
+    if (lineError) {
+      // Compensate: restore the previous line items
+      if (existingLines?.length) {
+        await supabaseAdmin.from("purchase_request_line_items").insert(existingLines);
+      }
+      throw lineError;
+    }
   }
 
   const { data: updated, error: updateError } = await supabaseAdmin
@@ -180,7 +202,17 @@ export async function submitToProcurement(
     throw new Error(`Cannot submit a purchase request in status: ${pr.status}`);
   }
 
-  // Transition status
+  // Generate token first — if this fails the purchase request stays editable
+  const rawToken = await createExternalToken({
+    entityType: "purchase_request",
+    entityId: id,
+    actorEmail: pr.procurement_email,
+    actorType: "PROCUREMENT",
+    allowedActions: ["APPROVE", "REJECT", "CHANGES_REQUESTED", "UPLOAD"],
+    createdBy: submittedBy,
+  });
+
+  // Transition status only after token is ready
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("purchase_requests")
     .update({
@@ -191,17 +223,11 @@ export async function submitToProcurement(
     .select()
     .single();
 
-  if (updateError) throw updateError;
-
-  // Generate procurement token
-  const rawToken = await createExternalToken({
-    entityType: "purchase_request",
-    entityId: id,
-    actorEmail: pr.procurement_email,
-    actorType: "PROCUREMENT",
-    allowedActions: ["APPROVE", "REJECT", "CHANGES_REQUESTED", "UPLOAD"],
-    createdBy: submittedBy,
-  });
+  if (updateError) {
+    // Revoke the dangling token since the status update failed
+    await revokeTokensForEntity(id, "purchase_request");
+    throw updateError;
+  }
 
   const procurementLink = `${appBaseUrl}/external/procurement/${rawToken}`;
 
@@ -251,6 +277,7 @@ export async function applyProcurementAction(
   else if (action === "REJECTED") newStatus = "REJECTED";
   else newStatus = "PROCUREMENT_CHANGES_REQUESTED";
 
+  // Compare-and-set: update only if the status is still PENDING_PROCUREMENT_APPROVAL
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("purchase_requests")
     .update({
@@ -262,10 +289,15 @@ export async function applyProcurementAction(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
+    .eq("status", "PENDING_PROCUREMENT_APPROVAL")
     .select()
     .single();
 
-  if (updateError) throw updateError;
+  if (updateError || !updated) {
+    throw new Error(
+      "Purchase request is not awaiting procurement approval (concurrent modification detected).",
+    );
+  }
 
   // Notify internal staff
   if (action === "APPROVED") {

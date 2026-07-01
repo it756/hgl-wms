@@ -125,8 +125,10 @@ export default function AdminPurchaseRequestsPage() {
                 className="bg-white rounded-xl border border-slate-200 overflow-hidden"
               >
                 {/* Header row */}
-                <div
-                  className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
+                  aria-expanded={expanded === r.id}
                   onClick={() => setExpanded(expanded === r.id ? null : r.id)}
                 >
                   <div className="flex items-center gap-4">
@@ -153,7 +155,7 @@ export default function AdminPurchaseRequestsPage() {
                       <ChevronDown className="w-4 h-4 text-slate-400" />
                     )}
                   </div>
-                </div>
+                </button>
 
                 {/* Expanded detail */}
                 {expanded === r.id && (
@@ -169,17 +171,18 @@ export default function AdminPurchaseRequestsPage() {
                       {r.procurement_notes && (
                         <p className="text-blue-600">Notes: {r.procurement_notes}</p>
                       )}
-                      {r.procurement_document_url && (
-                        <a
-                          href={r.procurement_document_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-700 hover:underline font-medium"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          View Procurement Document
-                        </a>
-                      )}
+                      {r.procurement_document_url &&
+                        /^https?:\/\//i.test(r.procurement_document_url) && (
+                          <a
+                            href={r.procurement_document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-700 hover:underline font-medium"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            View Procurement Document
+                          </a>
+                        )}
                     </div>
 
                     {/* Line items */}

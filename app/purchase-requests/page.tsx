@@ -58,6 +58,7 @@ function PurchaseRequestsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const created = searchParams.get("created");
+  const submitted = searchParams.get("submitted");
 
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,8 +69,14 @@ function PurchaseRequestsContent() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (created) setBanner(`Purchase request ${created} created successfully.`);
-  }, [created]);
+    if (created) {
+      setBanner(
+        submitted === "true"
+          ? `Purchase request ${created} submitted to procurement.`
+          : `Purchase request ${created} saved as draft.`,
+      );
+    }
+  }, [created, submitted]);
 
   useEffect(() => {
     fetchRequests();
@@ -236,6 +243,7 @@ function PurchaseRequestsContent() {
                         <Link
                           href={`/purchase-requests/${r.id}`}
                           className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+                          aria-label={`View purchase request ${r.reference_number}`}
                           title="View"
                         >
                           <Eye className="w-4 h-4" />
@@ -245,6 +253,7 @@ function PurchaseRequestsContent() {
                             onClick={() => handleSubmit(r.id, r.reference_number)}
                             disabled={submittingId === r.id}
                             className="p-1.5 rounded hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-40"
+                            aria-label={`Submit ${r.reference_number} to procurement`}
                             title="Submit to Procurement"
                           >
                             <Send className="w-4 h-4" />

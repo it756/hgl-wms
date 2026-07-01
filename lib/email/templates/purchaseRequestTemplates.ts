@@ -1,5 +1,16 @@
 import { sendEmail } from "../../email";
 
+/** Escape special HTML characters to prevent injection via user-supplied fields. */
+function esc(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function procurementReviewHtml(opts: {
   reference: string;
   sbuName: string;
@@ -21,8 +32,8 @@ export function procurementReviewHtml(opts: {
     .map(
       (l) => `
       <tr>
-        <td style="padding:6px 8px;border:1px solid #e2e8f0;">${l.product_name}${l.sku ? ` (${l.sku})` : ""}</td>
-        <td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:center;">${l.quantity_requested} ${l.unit_of_measure}</td>
+        <td style="padding:6px 8px;border:1px solid #e2e8f0;">${esc(l.product_name)}${l.sku ? ` (${esc(l.sku)})` : ""}</td>
+        <td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:center;">${l.quantity_requested} ${esc(l.unit_of_measure)}</td>
         <td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;">${l.unit_cost != null ? `${currency} ${l.unit_cost.toLocaleString()}` : "—"}</td>
       </tr>`,
     )
@@ -35,11 +46,11 @@ export function procurementReviewHtml(opts: {
   <p>A purchase request has been submitted and requires your approval before it can proceed.</p>
 
   <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
-    <tr><td style="padding:4px 0;font-weight:bold;width:160px;">Reference</td><td>${opts.reference}</td></tr>
-    <tr><td style="padding:4px 0;font-weight:bold;">Requesting SBU</td><td>${opts.sbuName}</td></tr>
-    ${opts.supplierName ? `<tr><td style="padding:4px 0;font-weight:bold;">Supplier</td><td>${opts.supplierName}</td></tr>` : ""}
+    <tr><td style="padding:4px 0;font-weight:bold;width:160px;">Reference</td><td>${esc(opts.reference)}</td></tr>
+    <tr><td style="padding:4px 0;font-weight:bold;">Requesting SBU</td><td>${esc(opts.sbuName)}</td></tr>
+    ${opts.supplierName ? `<tr><td style="padding:4px 0;font-weight:bold;">Supplier</td><td>${esc(opts.supplierName)}</td></tr>` : ""}
     ${opts.estimatedTotal != null ? `<tr><td style="padding:4px 0;font-weight:bold;">Estimated Total</td><td>${currency} ${opts.estimatedTotal.toLocaleString()}</td></tr>` : ""}
-    ${opts.notes ? `<tr><td style="padding:4px 0;font-weight:bold;">Notes</td><td>${opts.notes}</td></tr>` : ""}
+    ${opts.notes ? `<tr><td style="padding:4px 0;font-weight:bold;">Notes</td><td>${esc(opts.notes)}</td></tr>` : ""}
   </table>
 
   <h3 style="color:#4a5568;margin-bottom:8px;">Requested Items</h3>

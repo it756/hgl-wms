@@ -16,12 +16,20 @@ interface CatalogueProduct {
 
 interface LineItem {
   product_id: string;
+  product_name: string;
+  sku: string;
+  unit_cost: number | null;
+  unit_of_measure: string;
   quantity_requested: number;
   notes: string;
 }
 
 const defaultLine = (): LineItem => ({
   product_id: "",
+  product_name: "",
+  sku: "",
+  unit_cost: null,
+  unit_of_measure: "",
   quantity_requested: 1,
   notes: "",
 });
@@ -73,10 +81,18 @@ function NewPurchaseRequestContent() {
               data.purchase_request_line_items.map(
                 (l: {
                   product_id: string | null;
+                  product_name?: string;
+                  sku?: string | null;
+                  unit_cost?: number | null;
+                  unit_of_measure?: string;
                   quantity_requested: number;
                   notes: string | null;
                 }) => ({
                   product_id: l.product_id ?? "",
+                  product_name: l.product_name ?? "",
+                  sku: l.sku ?? "",
+                  unit_cost: l.unit_cost ?? null,
+                  unit_of_measure: l.unit_of_measure ?? "",
                   quantity_requested: l.quantity_requested,
                   notes: l.notes ?? "",
                 }),
@@ -106,8 +122,24 @@ function NewPurchaseRequestContent() {
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function updateLine(index: number, field: keyof LineItem, value: string | number) {
-    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+  function updateLine(index: number, field: keyof LineItem, value: string | number | null) {
+    setLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== index) return l;
+        const updated = { ...l, [field]: value };
+        // When product changes, refresh the snapshot from the catalogue
+        if (field === "product_id") {
+          const prod = products.find((p) => p.id === value);
+          if (prod) {
+            updated.product_name = prod.name;
+            updated.sku = prod.sku;
+            updated.unit_cost = prod.unit_cost;
+            updated.unit_of_measure = prod.uom;
+          }
+        }
+        return updated;
+      }),
+    );
   }
 
   async function handleSubmit(e: React.FormEvent, sendToProcurement = false) {
@@ -140,11 +172,11 @@ function NewPurchaseRequestContent() {
           const prod = getProduct(l.product_id);
           return {
             product_id: l.product_id,
-            product_name: prod?.name ?? l.product_id,
-            sku: prod?.sku || undefined,
+            product_name: prod?.name ?? l.product_name ?? l.product_id,
+            sku: prod?.sku ?? l.sku ?? undefined,
             quantity_requested: Number(l.quantity_requested),
-            unit_cost: prod?.unit_cost ?? undefined,
-            unit_of_measure: prod?.uom || "units",
+            unit_cost: prod?.unit_cost ?? l.unit_cost ?? undefined,
+            unit_of_measure: prod?.uom ?? l.unit_of_measure ?? "units",
             notes: l.notes.trim() || undefined,
           };
         }),
@@ -197,7 +229,11 @@ function NewPurchaseRequestContent() {
     <DashboardLayout>
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <Link href="/purchase-requests" className="text-slate-400 hover:text-slate-600">
+          <Link
+            href="/purchase-requests"
+            className="text-slate-400 hover:text-slate-600"
+            aria-label="Back to purchase requests"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
@@ -271,7 +307,7 @@ function NewPurchaseRequestContent() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                placeholder="Any additional context for procurementâ€¦"
+                placeholder="Any additional context for procurement…"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
               />
             </div>
@@ -292,7 +328,7 @@ function NewPurchaseRequestContent() {
             </div>
 
             {productsLoading ? (
-              <p className="text-sm text-slate-400">Loading product catalogueâ€¦</p>
+              <p className="text-sm text-slate-400">Loading product catalogue…</p>
             ) : products.length === 0 ? (
               <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm">
                 No products found in your SBU catalogue. Contact your Warehouse Manager to ensure
@@ -318,7 +354,7 @@ function NewPurchaseRequestContent() {
                           required
                           className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
                         >
-                          <option value="">Select productâ€¦</option>
+                          <option value="">Select product…</option>
                           {products.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.name} ({p.sku})
@@ -333,7 +369,7 @@ function NewPurchaseRequestContent() {
                         <input
                           type="text"
                           readOnly
-                          value={selectedProduct?.uom ?? "â€”"}
+                          value={selectedProduct?.uom ?? "—"}
                           className="w-full border border-slate-100 rounded px-2 py-1.5 text-sm bg-slate-100 text-slate-500 cursor-default"
                           tabIndex={-1}
                         />
@@ -346,7 +382,7 @@ function NewPurchaseRequestContent() {
                           value={
                             selectedProduct?.unit_cost != null
                               ? selectedProduct.unit_cost.toLocaleString()
-                              : "â€”"
+                              : "—"
                           }
                           className="w-full border border-slate-100 rounded px-2 py-1.5 text-sm bg-slate-100 text-slate-500 cursor-default"
                           tabIndex={-1}
@@ -378,6 +414,7 @@ function NewPurchaseRequestContent() {
                             type="button"
                             onClick={() => removeLine(index)}
                             className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                            aria-label="Remove line item"
                             title="Remove line"
                           >
                             <Trash className="w-4 h-4" />
@@ -385,13 +422,13 @@ function NewPurchaseRequestContent() {
                         )}
                       </div>
 
-                      {/* Optional line notes â€” full-width second row */}
+                      {/* Optional line notes — full-width second row */}
                       <div className="col-span-12">
                         <input
                           type="text"
                           value={line.notes}
                           onChange={(e) => updateLine(index, "notes", e.target.value)}
-                          placeholder="Line notes (optional)â€¦"
+                          placeholder="Line notes (optional)…"
                           className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
                         />
                       </div>
@@ -433,7 +470,7 @@ function NewPurchaseRequestContent() {
               className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
             >
               <Send className="w-4 h-4" />
-              {submitting ? "Submittingâ€¦" : "Save & Send to Procurement"}
+              {submitting ? "Submitting…" : "Save & Send to Procurement"}
             </button>
           </div>
         </form>

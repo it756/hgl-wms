@@ -25,14 +25,17 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     };
     return NextResponse.json(
       { error: messages[result.reason] ?? "Invalid link." },
-      { status: 410 },
+      { status: 410, headers: { "Cache-Control": "no-store" } },
     );
   }
 
   const { token } = result;
 
   if (token.entity_type !== "purchase_request") {
-    return NextResponse.json({ error: "Invalid token type." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid token type." },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
   const { data, error } = await supabaseAdmin
@@ -46,14 +49,20 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: "Purchase request not found." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Purchase request not found." },
+      { status: 404, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
-  return NextResponse.json({
-    purchaseRequest: data,
-    token: {
-      allowedActions: token.allowed_actions,
-      expiresAt: token.expires_at,
+  return NextResponse.json(
+    {
+      purchaseRequest: data,
+      token: {
+        allowedActions: token.allowed_actions,
+        expiresAt: token.expires_at,
+      },
     },
-  });
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

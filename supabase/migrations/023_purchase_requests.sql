@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_request_line_items (
   product_name         text NOT NULL,
   sku                  text,
   quantity_requested   integer NOT NULL CHECK (quantity_requested > 0),
-  unit_cost            numeric(12,2),
+  unit_cost            numeric(12,2) CHECK (unit_cost IS NULL OR unit_cost >= 0),
   unit_of_measure      text NOT NULL DEFAULT 'units',
   notes                text,
   created_at           timestamptz NOT NULL DEFAULT now()

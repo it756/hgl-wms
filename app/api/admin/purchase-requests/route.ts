@@ -21,8 +21,10 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") ?? "PENDING_INTERNAL_CONTROL_APPROVAL";
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
-  const offset = parseInt(searchParams.get("offset") ?? "0", 10);
+  const parsedLimit = parseInt(searchParams.get("limit") ?? "50", 10);
+  const limit = Math.min(Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50, 200);
+  const parsedOffset = parseInt(searchParams.get("offset") ?? "0", 10);
+  const offset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
   const { data, error } = await supabaseAdmin
     .from("purchase_requests")

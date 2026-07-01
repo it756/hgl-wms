@@ -49,7 +49,12 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json({ error: "Invalid token type." }, { status: 400 });
   }
 
-  const body = (await req.json()) as ActionBody;
+  let body: ActionBody;
+  try {
+    body = (await req.json()) as ActionBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON in request body." }, { status: 400 });
+  }
   const rawAction = body.action?.toUpperCase();
 
   if (!rawAction || !VALID_ACTIONS.includes(rawAction as ValidAction)) {
@@ -68,6 +73,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
     );
   }
 
+  // document_url requires explicit UPLOAD permission in the token
+  if (body.document_url && !token.allowed_actions.includes("UPLOAD")) {
+    return NextResponse.json(
+      { error: "Document upload is not permitted for this token." },
+      { status: 403 },
+    );
+  }
+
   try {
     const updated = await applyProcurementAction(token.entity_id, action, {
       notes: body.notes,
@@ -76,23 +89,32 @@ export async function POST(req: Request, { params }: { params: { token: string }
     });
 
     // Approve and Reject consume the token (single-use); CHANGES_REQUESTED keeps it active
+    // Best-effort: don't let token/audit failures roll back the already-committed state change
     if (action === "APPROVE" || action === "REJECT") {
-      await consumeToken(token.id, { ip, userAgent });
+      try {
+        await consumeToken(token.id, { ip, userAgent });
+      } catch (consumeErr) {
+        console.error("[external/procurement/action] consumeToken failed", consumeErr);
+      }
     }
 
-    await writeAuditLog({
-      entity_type: "purchase_request",
-      entity_id: token.entity_id,
-      action: `PROCUREMENT_${action}`,
-      performed_by: undefined, // external actor — no auth.users id
-      details: {
-        actor_email: token.actor_email,
-        actor_type: token.actor_type,
-        notes: body.notes ?? null,
-        document_url: body.document_url ?? null,
-      },
-      ip_address: ip,
-    });
+    try {
+      await writeAuditLog({
+        entity_type: "purchase_request",
+        entity_id: token.entity_id,
+        action: `PROCUREMENT_${action}`,
+        performed_by: undefined, // external actor — no auth.users id
+        details: {
+          actor_email: token.actor_email,
+          actor_type: token.actor_type,
+          notes: body.notes ?? null,
+          document_url: body.document_url ?? null,
+        },
+        ip_address: ip,
+      });
+    } catch (auditErr) {
+      console.error("[external/procurement/action] writeAuditLog failed", auditErr);
+    }
 
     // Send confirmation email to procurement
     try {

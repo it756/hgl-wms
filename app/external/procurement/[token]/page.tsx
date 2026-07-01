@@ -58,7 +58,8 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
 
   useEffect(() => {
     loadRequest();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.token]);
 
   async function loadRequest() {
     try {

@@ -160,9 +160,12 @@ export async function POST(req: Request) {
 
   // BU_MANAGER may only register products in the catalogue with zero initial stock.
   // Stock additions must flow through the purchase request → supplier GRN → finance approval path.
-  const resolvedInitialQty =
-    initial_quantity != null ? Number(initial_quantity) : (stock_quantity ?? 0);
-  if (role === "BU_MANAGER" && resolvedInitialQty > 0) {
+  const rawQty = initial_quantity != null ? Number(initial_quantity) : Number(stock_quantity ?? 0);
+  if (!Number.isFinite(rawQty) || rawQty < 0) {
+    return NextResponse.json({ error: "quantity must be a non-negative number" }, { status: 400 });
+  }
+  const resolvedInitialQty = rawQty;
+  if (role === "BU_MANAGER" && resolvedInitialQty !== 0) {
     return NextResponse.json(
       {
         error:

@@ -99,7 +99,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json(updated);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
-    const status = message.includes("cannot be edited") ? 409 : 500;
+    const status = message.includes("cannot be edited")
+      ? 409
+      : message.includes("not found")
+        ? 404
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

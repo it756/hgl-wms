@@ -36,7 +36,7 @@ export async function createExternalToken(opts: {
   expiresAt.setDate(expiresAt.getDate() + (opts.expiryDays ?? TOKEN_EXPIRY_DAYS));
 
   // Revoke any existing active tokens for the same entity + actor before creating a new one
-  await supabaseAdmin
+  const { error: revokeError } = await supabaseAdmin
     .from("external_action_tokens")
     .update({ revoked_at: new Date().toISOString() })
     .eq("entity_type", opts.entityType)
@@ -44,6 +44,8 @@ export async function createExternalToken(opts: {
     .eq("actor_email", opts.actorEmail)
     .is("revoked_at", null)
     .is("used_at", null);
+
+  if (revokeError) throw revokeError;
 
   const { error } = await supabaseAdmin.from("external_action_tokens").insert([
     {
@@ -113,15 +115,20 @@ export async function consumeToken(
   tokenId: string,
   opts?: { ip?: string; userAgent?: string },
 ): Promise<void> {
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("external_action_tokens")
     .update({
       used_at: new Date().toISOString(),
       last_actor_ip: opts?.ip ?? null,
       last_user_agent: opts?.userAgent ?? null,
     })
-    .eq("id", tokenId);
+    .eq("id", tokenId)
+    .is("used_at", null) // CAS: only mark used if not already consumed
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Token has already been consumed by a concurrent request.");
+  }
 }
 
 /**

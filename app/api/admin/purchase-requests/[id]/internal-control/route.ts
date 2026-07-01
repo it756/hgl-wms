@@ -25,7 +25,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
   }
 
-  const body = (await req.json()) as InternalControlBody;
+  let body: InternalControlBody;
+  try {
+    body = (await req.json()) as InternalControlBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON in request body." }, { status: 400 });
+  }
   const { action, notes } = body;
 
   if (!action || !["approve", "reject"].includes(action)) {
@@ -41,7 +46,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ id: updated.id, status: updated.status });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
-    const status = message.includes("not awaiting internal control") ? 409 : 500;
+    const status = message.includes("not awaiting internal control")
+      ? 409
+      : message.includes("not found")
+        ? 404
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

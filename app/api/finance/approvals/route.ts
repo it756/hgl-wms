@@ -219,13 +219,17 @@ export async function POST(req: Request) {
     });
 
     for (const r of ["WAREHOUSE_MANAGER", "ADMIN"] as const) {
-      await createNotification({
-        user_role: r,
-        type: action === "approve" ? "supplier_grn_approved" : "supplier_grn_rejected",
-        message,
-        related_entity_id: entity_id,
-        dispatchChannels: true,
-      });
+      try {
+        await createNotification({
+          user_role: r,
+          type: action === "approve" ? "supplier_grn_approved" : "supplier_grn_rejected",
+          message,
+          related_entity_id: entity_id,
+          dispatchChannels: true,
+        });
+      } catch (notifErr) {
+        console.error(`[finance/approvals] notification failed for ${r}`, notifErr);
+      }
     }
 
     await writeAuditLog({

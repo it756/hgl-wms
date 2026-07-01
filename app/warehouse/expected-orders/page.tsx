@@ -82,8 +82,10 @@ export default function WarehouseExpectedOrdersPage() {
                 key={order.id}
                 className="bg-white rounded-xl border border-slate-200 overflow-hidden"
               >
-                <div
-                  className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
+                  aria-expanded={expanded === order.id}
                   onClick={() => setExpanded(expanded === order.id ? null : order.id)}
                 >
                   <div className="flex items-center gap-4">
@@ -118,7 +120,7 @@ export default function WarehouseExpectedOrdersPage() {
                       <ChevronDown className="w-4 h-4 text-slate-400" />
                     )}
                   </div>
-                </div>
+                </button>
 
                 {expanded === order.id && (
                   <div className="border-t border-slate-100 px-5 py-4 space-y-4">
