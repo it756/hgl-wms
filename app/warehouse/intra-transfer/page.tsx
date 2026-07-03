@@ -115,9 +115,7 @@ export default function IntraTransferPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create transfer");
-      setSuccess(
-        `Intra-transfer ${data.reference_number} submitted — pending Finance approval`,
-      );
+      setSuccess(`Intra-transfer ${data.reference_number} submitted — pending Finance approval`);
       setProductId("");
       setQuantity(0);
       setToSbuId("");
@@ -311,9 +309,7 @@ export default function IntraTransferPage() {
                                 : "bg-slate-100 border border-slate-200 text-slate-500"
                           }`}
                         >
-                          {t.status === "PENDING_FINANCE_APPROVAL"
-                            ? "Pending Finance"
-                            : t.status}
+                          {t.status === "PENDING_FINANCE_APPROVAL" ? "Pending Finance" : t.status}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-slate-500">

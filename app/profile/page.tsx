@@ -121,7 +121,11 @@ export default function ProfilePage() {
       setInfoSuccess(true);
       // Sync localStorage so the navbar greeting reflects the new name
       localStorage.setItem("user_name", fullName.trim());
-      setProfile((prev) => prev ? { ...prev, full_name: fullName.trim(), whatsapp_number: whatsapp.trim() || null } : prev);
+      setProfile((prev) =>
+        prev
+          ? { ...prev, full_name: fullName.trim(), whatsapp_number: whatsapp.trim() || null }
+          : prev,
+      );
     } catch {
       setInfoError("Failed to save changes");
     } finally {
@@ -134,11 +138,22 @@ export default function ProfilePage() {
     setPwError(null);
     setPwSuccess(false);
 
-    if (!currentPw) { setPwError("Current password is required"); return; }
-    if (!newPw) { setPwError("New password is required"); return; }
-    if (newPw !== confirmPw) { setPwError("New passwords do not match"); return; }
+    if (!currentPw) {
+      setPwError("Current password is required");
+      return;
+    }
+    if (!newPw) {
+      setPwError("New password is required");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setPwError("New passwords do not match");
+      return;
+    }
     if (!PW_POLICY.test(newPw)) {
-      setPwError("New password must be at least 8 characters with at least one number and one special character");
+      setPwError(
+        "New password must be at least 8 characters with at least one number and one special character",
+      );
       return;
     }
 
@@ -248,21 +263,30 @@ export default function ProfilePage() {
             {/* Editable fields */}
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="fullName">
+                <label
+                  className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                  htmlFor="fullName"
+                >
                   Full Name
                 </label>
                 <input
                   id="fullName"
                   type="text"
                   value={fullName}
-                  onChange={(e) => { setFullName(e.target.value); setInfoSuccess(false); }}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    setInfoSuccess(false);
+                  }}
                   className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#005c55]/30 focus:border-[#005c55] transition-colors"
                   placeholder="Your full name"
                   required
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="whatsapp">
+                <label
+                  className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                  htmlFor="whatsapp"
+                >
                   <span className="flex items-center gap-1.5">
                     <Phone className="w-3 h-3" />
                     WhatsApp Number
@@ -273,11 +297,16 @@ export default function ProfilePage() {
                   id="whatsapp"
                   type="tel"
                   value={whatsapp}
-                  onChange={(e) => { setWhatsapp(e.target.value); setInfoSuccess(false); }}
+                  onChange={(e) => {
+                    setWhatsapp(e.target.value);
+                    setInfoSuccess(false);
+                  }}
                   className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#005c55]/30 focus:border-[#005c55] transition-colors"
                   placeholder="+260977000000"
                 />
-                <p className="text-[11px] text-slate-400">E.164 format required, e.g. +260977000000</p>
+                <p className="text-[11px] text-slate-400">
+                  E.164 format required, e.g. +260977000000
+                </p>
               </div>
             </div>
 
@@ -317,7 +346,10 @@ export default function ProfilePage() {
           <form onSubmit={handleChangePassword} className="p-6 flex flex-col gap-4">
             {/* Current password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="currentPw">
+              <label
+                className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                htmlFor="currentPw"
+              >
                 Current Password
               </label>
               <div className="relative">
@@ -325,7 +357,10 @@ export default function ProfilePage() {
                   id="currentPw"
                   type={showCurrentPw ? "text" : "password"}
                   value={currentPw}
-                  onChange={(e) => { setCurrentPw(e.target.value); setPwSuccess(false); }}
+                  onChange={(e) => {
+                    setCurrentPw(e.target.value);
+                    setPwSuccess(false);
+                  }}
                   className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-200 text-sm text-slate-800 font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#005c55]/30 focus:border-[#005c55] transition-colors"
                   placeholder="Enter current password"
                   autoComplete="current-password"
@@ -343,7 +378,10 @@ export default function ProfilePage() {
 
             {/* New password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="newPw">
+              <label
+                className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                htmlFor="newPw"
+              >
                 New Password
               </label>
               <div className="relative">
@@ -351,7 +389,10 @@ export default function ProfilePage() {
                   id="newPw"
                   type={showNewPw ? "text" : "password"}
                   value={newPw}
-                  onChange={(e) => { setNewPw(e.target.value); setPwSuccess(false); }}
+                  onChange={(e) => {
+                    setNewPw(e.target.value);
+                    setPwSuccess(false);
+                  }}
                   className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-200 text-sm text-slate-800 font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#005c55]/30 focus:border-[#005c55] transition-colors"
                   placeholder="Min 8 chars, one number, one special char"
                   autoComplete="new-password"
@@ -365,12 +406,17 @@ export default function ProfilePage() {
                   {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400">Must be ≥8 characters with at least one number and one special character</p>
+              <p className="text-[11px] text-slate-400">
+                Must be ≥8 characters with at least one number and one special character
+              </p>
             </div>
 
             {/* Confirm new password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="confirmPw">
+              <label
+                className="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                htmlFor="confirmPw"
+              >
                 Confirm New Password
               </label>
               <div className="relative">
@@ -378,7 +424,10 @@ export default function ProfilePage() {
                   id="confirmPw"
                   type={showConfirmPw ? "text" : "password"}
                   value={confirmPw}
-                  onChange={(e) => { setConfirmPw(e.target.value); setPwSuccess(false); }}
+                  onChange={(e) => {
+                    setConfirmPw(e.target.value);
+                    setPwSuccess(false);
+                  }}
                   className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-200 text-sm text-slate-800 font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#005c55]/30 focus:border-[#005c55] transition-colors"
                   placeholder="Repeat new password"
                   autoComplete="new-password"
