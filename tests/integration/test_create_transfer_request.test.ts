@@ -34,6 +34,7 @@ function buildChain(returnValue: unknown) {
   chain.select = vi.fn(() => chain);
   chain.single = vi.fn(() => returnValue);
   chain.eq = vi.fn(() => chain);
+  chain.in = vi.fn(() => returnValue);
   chain.upsert = vi.fn(() => chain);
   chain.update = vi.fn(() => chain);
   chain.order = vi.fn(() => chain);
@@ -63,6 +64,13 @@ describe("transferService.createTransferRequest", () => {
     );
     // Stub transfer_line_items insert
     const liChain = buildChain(Promise.resolve({ data: [], error: null }));
+    // Stub product stock lookup
+    const productsChain = buildChain(
+      Promise.resolve({
+        data: [{ id: "prod-001", name: "Product One", stock_quantity: 20 }],
+        error: null,
+      }),
+    );
     // Stub notifications insert
     const notifChain = buildChain(Promise.resolve({ data: {}, error: null }));
     // Stub audit_logs insert
@@ -84,6 +92,7 @@ describe("transferService.createTransferRequest", () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === "app_settings") return settingsChain;
+      if (table === "products") return productsChain;
       if (table === "transfer_requests") return trChain;
       if (table === "products") return productsChain;
       if (table === "transfer_line_items") return liChain;
@@ -118,6 +127,12 @@ describe("transferService.createTransferRequest", () => {
         error: null,
       }),
     );
+    const productsChain = buildChain(
+      Promise.resolve({
+        data: [{ id: "prod-001", name: "Product One", stock_quantity: 20 }],
+        error: null,
+      }),
+    );
     const genericChain = buildChain(Promise.resolve({ data: {}, error: null }));
     const productsChain = buildChain(
       Promise.resolve({
@@ -135,6 +150,7 @@ describe("transferService.createTransferRequest", () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === "app_settings") return settingsChain;
+      if (table === "products") return productsChain;
       if (table === "transfer_requests") return trChain;
       if (table === "products") return productsChain;
       return genericChain;
