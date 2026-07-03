@@ -15,7 +15,7 @@ vi.mock("../../lib/supabaseServer", () => ({
   supabaseAdmin: {
     from: mockFrom,
     rpc: mockRpc,
-    auth: { getUser: vi.fn() },
+    auth: { getUser: vi.fn(), admin: { getUserById: vi.fn() } },
   },
   getUserFromAuthHeader: mockGetUser,
 }));
@@ -57,6 +57,7 @@ describe("Finance Approval — transfer_request", () => {
           ? makeChain({ data: tr, error: null })
           : makeChain({ data: [{ id: tr.id }], error: null });
       }
+      if (table === "profiles") return makeChain({ data: [], error: null });
       // notifications + audit_logs
       return makeChain({ data: { id: "x" }, error: null });
     });
@@ -90,6 +91,7 @@ describe("Finance Approval — transfer_request", () => {
           ? makeChain({ data: tr, error: null })
           : makeChain({ data: [{ id: tr.id }], error: null });
       }
+      if (table === "profiles") return makeChain({ data: [], error: null });
       return makeChain({ data: { id: "x" }, error: null });
     });
     mockGetUser.mockResolvedValue(FM_USER);
@@ -127,6 +129,7 @@ describe("Finance Approval — supplier_grn", () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === "supplier_grns") return makeChain({ data: sgrn, error: null });
+      if (table === "profiles") return makeChain({ data: [], error: null });
       // notifications + audit_logs
       return makeChain({ data: { id: "x" }, error: null });
     });

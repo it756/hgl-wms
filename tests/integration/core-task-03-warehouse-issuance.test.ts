@@ -154,6 +154,7 @@ describe("core-task-03-warehouse-issuance", () => {
   });
 
   it("returns an error when the stock decrement RPC rejects insufficient stock", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockFrom.mockImplementation((table: string) => {
       if (table === "transfer_requests")
         return makeChain({ data: { sbu_id: "sbu-001" }, error: null });
@@ -164,20 +165,24 @@ describe("core-task-03-warehouse-issuance", () => {
       error: { message: "process_issuance: insufficient_stock for product prod-001" },
     });
 
-    const { POST } = await import("../../app/api/issuances/route");
-    const res = await POST(
-      new Request("http://localhost/api/issuances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer token" },
-        body: JSON.stringify({
-          transfer_request_id: "tr-approved-003",
-          items: [{ product_id: "prod-001", quantity_issued: 999 }],
+    try {
+      const { POST } = await import("../../app/api/issuances/route");
+      const res = await POST(
+        new Request("http://localhost/api/issuances", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer token" },
+          body: JSON.stringify({
+            transfer_request_id: "tr-approved-003",
+            items: [{ product_id: "prod-001", quantity_issued: 999 }],
+          }),
         }),
-      }),
-    );
+      );
 
-    const body = await res.json();
-    expect(res.status).toBe(500);
-    expect(body.error).toContain("insufficient_stock");
+      const body = await res.json();
+      expect(res.status).toBe(500);
+      expect(body.error).toContain("insufficient_stock");
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 });

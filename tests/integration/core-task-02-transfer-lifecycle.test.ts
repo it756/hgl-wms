@@ -8,7 +8,7 @@ vi.mock("../../lib/supabaseServer", () => ({
   supabaseAdmin: {
     from: mockFrom,
     rpc: mockRpc,
-    auth: { getUser: vi.fn() },
+    auth: { getUser: vi.fn(), admin: { getUserById: vi.fn() } },
   },
   getUserFromAuthHeader: mockGetUser,
 }));
@@ -52,9 +52,14 @@ describe("core-task-02-transfer-lifecycle", () => {
     const transferChain = makeChain({ data: { id: "tr-001" }, error: null });
     const lineItemsChain = makeChain({ data: null, error: null });
     const notificationChain = makeChain({ data: { id: "n-001" }, error: null });
+    const profileListChain = makeChain({ data: [], error: null });
+    let profileCalls = 0;
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "profiles") return profileChain;
+      if (table === "profiles") {
+        profileCalls += 1;
+        return profileCalls === 1 ? profileChain : profileListChain;
+      }
       if (table === "sbu_units") return unitChain;
       if (table === "products") return productsChain;
       if (table === "transfer_requests") return transferChain;
