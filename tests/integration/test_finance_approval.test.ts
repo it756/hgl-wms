@@ -31,6 +31,7 @@ function makeChain(result: unknown) {
   c.order = vi.fn(self);
   c.range = vi.fn(self);
   c.single = vi.fn(() => Promise.resolve(result));
+  c.maybeSingle = vi.fn(() => Promise.resolve(result));
   c.then = (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject);
   return c;
 }
