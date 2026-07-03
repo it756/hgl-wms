@@ -65,7 +65,10 @@ describe("core-task-03-warehouse-issuance", () => {
   it("records full issuance through the process_issuance RPC", async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === "transfer_requests")
-        return makeChain({ data: { sbu_id: "sbu-001", reference_number: "TRF-2026-10001" }, error: null });
+        return makeChain({
+          data: { sbu_id: "sbu-001", reference_number: "TRF-2026-10001" },
+          error: null,
+        });
       if (table === "notifications") return makeChain({ data: { id: "n-001" }, error: null });
       if (table === "profiles") return makeChain({ data: [], error: null });
       return makeChain({ data: null, error: null });
@@ -107,7 +110,10 @@ describe("core-task-03-warehouse-issuance", () => {
   it("records partial issuance with a shortfall reason in the RPC payload", async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === "transfer_requests")
-        return makeChain({ data: { sbu_id: "sbu-001", reference_number: "TRF-2026-10002" }, error: null });
+        return makeChain({
+          data: { sbu_id: "sbu-001", reference_number: "TRF-2026-10002" },
+          error: null,
+        });
       if (table === "notifications") return makeChain({ data: { id: "n-001" }, error: null });
       if (table === "profiles") return makeChain({ data: [], error: null });
       return makeChain({ data: null, error: null });
@@ -149,7 +155,8 @@ describe("core-task-03-warehouse-issuance", () => {
 
   it("returns an error when the stock decrement RPC rejects insufficient stock", async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === "transfer_requests") return makeChain({ data: { sbu_id: "sbu-001" }, error: null });
+      if (table === "transfer_requests")
+        return makeChain({ data: { sbu_id: "sbu-001" }, error: null });
       return makeChain({ data: null, error: null });
     });
     mockRpc.mockResolvedValue({

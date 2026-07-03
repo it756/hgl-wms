@@ -258,7 +258,8 @@ describe("core-task-02-transfer-lifecycle", () => {
     );
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "transfer_requests") return makeChain({ data: { status: "ISSUED" }, error: null });
+      if (table === "transfer_requests")
+        return makeChain({ data: { status: "ISSUED" }, error: null });
       return makeChain({ data: null, error: null });
     });
 

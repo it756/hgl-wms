@@ -144,7 +144,10 @@ export function buildDetailMessage(input: DetailMessageInput): string {
     ["Location", input.location],
     ["Supplier", input.supplier],
     ["Invoice", input.invoiceReference],
-    ["Invoice amount", isPresent(input.invoiceAmount) ? formatMoney(Number(input.invoiceAmount)) : null],
+    [
+      "Invoice amount",
+      isPresent(input.invoiceAmount) ? formatMoney(Number(input.invoiceAmount)) : null,
+    ],
     ["Products", input.products ? formatProducts(input.products) : null],
     ["Notes", input.notes],
   ];
