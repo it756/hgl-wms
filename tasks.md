@@ -1,32 +1,51 @@
-1.⁠ ⁠Login and role routing
-•⁠  ⁠Sign in as BU Manager, Unit Staff, Warehouse Manager.
-•⁠  ⁠Verify each role lands on the correct dashboard/queue.
-•⁠  ⁠Verify logout and forced redirect on missing/expired token.
+# Developer 1: Operational Flow (BU, Unit, Warehouse)
 
-2.⁠ ⁠Transfer request lifecycle
-•⁠  ⁠BU Manager creates transfer with multiple line items.
-•⁠  ⁠Validate required fields, quantity rules, and reference generation.
-•⁠  ⁠Edit/cancel behavior before issuance.
-•⁠  ⁠View request details and status transitions.
+Use this list for the operational workstream. Developer 2 governance/platform tasks are excluded from this file and should be tracked separately.
 
-3.⁠ ⁠Warehouse issuance
-•⁠  ⁠Warehouse Manager sees pending/approved requests in queue.
-•⁠  ⁠Issue full quantities and confirm status becomes issued.
-•⁠  ⁠Issue partial quantities with shortfall reason.
-•⁠  ⁠Validate stock decrement and insufficient-stock rejection path.
+## 1. Login and Role Routing
 
-4.⁠ ⁠Unit GRN submission
-•⁠  ⁠Unit Staff submits GRN for issued transfer.
-•⁠  ⁠Exact receipt path: completed status.
-•⁠  ⁠Variance path: completed with variance status and reason capture.
-•⁠  ⁠Ensure transfer/GRN immutability after submission.
+- Sign in as BU Manager, Unit Staff, and Warehouse Manager.
+- Verify each role lands on the correct dashboard or queue.
+- Verify logout and forced redirect on missing or expired token.
 
-5.⁠ ⁠Return request flow
-•⁠  ⁠Unit Staff raises return (linked and unlinked cases).
-•⁠  ⁠BU Manager approves/rejects return.
-•⁠  ⁠Warehouse receives return and confirms stock restoration behavior.
-•⁠  ⁠Validate status transitions end-to-end.
+## 2. Transfer Request Lifecycle
 
-6.⁠ ⁠Notifications (operational)
-•⁠  ⁠Verify in-app notifications for transfer submitted, issuance, GRN variance, return actions.
-•⁠  ⁠Confirm unread/read behavior and role-appropriate visibility.
+- BU Manager creates a transfer with multiple line items.
+- Validate required fields, quantity rules, and reference generation.
+- Verify edit and cancel behavior before issuance.
+- View request details and status transitions.
+
+## 3. Warehouse Issuance
+
+- Warehouse Manager sees pending and approved requests in the queue.
+- Issue full quantities and confirm status becomes issued.
+- Issue partial quantities with shortfall reason.
+- Validate stock decrement and insufficient-stock rejection path.
+
+## 4. Unit GRN Submission
+
+- Unit Staff submits GRN for an issued transfer.
+- Verify exact receipt path results in completed status.
+- Verify variance path results in completed with variance status and reason capture.
+- Ensure transfer and GRN are immutable after submission.
+
+## 5. Return Request Flow
+
+- Unit Staff raises returns for linked and unlinked cases.
+- BU Manager approves and rejects returns.
+- Warehouse receives return and confirms stock restoration behavior.
+- Validate status transitions end to end.
+
+## 6. Notifications (Operational)
+
+- Verify in-app notifications for transfer submitted, issuance, GRN variance, and return actions.
+- Confirm unread/read behavior and role-appropriate visibility.
+
+# Shared Smoke Pass at End
+
+Both developers should run this together after their individual workstreams.
+
+1. Cross-role end-to-end happy path from transfer creation to closure.
+2. One full rejected path, either finance reject or return reject.
+3. One full variance path.
+4. Verify notifications and audit entries exist for each major event.

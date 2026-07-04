@@ -126,10 +126,16 @@ async function resolveRecipients(opts: {
           .select("id, whatsapp_number")
           .eq("role", opts.user_role)
           .eq("is_active", true);
-    if (!profiles || profiles.length === 0) return [];
+    const profileRows = Array.isArray(profiles)
+      ? (profiles as NotificationRecipientProfile[])
+      : profiles
+        ? [profiles as NotificationRecipientProfile]
+        : [];
+
+    if (profileRows.length === 0) return [];
 
     const out = await Promise.all(
-      (profiles as NotificationRecipientProfile[]).map(async (p) => {
+      profileRows.map(async (p) => {
         let email: string | null = null;
         try {
           const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);
