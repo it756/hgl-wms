@@ -52,32 +52,20 @@ describe("core-task-06-notifications", () => {
   it("creates a transfer-submitted notification for the Finance queue", async () => {
     mockGetUser.mockResolvedValue(BU_MANAGER);
 
-    const profileChain = makeChain({ data: { sbu_id: "sbu-001" }, error: null });
     const profileListChain = makeChain({ data: [], error: null });
-    const unitChain = makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
-    const productsChain = makeChain({
-      data: [{ id: "prod-001", name: "Printer Toner", stock_quantity: 10 }],
+    mockRpc.mockResolvedValue({
+      data: {
+        id: "tr-001",
+        reference_number: "TRF-2026-10001",
+        status: "PENDING_APPROVAL",
+        requires_finance_approval: true,
+      },
       error: null,
     });
-    const transferInsertChain = makeChain({ data: { id: "tr-001" }, error: null });
-    const transferLookupChain = makeChain({ data: { sbu_id: "sbu-001" }, error: null });
-    const lineItemsChain = makeChain({ data: null, error: null });
     const notificationChain = makeChain({ data: { id: "n-001" }, error: null });
-    let profileCalls = 0;
-    let transferRequestCalls = 0;
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "profiles") {
-        profileCalls += 1;
-        return profileCalls === 1 ? profileChain : profileListChain;
-      }
-      if (table === "sbu_units") return unitChain;
-      if (table === "products") return productsChain;
-      if (table === "transfer_requests") {
-        transferRequestCalls += 1;
-        return transferRequestCalls === 1 ? transferInsertChain : transferLookupChain;
-      }
-      if (table === "transfer_line_items") return lineItemsChain;
+      if (table === "profiles") return profileListChain;
       if (table === "notifications") return notificationChain;
       return makeChain({ data: null, error: null });
     });

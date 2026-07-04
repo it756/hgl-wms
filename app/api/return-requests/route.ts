@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
-import { writeAuditLog } from "../../../lib/services/auditService";
 import { createNotification } from "../../../lib/services/notificationService";
 import { buildReturnNotificationMessage } from "../../../lib/notifications/messages";
 
@@ -8,6 +7,14 @@ function generateReturnReference(): string {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 90000 + 10000);
   return `RTN-${year}-${seq}`;
+}
+
+function statusForRpcError(message: string): number {
+  if (message.includes("not found")) return 404;
+  if (message.includes("forbidden") || message.includes("does not belong")) return 403;
+  if (message.includes("completed transfers")) return 409;
+  if (message.includes("required") || message.includes("at least one")) return 400;
+  return 500;
 }
 
 /**
@@ -47,64 +54,26 @@ export async function POST(req: Request) {
     }
   }
 
-  // If an original transfer is linked, verify it belongs to the user's SBU and is completed
-  if (original_transfer_request_id) {
-    const { data: transfer } = await supabaseAdmin
-      .from("transfer_requests")
-      .select("id, sbu_id, status")
-      .eq("id", original_transfer_request_id)
-      .single();
-
-    if (!transfer) {
-      return NextResponse.json({ error: "Transfer request not found" }, { status: 404 });
-    }
-    if (transfer.sbu_id !== sbu_id) {
-      return NextResponse.json({ error: "Transfer does not belong to your SBU" }, { status: 403 });
-    }
-    if (!["COMPLETED", "COMPLETED_WITH_VARIANCE"].includes(transfer.status)) {
-      return NextResponse.json(
-        { error: "Returns can only be raised against completed transfers" },
-        { status: 409 },
-      );
-    }
-  }
-
   const reference_number = generateReturnReference();
 
-  const { data: returnRequest, error: insertError } = await supabaseAdmin
-    .from("return_requests")
-    .insert([
-      {
-        reference_number,
-        original_transfer_request_id: original_transfer_request_id ?? null,
-        sbu_id,
-        raised_by: user.id,
-        status: "PENDING_APPROVAL",
-        reason: reason.trim(),
-        notes: notes?.trim() ?? null,
-      },
-    ])
-    .select()
-    .single();
+  const { data, error: rpcError } = await supabaseAdmin.rpc("create_return_request_atomic", {
+    p_actor_id: user.id,
+    p_reference_number: reference_number,
+    p_original_transfer_request_id: original_transfer_request_id ?? null,
+    p_reason: reason.trim(),
+    p_notes: notes?.trim() ?? null,
+    p_items: items,
+  });
 
-  if (insertError) {
-    console.error(insertError);
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  if (rpcError) {
+    return NextResponse.json(
+      { error: rpcError.message },
+      { status: statusForRpcError(rpcError.message) },
+    );
   }
 
-  const returnId = (returnRequest as any).id;
-
-  const lineInserts = items.map((item: any) => ({
-    return_request_id: returnId,
-    product_id: item.product_id,
-    quantity_to_return: item.quantity_to_return,
-  }));
-
-  const { error: lineError } = await supabaseAdmin.from("return_line_items").insert(lineInserts);
-  if (lineError) {
-    console.error(lineError);
-    return NextResponse.json({ error: lineError.message }, { status: 500 });
-  }
+  const created = data as AtomicReturnResult;
+  const returnId = created.id;
 
   // Notify BU Manager for their SBU
   const message = await buildReturnNotificationMessage({

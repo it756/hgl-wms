@@ -20,53 +20,24 @@ export async function POST(req: Request) {
     if (!Array.isArray(items) || items.length === 0)
       return NextResponse.json({ error: "No items" }, { status: 400 });
 
-    // determine variance
-    let hasVariance = false;
-    for (const it of items) {
-      if (Number(it.quantity_received) !== Number(it.issued_quantity)) {
-        hasVariance = true;
-        break;
-      }
+    const { data, error: rpcError } = await supabaseAdmin.rpc("submit_grn_atomic", {
+      p_actor_id: user.id,
+      p_transfer_request_id: transfer_request_id,
+      p_date_received: date_received ?? null,
+      p_condition_notes: condition_notes ?? null,
+      p_items: items,
+    });
+
+    if (rpcError) {
+      return NextResponse.json(
+        { error: rpcError.message },
+        { status: statusForRpcError(rpcError.message) },
+      );
     }
 
-    const { data: grnData, error: grnError } = await supabaseAdmin
-      .from("grns")
-      .insert([
-        {
-          transfer_request_id,
-          received_by: user.id,
-          date_received,
-          condition_notes,
-          has_variance: hasVariance,
-        },
-      ])
-      .select()
-      .single();
-    if (grnError) throw grnError;
-
-    const grnId = (grnData as any).id;
-    const lineInserts = items.map((i: any) => ({
-      grn_id: grnId,
-      product_id: i.product_id,
-      issued_quantity: i.issued_quantity,
-      quantity_received: i.quantity_received,
-    }));
-    const { data: insertedLines, error: liError } = await supabaseAdmin
-      .from("grn_line_items")
-      .insert(lineInserts)
-      .select("id, product_id, issued_quantity, quantity_received");
-    if (liError) {
-      // Roll back the orphaned GRN header so we don't leave empty GRN records
-      await supabaseAdmin.from("grns").delete().eq("id", grnId);
-      throw liError;
-    }
-
-    // update transfer status
-    const newStatus = hasVariance ? "COMPLETED_WITH_VARIANCE" : "COMPLETED";
-    await supabaseAdmin
-      .from("transfer_requests")
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq("id", transfer_request_id);
+    const result = data as AtomicGrnResult;
+    const grnId = result.grn_id;
+    const newStatus = result.status;
 
     // notify warehouse manager on variance
     if (hasVariance) {

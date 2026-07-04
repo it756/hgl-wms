@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
-import { writeAuditLog } from "../../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../../lib/services/notificationService";
 import { buildProductActionMessage } from "../../../../../../lib/notifications/messages";
 
@@ -8,6 +7,14 @@ function generateExpiryReference(): string {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 90000 + 10000);
   return `EXP-${year}-${seq}`;
+}
+
+function statusForRpcError(message: string): number {
+  if (message.includes("not found")) return 404;
+  if (message.includes("forbidden")) return 403;
+  if (message.includes("insufficient stock")) return 409;
+  if (message.includes("positive") || message.includes("required")) return 400;
+  return 500;
 }
 
 /**
@@ -44,88 +51,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  // Lock product row (best-effort via two-step in JS — the unique decrement here
-  // is gated by a stock check; concurrent writes are protected by the conditional update).
-  const { data: product, error: prodErr } = await supabaseAdmin
-    .from("products")
-    .select("id, name, sku, stock_quantity, unit_cost")
-    .eq("id", productId)
-    .single();
+  const reference_number = generateExpiryReference();
 
-  if (prodErr || !product) {
-    return NextResponse.json({ error: "Product not found" }, { status: 404 });
-  }
-  const stock = (product as any).stock_quantity as number;
-  if (stock < qty) {
+  const { data, error: rpcError } = await supabaseAdmin.rpc("expire_product_batch_atomic", {
+    p_product_id: productId,
+    p_actor_id: user.id,
+    p_reference_number: reference_number,
+    p_quantity_expired: qty,
+    p_expiry_date: expiry_date ?? null,
+    p_supplier_grn_line_item_id: supplier_grn_line_item_id ?? null,
+    p_unit_cost: typeof unit_cost === "number" && Number.isFinite(unit_cost) ? unit_cost : null,
+    p_notes: notes ?? null,
+  });
+
+  if (rpcError) {
     return NextResponse.json(
-      { error: `Insufficient stock (available: ${stock}, requested: ${qty})` },
-      { status: 409 },
+      { error: rpcError.message },
+      { status: statusForRpcError(rpcError.message) },
     );
   }
 
-  const resolvedUnitCost =
-    typeof unit_cost === "number" && Number.isFinite(unit_cost)
-      ? unit_cost
-      : Number((product as any).unit_cost ?? 0);
-
-  // Conditional decrement to guard against concurrent updates
-  const { error: decErr } = await supabaseAdmin
-    .from("products")
-    .update({ stock_quantity: stock - qty, updated_at: new Date().toISOString() })
-    .eq("id", productId)
-    .eq("stock_quantity", stock);
-
-  if (decErr) {
-    console.error(decErr);
-    return NextResponse.json({ error: decErr.message }, { status: 500 });
-  }
-
-  const reference_number = generateExpiryReference();
-
-  const { data: ledger, error: ledgerErr } = await supabaseAdmin
-    .from("expiry_ledger")
-    .insert([
-      {
-        reference_number,
-        product_id: productId,
-        supplier_grn_line_item_id: supplier_grn_line_item_id ?? null,
-        quantity_expired: qty,
-        expiry_date: expiry_date ?? null,
-        unit_cost_at_expiry: resolvedUnitCost,
-        value_expired: qty * resolvedUnitCost,
-        currency: "ZMW",
-        expired_by: user.id,
-        notes: notes ?? null,
-      },
-    ])
-    .select()
-    .single();
-
-  if (ledgerErr) {
-    // Best-effort rollback of stock decrement
-    await supabaseAdmin
-      .from("products")
-      .update({ stock_quantity: stock, updated_at: new Date().toISOString() })
-      .eq("id", productId);
-    console.error(ledgerErr);
-    return NextResponse.json({ error: ledgerErr.message }, { status: 500 });
-  }
-
-  const ledgerId = (ledger as any).id;
-
-  await writeAuditLog({
-    entity_type: "expiry_ledger",
-    entity_id: ledgerId,
-    action: "create",
-    performed_by: user.id,
-    new_value: {
-      reference_number,
-      product_id: productId,
-      quantity_expired: qty,
-      expiry_date,
-      unit_cost_at_expiry: resolvedUnitCost,
-    },
-  });
+  const result = data as ExpireBatchResult;
+  const ledgerId = result.expiry_ledger_id;
 
   await Promise.all([
     createNotification({
@@ -163,9 +110,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json(
     {
       expiry_ledger_id: ledgerId,
-      reference_number,
+      reference_number: result.reference_number,
       quantity_expired: qty,
-      new_stock_quantity: stock - qty,
+      new_stock_quantity: result.new_stock_quantity,
     },
     { status: 201 },
   );

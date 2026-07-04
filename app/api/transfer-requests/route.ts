@@ -167,18 +167,15 @@ export async function POST(req: Request) {
       .select()
       .single();
 
-    if (trError) throw trError;
+    if (rpcError) {
+      return NextResponse.json(
+        { error: messageForRpcError(rpcError.message) },
+        { status: statusForRpcError(rpcError.message) },
+      );
+    }
 
-    const transferId = (trData as any).id;
-
-    // insert line items
-    const lineInserts = lines.map((l: any) => ({
-      transfer_request_id: transferId,
-      product_id: l.product_id,
-      requested_quantity: l.requested_quantity,
-    }));
-    const { error: liError } = await supabaseAdmin.from("transfer_line_items").insert(lineInserts);
-    if (liError) throw liError;
+    const created = data as AtomicTransferResult;
+    const transferId = created.id;
 
     if (isUnitStaff) {
       // Notify BU_MANAGER(s) in the same SBU that a new request awaits their approval
@@ -213,7 +210,10 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ id: transferId, reference_number }, { status: 201 });
+    return NextResponse.json(
+      { id: transferId, reference_number: created.reference_number },
+      { status: 201 },
+    );
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });
