@@ -152,60 +152,14 @@ export async function POST(req: Request) {
       );
     }
 
-    if (action === "approve") {
-      // Increment stock via DB RPC
-      const { error: rpcError } = await supabaseAdmin.rpc("increment_stock_after_grn", {
-        p_grn_id: entity_id,
-        p_approved_by: user.id,
-        p_approval_notes: notes ?? null,
-      });
+    const { error: rpcError } = await supabaseAdmin.rpc("decide_supplier_grn_atomic", {
+      p_grn_id: entity_id,
+      p_actor_id: user.id,
+      p_action: action,
+      p_notes: notes ?? null,
+    });
 
-      if (rpcError) {
-        // If RPC fails because status not yet GRN_APPROVED, update status first then retry
-        const { error: statusError } = await supabaseAdmin
-          .from("supplier_grns")
-          .update({
-            status: "GRN_APPROVED",
-            approved_by: user.id,
-            approved_at: new Date().toISOString(),
-            approval_notes: notes ?? null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", entity_id);
-
-        if (statusError) throw statusError;
-
-        const { error: rpcRetryError } = await supabaseAdmin.rpc("increment_stock_after_grn", {
-          p_grn_id: entity_id,
-          p_approved_by: user.id,
-          p_approval_notes: notes ?? null,
-        });
-        if (rpcRetryError) throw rpcRetryError;
-      } else {
-        // Update status in case RPC doesn't
-        await supabaseAdmin
-          .from("supplier_grns")
-          .update({
-            status: "GRN_APPROVED",
-            approved_by: user.id,
-            approved_at: new Date().toISOString(),
-            approval_notes: notes ?? null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", entity_id);
-      }
-    } else {
-      await supabaseAdmin
-        .from("supplier_grns")
-        .update({
-          status: "GRN_REJECTED",
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-          approval_notes: notes ?? null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", entity_id);
-    }
+    if (rpcError) throw rpcError;
 
     const message = await buildSupplierGrnNotificationMessage({
       grnId: entity_id,

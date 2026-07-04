@@ -55,24 +55,14 @@ describe("core-task-05-return-request-flow", () => {
   it("creates a linked return request against a completed transfer", async () => {
     mockGetUser.mockResolvedValue(UNIT_STAFF);
 
-    const transferChain = makeChain({
-      data: { id: "tr-001", sbu_id: "sbu-001", status: "COMPLETED" },
-      error: null,
-    });
-    const returnRequestChain = makeChain({
+    mockRpc.mockResolvedValue({
       data: { id: "rr-001", reference_number: "RTN-2026-10001" },
       error: null,
     });
-    const lineItemsChain = makeChain({ data: null, error: null });
     const notificationChain = makeChain({ data: { id: "n-001" }, error: null });
-    const auditChain = makeChain({ data: null, error: null });
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "transfer_requests") return transferChain;
-      if (table === "return_requests") return returnRequestChain;
-      if (table === "return_line_items") return lineItemsChain;
       if (table === "notifications") return notificationChain;
-      if (table === "audit_logs") return auditChain;
       return makeChain({ data: null, error: null });
     });
 
@@ -93,19 +83,14 @@ describe("core-task-05-return-request-flow", () => {
     const body = await res.json();
     expect(res.status).toBe(201);
     expect(body.reference_number).toMatch(/^RTN-\d{4}-\d{5}$/);
-    expect(returnRequestChain.insert).toHaveBeenCalledWith([
-      expect.objectContaining({
-        original_transfer_request_id: "tr-001",
-        sbu_id: "sbu-001",
-        raised_by: "unit-user-001",
-        status: "PENDING_APPROVAL",
-        reason: "Wrong item delivered",
-        notes: "Return to warehouse",
-      }),
-    ]);
-    expect(lineItemsChain.insert).toHaveBeenCalledWith([
-      { return_request_id: "rr-001", product_id: "prod-001", quantity_to_return: 2 },
-    ]);
+    expect(mockRpc).toHaveBeenCalledWith("create_return_request_atomic", {
+      p_actor_id: "unit-user-001",
+      p_reference_number: expect.stringMatching(/^RTN-\d{4}-\d{5}$/),
+      p_original_transfer_request_id: "tr-001",
+      p_reason: "Wrong item delivered",
+      p_notes: "Return to warehouse",
+      p_items: [{ product_id: "prod-001", quantity_to_return: 2 }],
+    });
     expect(notificationChain.insert).toHaveBeenCalledWith([
       expect.objectContaining({
         user_role: "BU_MANAGER",
@@ -118,17 +103,13 @@ describe("core-task-05-return-request-flow", () => {
   it("creates an unlinked return request without requiring an original transfer", async () => {
     mockGetUser.mockResolvedValue(UNIT_STAFF);
 
-    const returnRequestChain = makeChain({
+    mockRpc.mockResolvedValue({
       data: { id: "rr-002", reference_number: "RTN-2026-10002" },
       error: null,
     });
-    const lineItemsChain = makeChain({ data: null, error: null });
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "return_requests") return returnRequestChain;
-      if (table === "return_line_items") return lineItemsChain;
       if (table === "notifications") return makeChain({ data: { id: "n-002" }, error: null });
-      if (table === "audit_logs") return makeChain({ data: null, error: null });
       return makeChain({ data: null, error: null });
     });
 
@@ -146,13 +127,13 @@ describe("core-task-05-return-request-flow", () => {
 
     expect(res.status).toBe(201);
     expect(mockFrom).not.toHaveBeenCalledWith("transfer_requests");
-    expect(returnRequestChain.insert).toHaveBeenCalledWith([
+    expect(mockRpc).toHaveBeenCalledWith(
+      "create_return_request_atomic",
       expect.objectContaining({
-        original_transfer_request_id: null,
-        status: "PENDING_APPROVAL",
-        reason: "Expired stock at unit",
+        p_original_transfer_request_id: null,
+        p_reason: "Expired stock at unit",
       }),
-    ]);
+    );
   });
 
   it("lets a BU Manager approve a pending return request", async () => {

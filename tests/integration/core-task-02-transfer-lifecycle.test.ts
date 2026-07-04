@@ -40,30 +40,20 @@ describe("core-task-02-transfer-lifecycle", () => {
   });
 
   it("creates a multi-line transfer request with validation and a TRF reference", async () => {
-    const profileChain = makeChain({ data: { sbu_id: "sbu-001" }, error: null });
-    const unitChain = makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
-    const productsChain = makeChain({
-      data: [
-        { id: "prod-001", name: "Product One", stock_quantity: 20 },
-        { id: "prod-002", name: "Product Two", stock_quantity: 15 },
-      ],
-      error: null,
-    });
-    const transferChain = makeChain({ data: { id: "tr-001" }, error: null });
-    const lineItemsChain = makeChain({ data: null, error: null });
     const notificationChain = makeChain({ data: { id: "n-001" }, error: null });
     const profileListChain = makeChain({ data: [], error: null });
-    let profileCalls = 0;
+    mockRpc.mockResolvedValue({
+      data: {
+        id: "tr-001",
+        reference_number: "TRF-2026-12345",
+        status: "PENDING_APPROVAL",
+        requires_finance_approval: true,
+      },
+      error: null,
+    });
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "profiles") {
-        profileCalls += 1;
-        return profileCalls === 1 ? profileChain : profileListChain;
-      }
-      if (table === "sbu_units") return unitChain;
-      if (table === "products") return productsChain;
-      if (table === "transfer_requests") return transferChain;
-      if (table === "transfer_line_items") return lineItemsChain;
+      if (table === "profiles") return profileListChain;
       if (table === "notifications") return notificationChain;
       return makeChain({ data: null, error: null });
     });
@@ -89,19 +79,17 @@ describe("core-task-02-transfer-lifecycle", () => {
     const body = await res.json();
     expect(res.status).toBe(201);
     expect(body.reference_number).toMatch(/^TRF-\d{4}-\d{5}$/);
-    expect(transferChain.insert).toHaveBeenCalledWith([
+    expect(mockRpc).toHaveBeenCalledWith(
+      "create_transfer_request_atomic",
       expect.objectContaining({
-        sbu_id: "sbu-001",
-        requesting_unit_id: "unit-001",
-        raised_by: "user-bu-001",
-        status: "PENDING_APPROVAL",
-        requires_finance_approval: true,
+        p_actor_id: "user-bu-001",
+        p_requesting_unit_id: "unit-001",
+        p_lines: [
+          { product_id: "prod-001", requested_quantity: 2 },
+          { product_id: "prod-002", requested_quantity: 3 },
+        ],
       }),
-    ]);
-    expect(lineItemsChain.insert).toHaveBeenCalledWith([
-      { transfer_request_id: "tr-001", product_id: "prod-001", requested_quantity: 2 },
-      { transfer_request_id: "tr-001", product_id: "prod-002", requested_quantity: 3 },
-    ]);
+    );
   });
 
   it("rejects missing line items before creating a transfer request", async () => {
@@ -117,20 +105,16 @@ describe("core-task-02-transfer-lifecycle", () => {
     const body = await res.json();
     expect(res.status).toBe(400);
     expect(body.error).toBe("No line items");
-    expect(mockFrom).not.toHaveBeenCalledWith("transfer_requests");
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("rejects requested quantities above available stock", async () => {
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "profiles") return makeChain({ data: { sbu_id: "sbu-001" }, error: null });
-      if (table === "sbu_units")
-        return makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
-      if (table === "products")
-        return makeChain({
-          data: [{ id: "prod-001", name: "Product One", stock_quantity: 1 }],
-          error: null,
-        });
-      return makeChain({ data: null, error: null });
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: {
+        message:
+          'create_transfer_request_atomic: insufficient stock for "Product One": requested 5, available 1',
+      },
     });
 
     const { POST } = await import("../../app/api/transfer-requests/route");

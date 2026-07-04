@@ -2,6 +2,34 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { createNotification } from "../../../lib/services/notificationService";
 
+interface AtomicTransferResult {
+  id: string;
+  reference_number: string;
+  status: string;
+  requires_finance_approval: boolean;
+}
+
+function statusForRpcError(message: string): number {
+  if (message.includes("insufficient stock")) return 422;
+  if (message.includes("not found")) return 404;
+  if (message.includes("forbidden")) return 403;
+  if (
+    message.includes("required") ||
+    message.includes("inactive") ||
+    message.includes("does not belong")
+  ) {
+    return 422;
+  }
+  return 500;
+}
+
+function messageForRpcError(message: string): string {
+  if (message.includes("insufficient stock")) {
+    return message.replace("insufficient stock", "Insufficient stock");
+  }
+  return message;
+}
+
 export async function POST(req: Request) {
   try {
     const user = await getUserFromAuthHeader(req);
@@ -23,121 +51,31 @@ export async function POST(req: Request) {
     if (!requesting_unit_id)
       return NextResponse.json({ error: "requesting_unit_id is required." }, { status: 422 });
 
-    // Resolve the user's real sbu_id from their profile (never trust client-sent value)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("sbu_id")
-      .eq("id", user.id)
-      .single();
-    if (profileError || !profile?.sbu_id)
-      return NextResponse.json(
-        { error: "Your account has no SBU assigned. Contact an administrator." },
-        { status: 422 },
-      );
-    const sbu_id = profile.sbu_id;
-
-    // Verify the requesting unit belongs to the user's SBU
-    const { data: unitCheck, error: unitCheckError } = await supabaseAdmin
-      .from("sbu_units")
-      .select("sbu_id, is_active")
-      .eq("id", requesting_unit_id)
-      .single();
-    if (unitCheckError || !unitCheck)
-      return NextResponse.json({ error: "Requesting unit not found." }, { status: 422 });
-    if (unitCheck.sbu_id !== sbu_id)
-      return NextResponse.json(
-        { error: "Requesting unit does not belong to your SBU." },
-        { status: 422 },
-      );
-    if (!unitCheck.is_active)
-      return NextResponse.json({ error: "Requesting unit is inactive." }, { status: 422 });
-
-    // Validate stock availability for each requested line item
-    const productIds: string[] = lines.map((l: any) => l.product_id);
-    const { data: products, error: stockError } = await supabaseAdmin
-      .from("products")
-      .select("id, name, stock_quantity")
-      .in("id", productIds);
-    if (stockError) throw stockError;
-
-    const stockMap = new Map<string, { name: string; stock_quantity: number }>(
-      (products ?? []).map((p: any) => [p.id, { name: p.name, stock_quantity: p.stock_quantity }]),
-    );
-
-    for (const line of lines) {
-      const product = stockMap.get(line.product_id);
-      if (!product) {
-        return NextResponse.json(
-          { error: `Product ${line.product_id} not found.` },
-          { status: 422 },
-        );
-      }
-      if (line.requested_quantity <= 0) {
-        return NextResponse.json(
-          { error: `Requested quantity for "${product.name}" must be greater than zero.` },
-          { status: 422 },
-        );
-      }
-      if (line.requested_quantity > product.stock_quantity) {
-        return NextResponse.json(
-          {
-            error: `Insufficient stock for "${product.name}": requested ${line.requested_quantity}, available ${product.stock_quantity}.`,
-          },
-          { status: 422 },
-        );
-      }
-    }
-
     // generate a simple reference (TRF-YYYY-NNNNN)
     const now = new Date();
     const year = now.getFullYear();
     const refSeed = Math.floor(Math.random() * 90000 + 10000);
     const reference_number = `TRF-${year}-${refSeed}`;
 
-    // Determine initial status and finance approval flag based on role and threshold
-    let initialStatus: string;
-    let requiresFinanceApproval: boolean;
+    const { data, error: rpcError } = await supabaseAdmin.rpc("create_transfer_request_atomic", {
+      p_actor_id: user.id,
+      p_reference_number: reference_number,
+      p_requesting_unit_id: requesting_unit_id,
+      p_required_date: required_date ?? null,
+      p_notes: notes ?? null,
+      p_estimated_value: estimated_value ?? null,
+      p_lines: lines,
+    });
 
-    if (isUnitStaff) {
-      // Unit staff requests always require BU approval first, then Finance approval
-      initialStatus = "PENDING_BU_APPROVAL";
-      requiresFinanceApproval = true;
-    } else {
-      // BU_MANAGER: always requires Finance approval before warehouse can issue
-      initialStatus = "PENDING_APPROVAL";
-      requiresFinanceApproval = true;
+    if (rpcError) {
+      return NextResponse.json(
+        { error: messageForRpcError(rpcError.message) },
+        { status: statusForRpcError(rpcError.message) },
+      );
     }
 
-    const { data: trData, error: trError } = await supabaseAdmin
-      .from("transfer_requests")
-      .insert([
-        {
-          reference_number,
-          sbu_id,
-          requesting_unit_id,
-          raised_by: user.id,
-          status: initialStatus,
-          required_date,
-          notes,
-          estimated_value: estimated_value ?? null,
-          requires_finance_approval: requiresFinanceApproval,
-        },
-      ])
-      .select()
-      .single();
-
-    if (trError) throw trError;
-
-    const transferId = (trData as any).id;
-
-    // insert line items
-    const lineInserts = lines.map((l: any) => ({
-      transfer_request_id: transferId,
-      product_id: l.product_id,
-      requested_quantity: l.requested_quantity,
-    }));
-    const { error: liError } = await supabaseAdmin.from("transfer_line_items").insert(lineInserts);
-    if (liError) throw liError;
+    const created = data as AtomicTransferResult;
+    const transferId = created.id;
 
     if (isUnitStaff) {
       // Notify BU_MANAGER(s) in the same SBU that a new request awaits their approval
@@ -150,7 +88,9 @@ export async function POST(req: Request) {
       });
     } else {
       // BU_MANAGER-raised: notify warehouse (or finance if requires approval)
-      const notifyRole = requiresFinanceApproval ? "FINANCE_MANAGER" : "WAREHOUSE_MANAGER";
+      const notifyRole = created.requires_finance_approval
+        ? "FINANCE_MANAGER"
+        : "WAREHOUSE_MANAGER";
       await createNotification({
         user_role: notifyRole,
         type: "transfer_request_submitted",
@@ -160,7 +100,10 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ id: transferId, reference_number }, { status: 201 });
+    return NextResponse.json(
+      { id: transferId, reference_number: created.reference_number },
+      { status: 201 },
+    );
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });
