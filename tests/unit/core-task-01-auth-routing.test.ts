@@ -117,6 +117,29 @@ describe("core-task-01-auth-routing", () => {
     expect(localStorage.getItem("access_token")).toBeNull();
   });
 
+  it("redirects protected layouts to login when no access token is present", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response("[]", { status: 200 }))),
+    );
+    getSessionMock.mockResolvedValue({ data: { session: null } });
+
+    const { default: DashboardLayout } = await import("../../components/DashboardLayout");
+
+    render(
+      React.createElement(
+        DashboardLayout,
+        null,
+        React.createElement("div", null, "Protected dashboard body"),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/");
+    });
+    expect(screen.queryByText("Protected dashboard body")).toBeNull();
+  });
+
   it("forces redirect to login when an API call returns 401", async () => {
     const originalFetch = vi.fn(() => Promise.resolve(new Response(null, { status: 401 })));
     vi.stubGlobal("fetch", originalFetch);

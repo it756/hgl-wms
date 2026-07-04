@@ -182,9 +182,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       const token = localStorage.getItem("access_token");
       if (!token && pathname !== "/" && pathname !== "/forgot-password") {
-        localStorage.setItem("user_role", role);
-        localStorage.setItem("user_name", name);
-        localStorage.setItem("user_sbu", sbu);
+        localStorage.clear();
+        router.push("/");
+        return;
       }
       setLoading(false);
     });
