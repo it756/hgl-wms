@@ -28,6 +28,7 @@ function makeChain(result: unknown) {
   c.insert = vi.fn(self);
   c.update = vi.fn(self);
   c.eq = vi.fn(self);
+  c.in = vi.fn(self);
   c.order = vi.fn(self);
   c.range = vi.fn(self);
   c.single = vi.fn(() => Promise.resolve(result));
@@ -54,7 +55,7 @@ describe("Finance Approval — transfer_request", () => {
         fromCallCount++;
         return fromCallCount === 1
           ? makeChain({ data: tr, error: null })
-          : makeChain({ data: null, error: null });
+          : makeChain({ data: [{ id: tr.id }], error: null });
       }
       if (table === "profiles") return makeChain({ data: [], error: null });
       // notifications + audit_logs
@@ -88,7 +89,7 @@ describe("Finance Approval — transfer_request", () => {
         fromCallCount++;
         return fromCallCount === 1
           ? makeChain({ data: tr, error: null })
-          : makeChain({ data: null, error: null });
+          : makeChain({ data: [{ id: tr.id }], error: null });
       }
       if (table === "profiles") return makeChain({ data: [], error: null });
       return makeChain({ data: { id: "x" }, error: null });
