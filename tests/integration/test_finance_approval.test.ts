@@ -3,7 +3,7 @@
  *
  * Tests /api/finance/approvals POST endpoint:
  * - Approve / reject a transfer_request
- * - Approve a supplier_grn (must call atomic decision RPC)
+ * - Approve a supplier_grn (must call stock increment RPC)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -120,7 +120,7 @@ describe("Finance Approval — supplier_grn", () => {
     vi.clearAllMocks();
   });
 
-  it("approving a supplier GRN calls decide_supplier_grn_atomic RPC", async () => {
+  it("approving a supplier GRN calls increment_stock_after_grn RPC", async () => {
     const sgrn = {
       id: "sgrn-001",
       status: "AWAITING_FINANCE_APPROVAL",
@@ -151,11 +151,10 @@ describe("Finance Approval — supplier_grn", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(200);
-    expect(mockRpc).toHaveBeenCalledWith("decide_supplier_grn_atomic", {
+    expect(mockRpc).toHaveBeenCalledWith("increment_stock_after_grn", {
       p_grn_id: "sgrn-001",
-      p_actor_id: "fin-user-001",
-      p_action: "approve",
-      p_notes: "Invoice ok",
+      p_approved_by: "fin-user-001",
+      p_approval_notes: "Invoice ok",
     });
   });
 });
