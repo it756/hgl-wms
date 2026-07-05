@@ -225,7 +225,7 @@ function PurchaseRequestsContent() {
                     </td>
                     <td className="px-4 py-3 text-right text-slate-700">
                       {r.estimated_total != null
-                        ? `KES ${r.estimated_total.toLocaleString()}`
+                        ? `ZMW ${r.estimated_total.toLocaleString()}`
                         : "—"}
                     </td>
                     <td className="px-4 py-3">

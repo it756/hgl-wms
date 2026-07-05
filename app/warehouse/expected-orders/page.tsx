@@ -105,7 +105,7 @@ export default function WarehouseExpectedOrdersPage() {
                   <div className="flex items-center gap-4">
                     {order.estimated_total != null && (
                       <span className="text-sm font-medium text-slate-600">
-                        KES {order.estimated_total.toLocaleString()}
+                        ZMW {order.estimated_total.toLocaleString()}
                       </span>
                     )}
                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium">
@@ -145,7 +145,7 @@ export default function WarehouseExpectedOrdersPage() {
                               {l.quantity_requested} {l.unit_of_measure}
                             </td>
                             <td className="px-3 py-2 text-right">
-                              {l.unit_cost != null ? `KES ${l.unit_cost.toLocaleString()}` : "—"}
+                              {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
                             </td>
                           </tr>
                         ))}
