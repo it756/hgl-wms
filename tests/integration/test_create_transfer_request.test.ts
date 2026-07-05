@@ -75,13 +75,6 @@ describe("transferService.createTransferRequest", () => {
       }),
     );
 
-    const productsChain = buildChain(
-      Promise.resolve({
-        data: [{ id: "prod-001", name: "Test Product", stock_quantity: 100 }],
-        error: null,
-      }),
-    );
-
     mockFrom.mockImplementation((table: string) => {
       if (table === "app_settings") return settingsChain;
       if (table === "transfer_requests") return trChain;
@@ -89,7 +82,6 @@ describe("transferService.createTransferRequest", () => {
       if (table === "transfer_line_items") return liChain;
       if (table === "notifications") return notifChain;
       if (table === "audit_logs") return auditChain;
-      if (table === "products") return productsChain;
       return buildChain(Promise.resolve({ data: null, error: null }));
     });
 
@@ -119,13 +111,6 @@ describe("transferService.createTransferRequest", () => {
       }),
     );
     const genericChain = buildChain(Promise.resolve({ data: {}, error: null }));
-    const productsChain = buildChain(
-      Promise.resolve({
-        data: [{ id: "prod-001", name: "Test Product", stock_quantity: 100 }],
-        error: null,
-      }),
-    );
-
     const productsChain = buildChain(
       Promise.resolve({
         data: [{ id: "prod-001", name: "Test Product", stock_quantity: 100 }],
