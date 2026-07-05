@@ -63,7 +63,12 @@ export async function sendEmail(to: string, subject: string, html: string) {
   const maxDelay = Number(process.env.EMAIL_MAX_DELAY_MS ?? 10000);
   const useJitter = (process.env.EMAIL_USE_JITTER ?? "true") !== "false";
 
-  const payload = { from, to, subject, html };
+  // Force base64 transfer encoding instead of nodemailer's default quoted-printable.
+  // Quoted-printable inserts soft line breaks (~76 chars) into the raw MIME source; some
+  // mail relays/webmail/forwarding gateways mangle those breaks, which can corrupt long
+  // unbroken strings such as the tokenized external-review links embedded in this HTML
+  // (e.g. /external/procurement/<96-char-token>), causing valid links to fail as "invalid".
+  const payload = { from, to, subject, html, textEncoding: "base64" as const };
 
   let attempt = 1;
   let lastErr: any = null;
