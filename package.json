@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "seed": "npx tsx scripts/seed/seed_data.ts"
+    "seed": "npx tsx scripts/seed/seed_data.ts",
+    "report:emails": "npx tsx scripts/reports/email-activity-report.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

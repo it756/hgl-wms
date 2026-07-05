@@ -17,6 +17,7 @@ interface Product {
   sku: string;
   uom: string;
   unit_cost: number | null;
+  stock_quantity: number;
 }
 
 interface SBUUnit {
@@ -84,6 +85,18 @@ export default function NewTransferRequestPage() {
     return sum + cost * line.requested_quantity;
   }, 0);
 
+  function availableStock(productId: string): number | null {
+    const product = products.find((p) => p.id === productId);
+    return product ? (product.stock_quantity ?? 0) : null;
+  }
+
+  function lineExceedsStock(line: LineItem): boolean {
+    const stock = availableStock(line.product_id);
+    return stock !== null && line.requested_quantity > stock;
+  }
+
+  const hasOverStockLine = lines.some(lineExceedsStock);
+
   function addLine() {
     setLines((prev) => [...prev, { product_id: "", requested_quantity: 0 }]);
   }
@@ -107,6 +120,15 @@ export default function NewTransferRequestPage() {
 
     if (lines.some((l) => !l.product_id || l.requested_quantity < 1)) {
       setError("All line items must have a valid product selected and quantity ≥ 1.");
+      return;
+    }
+
+    const overStockLine = lines.find(lineExceedsStock);
+    if (overStockLine) {
+      const product = products.find((p) => p.id === overStockLine.product_id);
+      setError(
+        `"${product?.name}" only has ${product?.stock_quantity} in stock — reduce the quantity before submitting.`,
+      );
       return;
     }
 
@@ -334,8 +356,9 @@ export default function NewTransferRequestPage() {
                           !lines.some((l, j) => j !== i && l.product_id === p.id),
                       )
                       .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.sku}) — {p.uom}
+                        <option key={p.id} value={p.id} disabled={p.stock_quantity <= 0}>
+                          {p.name} ({p.sku}) — {p.uom} ·{" "}
+                          {p.stock_quantity > 0 ? `${p.stock_quantity} in stock` : "out of stock"}
                         </option>
                       ))}
                     {products.length === 0 && (
@@ -349,6 +372,11 @@ export default function NewTransferRequestPage() {
                 <div className="sm:col-span-3 flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
                     Qty
+                    {line.product_id && !lineExceedsStock(line) && (
+                      <span className="ml-1.5 normal-case font-semibold text-slate-400 tracking-normal">
+                        (max {availableStock(line.product_id)})
+                      </span>
+                    )}
                   </label>
                   <input
                     type="number"
@@ -356,9 +384,18 @@ export default function NewTransferRequestPage() {
                     min={1}
                     value={line.requested_quantity || ""}
                     onChange={(e) => updateLine(i, "requested_quantity", Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono font-bold text-slate-700"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 transition-all font-mono font-bold ${
+                      lineExceedsStock(line)
+                        ? "border-rose-300 text-rose-700 focus:ring-rose-200 focus:border-rose-400"
+                        : "border-outline-variant text-slate-700 focus:ring-primary/20 focus:border-primary"
+                    }`}
                     placeholder="1"
                   />
+                  {lineExceedsStock(line) && (
+                    <p className="text-[10px] font-bold text-rose-600">
+                      Only {availableStock(line.product_id)} in stock
+                    </p>
+                  )}
                 </div>
 
                 {lines.length > 1 && (
@@ -391,8 +428,8 @@ export default function NewTransferRequestPage() {
               </Link>
               <button
                 type="submit"
-                disabled={submitting}
-                className="px-5 py-2.5 bg-[#0F766E] hover:bg-primary text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition-all hover:shadow"
+                disabled={submitting || hasOverStockLine}
+                className="px-5 py-2.5 bg-[#0F766E] hover:bg-primary text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition-all hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></span>

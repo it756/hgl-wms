@@ -53,6 +53,34 @@ async function recordDeadLetter(payload: any, attempts: number, lastError: any) 
   }
 }
 
+/**
+ * Records a successful send so "who and when did emails go out" can be
+ * answered later via the Audit Log (entity_type = "email", action =
+ * "email_sent"). Best-effort — a logging failure must never fail the send
+ * that already succeeded.
+ */
+async function recordSentLog(payload: any, attempts: number) {
+  try {
+    await supabaseAdmin.from("audit_logs").insert([
+      {
+        entity_type: "email",
+        entity_id: payload.to ?? null,
+        action: "email_sent",
+        details: {
+          to: payload.to,
+          from: payload.from,
+          subject: payload.subject,
+          attempts,
+        },
+        created_at: new Date().toISOString(),
+      },
+    ]);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("recordSentLog: failed to write audit_logs", e);
+  }
+}
+
 export async function sendEmail(to: string, subject: string, html: string) {
   // Use configured EMAIL_FROM, fall back to SMTP_USER, then final default
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER || "wms@harvestgl.com";
@@ -76,6 +104,7 @@ export async function sendEmail(to: string, subject: string, html: string) {
   while (true) {
     try {
       await transporter.sendMail(payload as any);
+      await recordSentLog(payload, attempt);
       return;
     } catch (err: any) {
       lastErr = err;

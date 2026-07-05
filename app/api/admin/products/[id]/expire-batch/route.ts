@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../../lib/services/notificationService";
+import { buildProductActionMessage } from "../../../../../../lib/notifications/messages";
 
 function generateExpiryReference(): string {
   const year = new Date().getFullYear();
@@ -130,13 +131,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     createNotification({
       user_role: "ADMIN",
       type: "stock_expired",
-      message: `Expiry write-off ${reference_number}: ${qty} units of ${(product as any).name} (${(product as any).sku}) expired`,
+      message: await buildProductActionMessage({
+        headline: `Expiry write-off ${reference_number} recorded for ${(product as any).name}`,
+        actorId: user.id,
+        actorLabel: "Recorded by",
+        productName: (product as any).name,
+        sku: (product as any).sku,
+        quantity: qty,
+        reason: expiry_date ? `Expiry date: ${expiry_date}` : null,
+        notes,
+      }),
       related_entity_id: ledgerId,
     }),
     createNotification({
       user_role: "FINANCE_MANAGER",
       type: "stock_expired",
-      message: `Expiry write-off ${reference_number}: ${qty} units of ${(product as any).name} expired (value loss recorded)`,
+      message: await buildProductActionMessage({
+        headline: `Expiry write-off ${reference_number} recorded — value loss captured`,
+        actorId: user.id,
+        actorLabel: "Recorded by",
+        productName: (product as any).name,
+        sku: (product as any).sku,
+        quantity: qty,
+        reason: expiry_date ? `Expiry date: ${expiry_date}` : null,
+        notes,
+      }),
       related_entity_id: ledgerId,
     }),
   ]);
