@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../lib/services/auditService";
 import { createNotification } from "../../../lib/services/notificationService";
+import { buildReturnNotificationMessage } from "../../../lib/notifications/messages";
 
 function generateReturnReference(): string {
   const year = new Date().getFullYear();
@@ -106,11 +107,18 @@ export async function POST(req: Request) {
   }
 
   // Notify BU Manager for their SBU
+  const message = await buildReturnNotificationMessage({
+    returnId,
+    headline: `Return request ${reference_number} requires your approval`,
+    actorId: user.id,
+    actorLabel: "Raised by",
+  });
   await createNotification({
     user_role: "BU_MANAGER",
     type: "return_request_submitted",
-    message: `Return request ${reference_number} requires your approval`,
+    message,
     related_entity_id: returnId,
+    dispatchChannels: true,
   });
 
   await writeAuditLog({

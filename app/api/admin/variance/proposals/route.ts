@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../lib/services/notificationService";
+import { buildTransferNotificationMessage } from "../../../../../lib/notifications/messages";
 
 const PROPOSAL_AUTHORS = ["ADMIN", "WAREHOUSE_MANAGER", "BU_MANAGER"];
 
@@ -143,11 +144,19 @@ export async function POST(req: Request) {
   if (linesError) return NextResponse.json({ error: linesError.message }, { status: 500 });
 
   // Notify Finance Manager
+  const message = await buildTransferNotificationMessage({
+    transferId: transfer_request_id,
+    headline: `Variance resolution proposal submitted for transfer ${(transfer as any).reference_number}`,
+    actorId: user.id,
+    actorLabel: "Proposed by",
+    notes: proposal_notes,
+  });
   await createNotification({
     user_role: "FINANCE_MANAGER",
     type: "variance_proposal_submitted",
-    message: `Variance resolution proposal submitted for transfer ${(transfer as any).reference_number}`,
+    message,
     related_entity_id: proposalId,
+    dispatchChannels: true,
   });
 
   await writeAuditLog({

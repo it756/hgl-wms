@@ -102,7 +102,8 @@ export default function LossAccountPage() {
             <h1 className="text-2xl font-bold text-slate-800">Loss Account</h1>
           </div>
           <p className="text-slate-500 text-sm ml-9">
-            Stock items written off as losses following BU Manager variance disposition decisions.
+            Stock shortages written off as damage following Finance Manager approval of a
+            variance proposal.
           </p>
         </div>
 
@@ -179,7 +180,8 @@ export default function LossAccountPage() {
             <Package className="w-12 h-12 mb-4 text-slate-300" />
             <p className="font-semibold text-slate-600">No losses recorded</p>
             <p className="text-sm mt-1">
-              Loss entries appear here when a BU Manager marks a variance as a loss.
+              Loss entries appear here when a Finance Manager approves a variance proposal as a
+              damage write-off.
             </p>
           </div>
         )}
@@ -191,7 +193,7 @@ export default function LossAccountPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wide">
-                    <th className="px-4 py-3 text-left font-semibold">Loss Ref</th>
+                    <th className="px-4 py-3 text-left font-semibold">Transfer Ref</th>
                     <th className="px-4 py-3 text-left font-semibold">Product</th>
                     <th className="px-4 py-3 text-left font-semibold">SBU</th>
                     <th className="px-4 py-3 text-left font-semibold">Transfer</th>

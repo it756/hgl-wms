@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../lib/services/notificationService";
+import { buildProductActionMessage } from "../../../../../lib/notifications/messages";
 
 /** PATCH /api/admin/products/[id] — edit product or adjust stock */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -133,8 +134,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (changedFields.length > 0) {
-    const actorName = (user.user_metadata as any)?.full_name ?? user.email ?? "An administrator";
-
     await writeAuditLog({
       entity_type: "product",
       entity_id: id,
@@ -147,7 +146,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       user_role: "FINANCE_MANAGER",
       type: "product_updated",
       subject: `Product updated: ${data.name}`,
-      message: `${actorName} updated product "${data.name}" (SKU: ${data.sku}). Changes: ${changedFields.join("; ")}.`,
+      message: await buildProductActionMessage({
+        headline: `Product "${data.name}" was updated`,
+        actorId: user.id,
+        actorLabel: "Updated by",
+        productName: data.name,
+        sku: data.sku,
+        notes: `Changes: ${changedFields.join("; ")}`,
+      }),
       related_entity_id: id,
       dispatchChannels: true,
     });

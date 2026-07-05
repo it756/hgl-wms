@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../lib/services/notificationService";
+import { buildReturnNotificationMessage } from "../../../../../lib/notifications/messages";
 
 /**
  * POST /api/return-requests/[id]/finance-approve
@@ -60,24 +61,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: rpcError.message }, { status: 500 });
     }
 
+    const approveMessage = await buildReturnNotificationMessage({
+      returnId: id,
+      headline: `Return ${ref} approved by Finance — stock restored`,
+      actorId: user.id,
+      actorLabel: "Finance decision",
+      notes,
+    });
     await Promise.all([
       createNotification({
         user_role: "BU_MANAGER",
         type: "return_stock_restored",
-        message: `Return ${ref} approved by Finance — stock restored`,
+        message: approveMessage,
         related_entity_id: id,
+        dispatchChannels: true,
       }),
       createNotification({
         user_role: "UNIT_STAFF",
         type: "return_stock_restored",
-        message: `Return ${ref} fully closed — stock restored`,
+        message: approveMessage,
         related_entity_id: id,
+        dispatchChannels: true,
       }),
       createNotification({
         user_role: "WAREHOUSE_MANAGER",
         type: "return_stock_restored",
-        message: `Return ${ref} closed — stock has been credited`,
+        message: approveMessage,
         related_entity_id: id,
+        dispatchChannels: true,
       }),
     ]);
 
@@ -110,18 +121,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
+  const rejectMessage = await buildReturnNotificationMessage({
+    returnId: id,
+    headline: `Return ${ref} was rejected by Finance`,
+    actorId: user.id,
+    actorLabel: "Finance decision",
+    notes,
+  });
   await Promise.all([
     createNotification({
       user_role: "BU_MANAGER",
       type: "return_rejected_by_finance",
-      message: `Return ${ref} was rejected by Finance${notes ? `: ${notes}` : ""}`,
+      message: rejectMessage,
       related_entity_id: id,
+      dispatchChannels: true,
     }),
     createNotification({
       user_role: "WAREHOUSE_MANAGER",
       type: "return_rejected_by_finance",
-      message: `Return ${ref} rejected by Finance — stock NOT credited`,
+      message: rejectMessage,
       related_entity_id: id,
+      dispatchChannels: true,
     }),
   ]);
 

@@ -34,6 +34,7 @@ interface PendingRequest {
   required_date: string | null;
   created_at: string;
   estimated_value?: number;
+  requires_finance_approval?: boolean;
   transfer_line_items: {
     product_id: string;
     requested_quantity: number;
@@ -42,6 +43,15 @@ interface PendingRequest {
     stock_qty?: number;
     location?: string;
   }[];
+}
+
+/** Issuable once Finance approves — or immediately, if it never needed Finance approval. */
+function isReadyToIssue(r: PendingRequest): boolean {
+  return (
+    r.status === "APPROVED_FOR_ISSUE" ||
+    r.status === "APPROVED" ||
+    (r.status === "PENDING" && !r.requires_finance_approval)
+  );
 }
 
 interface IssuanceItem {
@@ -297,12 +307,12 @@ export default function WarehouseQueuePage() {
     if (activeTab === "ALL") return true;
     if (activeTab === "PENDING_APPROVAL")
       return (
-        r.status === "PENDING" ||
+        (r.status === "PENDING" && r.requires_finance_approval) ||
         r.status === "AWAITING_FINANCE_APPROVAL" ||
         r.status === "PENDING_APPROVAL"
       );
     if (activeTab === "APPROVED_FOR_ISSUE")
-      return r.status === "APPROVED_FOR_ISSUE" || r.status === "APPROVED";
+      return isReadyToIssue(r);
     if (activeTab === "ISSUED_TODAY") return r.status === "ISSUED" || r.status === "COMPLETED";
     return true;
   });
@@ -310,13 +320,11 @@ export default function WarehouseQueuePage() {
   const kpis = {
     pendingApproval: requests.filter(
       (r) =>
-        r.status === "PENDING" ||
+        (r.status === "PENDING" && r.requires_finance_approval) ||
         r.status === "AWAITING_FINANCE_APPROVAL" ||
         r.status === "PENDING_APPROVAL",
     ).length,
-    approvedForIssue: requests.filter(
-      (r) => r.status === "APPROVED_FOR_ISSUE" || r.status === "APPROVED",
-    ).length,
+    approvedForIssue: requests.filter(isReadyToIssue).length,
     stockCritical: requests.filter((r) =>
       r.transfer_line_items.some((item) => (item.stock_qty || 0) < 20),
     ).length,
@@ -643,7 +651,7 @@ export default function WarehouseQueuePage() {
                               )}
                             </td>
                             <td className="px-6 py-4 text-right pr-6">
-                              {r.status === "APPROVED_FOR_ISSUE" || r.status === "APPROVED" ? (
+                              {isReadyToIssue(r) ? (
                                 <button
                                   onClick={() => startIssuing(r)}
                                   className="px-3.5 py-1.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-sm leading-none"
