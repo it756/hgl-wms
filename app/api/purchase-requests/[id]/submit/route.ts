@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserFromAuthHeader, supabaseAdmin } from "../../../../../lib/supabaseServer";
 import { submitToProcurement } from "../../../../../lib/services/purchaseRequestService";
 import { sendProcurementReviewEmail } from "../../../../../lib/email/templates/purchaseRequestTemplates";
+import { getProfileContact, formatContact } from "../../../../../lib/notifications/messages";
 
 interface AuthMetadata {
   role?: string;
@@ -66,7 +67,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const { data: enriched } = await supabaseAdmin
         .from("purchase_requests")
         .select(
-          `reference_number, supplier_name, notes, estimated_total, procurement_email,
+          `reference_number, supplier_name, notes, estimated_total, procurement_email, created_by,
          sbus(name),
          purchase_request_line_items(product_name, sku, quantity_requested, unit_of_measure, unit_cost)`,
         )
@@ -75,12 +76,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       if (enriched) {
         const row = enriched as unknown as PurchaseRequestRow;
+        const requesterContact = formatContact(await getProfileContact(row.created_by));
         await sendProcurementReviewEmail(row.procurement_email, {
           reference: row.reference_number,
           sbuName: row.sbus?.name ?? "Unknown SBU",
           supplierName: row.supplier_name,
           notes: row.notes,
           estimatedTotal: row.estimated_total,
+          requesterContact,
           lines: row.purchase_request_line_items ?? [],
           reviewLink: procurementLink,
           expiryDays: 7,
