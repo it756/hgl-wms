@@ -1,17 +1,40 @@
-name: CI
+name: CI Quality Checks
 
 on:
-  push:
-    branches: [main, "001-warehouse-transfer", develop]
   pull_request:
-    branches: [main, develop]
+    branches:
+      - dev
+      - staging
+      - QA
+      - prod
+  push:
+    branches:
+      - dev
+      - staging
+      - QA
+      - prod
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint-and-test:
+  quality:
+    name: CI quality check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder' }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.example.com' }}
+      SMTP_USER: ${{ secrets.SMTP_USER || 'no-reply@example.com' }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS || 'placeholder' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -25,20 +48,11 @@ jobs:
       - name: Format check
         run: npm run format:check
 
-      - name: Run tests
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
         run: npm test
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder' }}
-          SMTP_HOST: harvestgl.com
-          SMTP_USER: wms@harvestgl.com
-          SMTP_PASS: ${{ secrets.SMTP_PASS}}
 
       - name: Build
         run: npm run build
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder' }}
-          SMTP_HOST: harvestgl.com
-          SMTP_USER: wms@harvestgl.com
-          SMTP_PASS: ${{ secrets.SMTP_PASS}}

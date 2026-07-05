@@ -43,3 +43,12 @@ plan.md
 spec.md
 tasks.md
 manual-plan.md
+
+# terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example

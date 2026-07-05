@@ -1,0 +1,40 @@
+name: QA And Production Gates
+
+on:
+  push:
+    branches:
+      - QA
+      - prod
+
+concurrency:
+  group: gate-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  qa-gate:
+    name: QA guarded gate
+    if: github.ref_name == 'QA'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: QA
+
+    steps:
+      - name: QA gate approved
+        run: |
+          echo "QA environment approval completed."
+          echo "Deployment target is not configured yet."
+
+  prod-gate:
+    name: production guarded gate
+    if: github.ref_name == 'prod'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: prod
+
+    steps:
+      - name: Production gate approved
+        run: |
+          echo "Production environment approval completed."
+          echo "Deployment target is not configured yet."

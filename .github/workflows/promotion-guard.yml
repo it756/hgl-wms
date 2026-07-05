@@ -1,0 +1,62 @@
+name: Promotion Source Guard
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - staging
+      - QA
+      - prod
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+
+jobs:
+  source-guard:
+    name: promotion source guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate promotion path
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          echo "Validating PR source '${HEAD_BRANCH}' into '${BASE_BRANCH}'"
+
+          case "${BASE_BRANCH}" in
+            dev)
+              if [ "${HEAD_BRANCH}" = "staging" ] || [ "${HEAD_BRANCH}" = "QA" ] || [ "${HEAD_BRANCH}" = "prod" ]; then
+                echo "Protected promotion branches cannot be merged back into dev."
+                exit 1
+              fi
+              ;;
+            staging)
+              if [ "${HEAD_BRANCH}" != "dev" ]; then
+                echo "Only dev can be merged into staging."
+                exit 1
+              fi
+              ;;
+            QA)
+              if [ "${HEAD_BRANCH}" != "staging" ]; then
+                echo "Only staging can be merged into QA."
+                exit 1
+              fi
+              ;;
+            prod)
+              if [ "${HEAD_BRANCH}" != "QA" ]; then
+                echo "Only QA can be merged into prod."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "No promotion rule configured for '${BASE_BRANCH}'."
+              ;;
+          esac
+
+          echo "Promotion path is valid."
