@@ -89,11 +89,12 @@ export async function POST(req: Request) {
     return NextResponse.json(result, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("already has")
-        ? 409
-        : 500;
+    const status =
+      message === "Profile not found"
+        ? 404
+        : message === "Staff member already has an active licence. Use update instead."
+          ? 409
+          : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }
