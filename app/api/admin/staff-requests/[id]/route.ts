@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
+import { getUserFromAuthHeader, supabaseAdmin } from "../../../../../lib/supabaseServer";
 import {
   approveStaffRequest,
   rejectStaffRequest,
 } from "../../../../../lib/services/staffRequestService";
-
-interface AuthMetadata {
-  role?: string;
-}
 
 /**
  * PUT /api/admin/staff-requests/[id]
@@ -26,7 +22,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if ((user.user_metadata as AuthMetadata | null)?.role !== "ADMIN") {
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || profile?.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
   }
 
