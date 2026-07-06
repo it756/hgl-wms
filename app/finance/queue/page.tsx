@@ -69,6 +69,7 @@ export default function FinanceQueuePage() {
   const [intraTransfers, setIntraTransfers] = useState<any[]>([]);
   const [varianceProposals, setVarianceProposals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -169,6 +170,28 @@ export default function FinanceQueuePage() {
     entityId: string,
     action: "approve" | "reject",
   ) {
+    setActionLoading(entityId);
+    setError(null);
+    setSuccess(null);
+
+    // Optimistic UI update
+    const originalLists = {
+      transfers: [...transfers],
+      supplierGrns: [...supplierGrns],
+      returnsList: [...returnsList],
+      intraTransfers: [...intraTransfers],
+    };
+
+    const updateLists = (id: string) => {
+      setTransfers((prev) => prev.filter((i) => i.id !== id));
+      setSupplierGrns((prev) => prev.filter((i) => i.id !== id));
+      setReturnsList((prev) => prev.filter((i) => i.id !== id));
+      setIntraTransfers((prev) => prev.filter((i) => i.id !== id));
+    };
+
+    updateLists(entityId);
+    setSelectedItem(null);
+
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
       const res = await fetch("/api/finance/approvals", {
@@ -200,10 +223,18 @@ export default function FinanceQueuePage() {
         delete copy[entityId];
         return copy;
       });
-      setSelectedItem(null);
-      await loadQueue();
+      // Data is already updated optimistically. A full reload is optional
+      // but good for ensuring consistency. We can remove it for a faster feel.
+      // await loadQueue();
     } catch (err: any) {
       setError(err.message || "Action failed. Please try again.");
+      // Rollback optimistic update
+      setTransfers(originalLists.transfers);
+      setSupplierGrns(originalLists.supplierGrns);
+      setReturnsList(originalLists.returnsList);
+      setIntraTransfers(originalLists.intraTransfers);
+    } finally {
+      setActionLoading(null);
     }
   }
 
@@ -1144,7 +1175,7 @@ export default function FinanceQueuePage() {
                         readOnly={true}
                         token={
                           typeof window !== "undefined"
-                            ? (localStorage.getItem("access_token") ?? "")
+                            ? localStorage.getItem("access_token") ?? ""
                             : ""
                         }
                       />
@@ -1169,6 +1200,7 @@ export default function FinanceQueuePage() {
                 {/* Split Action Trigger items */}
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <button
+                    disabled={actionLoading === selectedItem.id}
                     onClick={() =>
                       handleAction(
                         activeTab === "transfers"
@@ -1182,11 +1214,12 @@ export default function FinanceQueuePage() {
                         "reject",
                       )
                     }
-                    className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold rounded-lg transition uppercase tracking-wide cursor-pointer text-center"
+                    className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold rounded-lg transition uppercase tracking-wide cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Reject Audit
+                    {actionLoading === selectedItem.id ? "Rejecting..." : "Reject"}
                   </button>
                   <button
+                    disabled={actionLoading === selectedItem.id}
                     onClick={() =>
                       handleAction(
                         activeTab === "transfers"
@@ -1200,9 +1233,9 @@ export default function FinanceQueuePage() {
                         "approve",
                       )
                     }
-                    className="py-2 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-extrabold rounded-lg transition uppercase tracking-wide cursor-pointer text-center"
+                    className="py-2 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-extrabold rounded-lg transition uppercase tracking-wide cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Sign & Release
+                    {actionLoading === selectedItem.id ? "Signing..." : "Sign & Release"}
                   </button>
                 </div>
               </div>

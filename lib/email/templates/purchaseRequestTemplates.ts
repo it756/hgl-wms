@@ -17,6 +17,7 @@ export function procurementReviewHtml(opts: {
   supplierName: string | null;
   notes: string | null;
   estimatedTotal: number | null;
+  requesterContact: string | null;
   lines: {
     product_name: string;
     sku: string | null;
@@ -48,6 +49,7 @@ export function procurementReviewHtml(opts: {
   <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
     <tr><td style="padding:4px 0;font-weight:bold;width:160px;">Reference</td><td>${esc(opts.reference)}</td></tr>
     <tr><td style="padding:4px 0;font-weight:bold;">Requesting SBU</td><td>${esc(opts.sbuName)}</td></tr>
+    ${opts.requesterContact ? `<tr><td style="padding:4px 0;font-weight:bold;">Requested By</td><td>${esc(opts.requesterContact)}</td></tr>` : ""}
     ${opts.supplierName ? `<tr><td style="padding:4px 0;font-weight:bold;">Supplier</td><td>${esc(opts.supplierName)}</td></tr>` : ""}
     ${opts.estimatedTotal != null ? `<tr><td style="padding:4px 0;font-weight:bold;">Estimated Total</td><td>${currency} ${opts.estimatedTotal.toLocaleString()}</td></tr>` : ""}
     ${opts.notes ? `<tr><td style="padding:4px 0;font-weight:bold;">Notes</td><td>${esc(opts.notes)}</td></tr>` : ""}

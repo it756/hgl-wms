@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../lib/services/notificationService";
+import { buildReturnNotificationMessage } from "../../../../../lib/notifications/messages";
 
 /**
  * POST /api/return-requests/[id]/approve
@@ -67,19 +68,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (action === "approve") {
     // Notify Warehouse Manager to expect the returned goods
+    const message = await buildReturnNotificationMessage({
+      returnId: id,
+      headline: `Return request ${ref} has been approved and is awaiting receipt at the warehouse`,
+      actorId: user.id,
+      actorLabel: "BU Manager decision",
+      notes: approval_notes,
+    });
     await createNotification({
       user_role: "WAREHOUSE_MANAGER",
       type: "return_approved",
-      message: `Return request ${ref} has been approved and is awaiting receipt at the warehouse`,
+      message,
       related_entity_id: id,
+      dispatchChannels: true,
     });
   } else {
     // Notify Unit Staff that their return was rejected
+    const message = await buildReturnNotificationMessage({
+      returnId: id,
+      headline: `Return request ${ref} was rejected by your BU Manager`,
+      actorId: user.id,
+      actorLabel: "BU Manager decision",
+      notes: approval_notes,
+    });
     await createNotification({
       user_role: "UNIT_STAFF",
       type: "return_rejected",
-      message: `Return request ${ref} was rejected by your BU Manager${approval_notes ? `: ${approval_notes}` : ""}`,
+      message,
       related_entity_id: id,
+      dispatchChannels: true,
     });
   }
 

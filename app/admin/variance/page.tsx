@@ -108,8 +108,9 @@ export default function AdminVarianceRegistryPage() {
               <h1 className="text-2xl font-bold text-slate-800">Variance Registry</h1>
             </div>
             <p className="text-slate-500 text-sm ml-9">
-              Read-only audit view of all transfers currently awaiting BU Manager variance
-              disposition. BU Managers decide per-line whether to write back stock or record a loss.
+              Read-only audit view of all transfers currently awaiting Finance Manager variance
+              proposal review. The Finance Manager decides per-line whether to write off the
+              shortage as damage or reintegrate the excess into stock.
             </p>
           </div>
           <button
@@ -126,10 +127,10 @@ export default function AdminVarianceRegistryPage() {
         <div className="mb-6 flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
           <span>
-            Transfers marked <strong>COMPLETED_WITH_VARIANCE</strong> are awaiting BU Manager
-            disposition. Once all lines are decided, the transfer moves to{" "}
-            <strong>COMPLETED</strong>. Write-backs credit warehouse stock; losses are posted to the
-            Loss Account.
+            Transfers marked <strong>COMPLETED_WITH_VARIANCE</strong> are awaiting Finance Manager
+            review of the auto-raised variance proposal. Once approved, the transfer moves to{" "}
+            <strong>COMPLETED</strong>. Damage write-offs are posted to the Loss Account; excess
+            stock is reintegrated back into inventory.
           </span>
         </div>
 
@@ -138,7 +139,7 @@ export default function AdminVarianceRegistryPage() {
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
               <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">
-                Pending Disposition
+                Pending Finance Review
               </p>
               <p className="text-3xl font-bold text-amber-600">{transfers.length}</p>
             </div>
@@ -188,7 +189,7 @@ export default function AdminVarianceRegistryPage() {
           <div className="flex flex-col items-center justify-center py-24 text-slate-400">
             <CheckCircle2 className="w-12 h-12 mb-4 text-emerald-400" />
             <p className="font-semibold text-slate-600">No pending variance transfers</p>
-            <p className="text-sm mt-1">All variances have been disposed by BU Managers.</p>
+            <p className="text-sm mt-1">All variance proposals have been reviewed by Finance.</p>
           </div>
         )}
 
@@ -232,7 +233,7 @@ export default function AdminVarianceRegistryPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
-                        Awaiting BU Decision
+                        Awaiting Finance Review
                       </span>
                       {isOpen ? (
                         <ChevronDown className="w-5 h-5 text-slate-400" />
@@ -315,15 +316,15 @@ export default function AdminVarianceRegistryPage() {
                         </table>
                       </div>
 
-                      {/* Disposition legend */}
+                      {/* Resolution legend */}
                       <div className="mt-4 flex gap-6 text-xs text-slate-500">
                         <div className="flex items-center gap-1.5">
                           <RotateCcw className="w-3.5 h-3.5 text-emerald-500" />
-                          Write-Back: variance credited back to warehouse stock
+                          Stock Reintegration: excess credited back to warehouse stock
                         </div>
                         <div className="flex items-center gap-1.5">
                           <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
-                          Loss: posted to Loss Account with financial value
+                          Damage Write-off: shortage posted to the Loss Account with financial value
                         </div>
                       </div>
                     </div>

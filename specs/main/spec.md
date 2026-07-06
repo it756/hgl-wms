@@ -2,10 +2,12 @@
 
 **Feature Branch**: `001-warehouse-transfer`
 **Created**: 2026-05-20
-**Last Updated**: 2026-06-12
+**Last Updated**: 2026-07-03
 **Status**: Active Development
-**Version**: 2.0
-**Input**: User-provided specification and updated Constitution (Harvest WMS)
+**Version**: 3.0
+**Input**: User-provided specification and updated Constitution (Harvest WMS); reconciled against implemented codebase as of migration `023_purchase_requests.sql`
+
+> **v3.0 note**: This revision reconciles the spec against the actual implemented codebase. It adds the Purchase Request → External Procurement → Internal Control procurement pipeline, Intra-Warehouse Transfers, the Finance-reviewed Variance Proposals mechanism, direct Damage Write-offs, and the Expiry Ledger — none of which were previously documented here. See **Known Gaps & Technical Debt** for discrepancies found between this spec and the running code.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -69,13 +71,20 @@ As a Warehouse Manager, when goods are received from suppliers I want to record 
 
 ---
 
-### User Story 5 - Variance Disposition (Priority: P1)
+### User Story 5 - Variance Disposition (Priority: P1) — RETIRED 2026-07-03
+
+> **Status: Retired.** This BU Manager disposition flow has been superseded by User Story 12
+> (Variance Proposals & Finance Review) as the sole variance-resolution mechanism — see GAP-02
+> resolution below. The `/variance` page, `POST /api/bu/variance/[id]/disposition` route, and
+> the underlying `variance_dispositions`/`stock_losses` tables and `process_variance_disposition`
+> RPC have been removed from active use but are kept in the schema for historical audit access.
+> The description below is preserved for historical reference only.
 
 As a BU Manager, I want to decide how to handle quantity variances detected in a GRN — either writing them back as a stock correction or recording them as a confirmed stock loss.
 
 **Implementation notes**: After a `COMPLETED_WITH_VARIANCE` GRN, the BU Manager visits the variance queue and makes a per-line disposition decision: `WRITE_BACK` (stock credited back to warehouse) or `LOSS` (written to the `stock_losses` ledger with financial value captured). This is executed atomically via the `process_variance_disposition` RPC.
 
-**Acceptance Scenarios**:
+**Acceptance Scenarios** (historical — no longer reachable in the UI):
 
 1. Given a `COMPLETED_WITH_VARIANCE` transfer, when the BU Manager submits dispositions for all variance lines, the `variance_dispositions` table is populated and the transfer is marked resolved.
 2. For each `LOSS` disposition, a `stock_losses` entry is created with `quantity_lost`, `unit_cost_at_loss`, and `value_lost`.
@@ -120,6 +129,96 @@ As any authorised user, I want to attach supporting documents (invoices, deliver
 
 1. Given any stock movement transaction, when an authorised user uploads a file, a `transaction_documents` record is created with storage path, file name, size, MIME type, and optional label.
 2. Given an SBU-scoped user, they cannot access documents belonging to another SBU's transactions.
+
+### User Story 9 - Purchase Requests & Procurement Pipeline (Priority: P1)
+
+As a BU Manager, I want to raise a purchase request for goods that are out of stock or not yet in the catalogue, route it to an external procurement contact for pricing/supplier confirmation, and have Admin give final internal-control sign-off before it becomes an expected order for the warehouse.
+
+**Implementation notes**: A purchase request (`purchase_requests`) is created as `DRAFT`, then submitted (`PENDING_PROCUREMENT_APPROVAL`). A single-use, expiring, hashed token (`external_action_tokens`) is emailed to the named procurement contact — no WMS login required (see User Story 10). Procurement's decision routes to Admin (`PENDING_INTERNAL_CONTROL_APPROVAL`) or back to the BU Manager for edits (`PROCUREMENT_CHANGES_REQUESTED`) or terminates it (`REJECTED`). Admin's internal-control approval moves it to `EXPECTED_ORDER`, which then appears in the Warehouse Manager's Expected Orders list to be received via a Supplier GRN (User Story 4).
+
+**Independent Test**: Raise a purchase request as BU Manager, submit it, action it as the external procurement contact via the emailed token link, then approve it as Admin; verify it appears in the Warehouse Manager's Expected Orders queue.
+
+**Acceptance Scenarios**:
+
+1. Given a BU Manager fills in line items and a procurement contact email, when they submit, a `PR-` reference is created with status `PENDING_PROCUREMENT_APPROVAL` and a token-based review link is emailed to the procurement contact.
+2. Given `PROCUREMENT_CHANGES_REQUESTED`, the BU Manager can edit and resubmit, generating a new (or reused) token link.
+3. Given Admin approves at internal control, the request becomes `EXPECTED_ORDER` and the Warehouse Manager is notified.
+4. Given Admin rejects at internal control, the request becomes `INTERNAL_CONTROL_REJECTED` and the requester is notified.
+
+---
+
+### User Story 10 - External Procurement Approval (No-Login Token Link) (Priority: P1)
+
+As an external procurement contact (no WMS account), I want to review a purchase request via a secure emailed link and approve, reject, or request changes, without needing to log in.
+
+**Implementation notes**: Tokens are single-use for terminal actions (`APPROVE`/`REJECT` consume the token) but **not** consumed by `CHANGES_REQUESTED`, allowing iterative back-and-forth. Tokens expire and can be revoked; expired/used/revoked/not-found tokens return a user-friendly HTTP 410 page. Every external action is written to the audit log against `actor_email` (no `performed_by` user id) and triggers a confirmation email.
+
+**Independent Test**: Open a token link, submit a REJECT action, verify the token cannot be reused and the purchase request status becomes `REJECTED`.
+
+**Acceptance Scenarios**:
+
+1. Given a valid, unexpired token, when the external contact opens the link, they see the redacted purchase request and the actions allowed by that token (`APPROVE`, `REJECT`, `CHANGES_REQUESTED`, optionally `UPLOAD`).
+2. Given the contact clicks Approve, the token is marked used and the request advances to `PENDING_INTERNAL_CONTROL_APPROVAL`.
+3. Given an expired, already-used, or revoked token, the page shows an error and no action can be taken.
+
+---
+
+### User Story 11 - Intra-Warehouse Transfers (Priority: P2)
+
+As a Warehouse Manager, I want to directly reassign stock from the warehouse pool (or one SBU) to another SBU without going through the full transfer-request lifecycle, subject to Finance approval.
+
+**Implementation notes**: `intra_warehouse_transfers` is a single-step operation (no BU-approval step) raised by the Warehouse Manager. It enters `PENDING_FINANCE_APPROVAL`; stock is only decremented when Finance approves, via the `process_intra_transfer`/`approve_intra_transfer` RPC, which also notifies the receiving SBU's BU Manager.
+
+**Independent Test**: Create an intra-warehouse transfer to a target SBU as Warehouse Manager; verify stock is unchanged until a Finance Manager approves it, at which point stock decrements and the destination BU Manager is notified.
+
+**Acceptance Scenarios**:
+
+1. Given sufficient stock, when the Warehouse Manager submits an intra-warehouse transfer, an `IWT-YYYY-NNNNN` reference is created with status `PENDING_FINANCE_APPROVAL`.
+2. Given Finance approves, stock is decremented atomically and the transfer becomes `COMPLETED`.
+3. Given Finance rejects, the transfer becomes `CANCELLED` and stock is untouched.
+
+---
+
+### User Story 12 - Variance Proposals & Finance Review (Priority: P1)
+
+As a Finance Manager, I want to review auto-raised variance proposals from GRN receipt discrepancies and decide, per line, whether the variance should be written off as damage or reintegrated into stock.
+
+**Implementation notes**: When Unit Staff submits a GRN with a quantity mismatch (User Story 3), the system **automatically** raises a `variance_proposals` record (status `PENDING_FINANCE_REVIEW`) — this is now the **sole** variance-resolution mechanism (see GAP-02 resolution; the former parallel BU Manager disposition flow, User Story 5, was retired 2026-07-03). Each `variance_proposal_lines` row carries a system-recommended `recommended_resolution` (`damage_writeoff` for a shortage, `stock_reintegration` for an excess), which the Finance Manager can override with a `finance_decision` before approving. Approved `damage_writeoff` lines are written to `damage_ledger` (surfaced on the Loss Account page); approved `stock_reintegration` lines increment product stock. On approval, the `execute_variance_resolution` RPC also closes the transfer back to `COMPLETED`.
+
+**Independent Test**: Submit a GRN with a shortfall as Unit Staff; verify a variance proposal appears in the Finance queue with a recommended `damage_writeoff`; approve it and verify a `damage_ledger` entry is created.
+
+**Acceptance Scenarios**:
+
+1. Given a GRN with a quantity mismatch, a `variance_proposals` row and matching `variance_proposal_lines` are auto-created and the Finance Manager is notified.
+2. Given the Finance Manager approves with no overrides, each line's `recommended_resolution` is executed (damage write-off or stock reintegration).
+3. Given the Finance Manager overrides a line's decision, the `finance_decision` is executed instead of the `recommended_resolution`.
+4. Given the Finance Manager rejects the proposal, no stock or ledger changes occur.
+
+---
+
+### User Story 13 - Direct Damage Write-off (Priority: P2)
+
+As an Admin, Warehouse Manager, or Finance Manager, I want to write off damaged stock directly from the product catalogue during a routine inspection, without needing a prior variance proposal.
+
+**Implementation notes**: Triggered via the Flame icon / `DamageWriteOffModal` on the Admin and Finance catalogue pages. Creates a `damage_ledger` row with `source_type = 'direct_writeoff'` and `proposal_line_id = NULL` (distinguishing it from proposal-sourced write-offs), and atomically decrements stock via `process_direct_damage_writeoff`.
+
+**Acceptance Scenarios**:
+
+1. Given a product with available stock, when an authorised user submits a quantity and reason via the write-off modal, stock is decremented and a `damage_ledger` entry with `source_type = 'direct_writeoff'` is created.
+2. The resulting damage ledger entry can subsequently be recalled to the warehouse via the existing Damage Recall flow (User Story 7).
+
+---
+
+### User Story 14 - Expiry Write-off (Priority: P2)
+
+As an Admin or Warehouse Manager, I want to record expired stock as a permanent loss so it is removed from available inventory and its financial value is captured.
+
+**Implementation notes**: Writes to `expiry_ledger` with a locked-in `unit_cost_at_expiry`/`value_expired` snapshot and optional traceability back to the originating `supplier_grn_line_item_id`. Read access (ledger view at `/admin/expiry`) is available to ADMIN, WAREHOUSE_MANAGER, and FINANCE_MANAGER; write access is ADMIN/WAREHOUSE_MANAGER only.
+
+**Acceptance Scenarios**:
+
+1. Given a product batch identified as expired, when an authorised user records the expiry with a quantity and expiry date, an `expiry_ledger` entry is created and stock is decremented.
+2. The expiry ledger is filterable by date range and product/search term.
 
 ## Finance Approval Configuration
 
@@ -223,6 +322,40 @@ BU Managers raising requests directly skip `PENDING_BU_APPROVAL` and go straight
 - **DMG-02**: Damage recalls track physical return of damaged goods: `PENDING → IN_TRANSIT → RECEIVED`.
 - **DMG-03**: Damage recalls do not restore stock — goods are already written off in `damage_ledger`.
 - **DMG-04**: Admin, Warehouse Manager, and Finance Manager can view the damage ledger and recall status.
+- **DMG-05**: Admin, Warehouse Manager, and Finance Manager can record a direct damage write-off from the product catalogue (no prior variance proposal required); stock is decremented atomically via `process_direct_damage_writeoff`.
+- **DMG-06**: Direct write-offs are tagged `source_type = 'direct_writeoff'` in `damage_ledger`, distinct from `source_type = 'variance_proposal'` entries originated by Finance-approved variance proposals.
+
+- **PR-01**: BU Manager can create a purchase request with one or more line items (existing product or free-text description), a required procurement contact email, and optional supplier name/email and notes.
+- **PR-02**: Purchase requests receive a unique `PR-` reference and start as `DRAFT`, editable until submitted.
+- **PR-03**: On submit, status becomes `PENDING_PROCUREMENT_APPROVAL` and a single-use external review link is emailed to the procurement contact.
+- **PR-04**: External procurement approval advances the request to `PENDING_INTERNAL_CONTROL_APPROVAL`; rejection sets `REJECTED`; requesting changes sets `PROCUREMENT_CHANGES_REQUESTED` and returns it to the BU Manager for edits/resubmission.
+- **PR-05**: Admin (internal control) approves (`EXPECTED_ORDER`) or rejects (`INTERNAL_CONTROL_REJECTED`) requests in `PENDING_INTERNAL_CONTROL_APPROVAL`.
+- **PR-06**: `EXPECTED_ORDER` requests appear in the Warehouse Manager's Expected Orders queue and can be linked to a Supplier GRN via `supplier_grns.purchase_request_id`.
+- **PR-07**: Requesters, Admin, and Warehouse Manager are notified at each status transition relevant to their role.
+- **PR-08**: Purchase requests are scoped to the requester's SBU.
+
+- **EXT-01**: External (non-WMS-login) actors act on a purchase request only via a hashed, expiring, single-use token emailed to the named contact.
+- **EXT-02**: `APPROVE` and `REJECT` actions consume (invalidate) the token; `CHANGES_REQUESTED` does not, allowing repeated review cycles on the same request.
+- **EXT-03**: Expired, used, or revoked tokens return a clear error and permit no further action.
+- **EXT-04**: Every external action is recorded in the audit log against the actor's email address and triggers a confirmation email.
+- **EXT-05**: Token-scoped `allowed_actions` determine which buttons/actions (including optional document upload) are available to the external actor.
+
+- **INTRA-01**: Warehouse Manager can create a direct intra-warehouse transfer of a product from the warehouse pool (or a source SBU) to a destination SBU, without a multi-step approval chain.
+- **INTRA-02**: Intra-warehouse transfers receive a unique `IWT-YYYY-NNNNN` reference and start as `PENDING_FINANCE_APPROVAL`.
+- **INTRA-03**: Stock is not decremented until a Finance Manager approves; approval executes atomically via `process_intra_transfer`/`approve_intra_transfer` and notifies the destination SBU's BU Manager.
+- **INTRA-04**: Finance Manager rejection sets status `CANCELLED` and leaves stock unchanged.
+- **INTRA-05**: Attempting to transfer more than available stock is blocked.
+
+- **VARP-01**: When a GRN is submitted with a quantity mismatch, the system automatically raises a `variance_proposals` record with per-line `recommended_resolution` (`damage_writeoff` for a shortage, `stock_reintegration` for an excess) and notifies the Finance Manager.
+- **VARP-02**: Finance Manager may override any line's resolution via `finance_decision` before approving.
+- **VARP-03**: On approval, `damage_writeoff` lines are written to `damage_ledger` and `stock_reintegration` lines increment product stock, executed per the approved decisions.
+- **VARP-04**: On rejection, no stock or ledger changes occur.
+- **VARP-05**: Only one `PENDING_FINANCE_REVIEW` proposal may exist per transfer request at a time.
+
+- **EXPIRY-01**: Admin or Warehouse Manager can record expired stock with quantity, expiry date, and optional notes, decrementing stock and creating an `expiry_ledger` entry.
+- **EXPIRY-02**: The expiry ledger snapshots `unit_cost_at_expiry` and `value_expired` at the time of write-off.
+- **EXPIRY-03**: Admin, Warehouse Manager, and Finance Manager can view the expiry ledger, filterable by date range and product/search term.
+- **EXPIRY-04**: Expiry entries may optionally trace back to the originating supplier GRN line item.
 
 - **DOC-01**: Any authorised user can attach documents to supported transaction types: `transfer_request`, `issuance`, `grn`, `supplier_grn`, `return_request`, `variance_proposal`.
 - **DOC-02**: Documents are stored in Supabase Storage (`hgl-wms` bucket); metadata stored in `transaction_documents`.
@@ -265,11 +398,18 @@ BU Managers raising requests directly skip `PENDING_BU_APPROVAL` and go straight
 - `ReturnLineItem` — (id, return_request_id, product_id, quantity_to_return, quantity_received)
 - `VarianceDisposition` — (id, transfer_request_id, grn_id, grn_line_item_id, product_id, sbu_id, quantity_variance, disposition `WRITE_BACK | LOSS`, decided_by, decided_at, notes)
 - `StockLoss` — (id, reference_number, variance_disposition_id, transfer_request_id, product_id, sbu_id, quantity_lost, unit_cost_at_loss, value_lost, decided_by, decided_at)
-- `DamageLedger` — (id, product_id, quantity, unit_cost_at_writeoff, estimated_value, writeoff_reason, written_off_by, written_off_at)
+- `DamageLedger` — (id, product_id, quantity, unit_cost_at_writeoff, estimated_value, writeoff_reason, written_off_by, written_off_at, source_type `variance_proposal | direct_writeoff`, proposal_line_id nullable)
 - `DamageRecall` — (id, damage_ledger_id, initiated_by, status `PENDING | IN_TRANSIT | RECEIVED`, notes, received_by, received_at)
 - `TransactionDocument` — (id, transaction_type, transaction_id, storage_path, file_name, file_size, mime_type, document_label, uploaded_by)
 - `Notification` — (id, user_role, type, message, related_entity_id, is_read, created_at)
 - `AuditLog` — (id, entity_type, entity_id, action, performed_by, previous_value, new_value, created_at)
+- `PurchaseRequest` — (id, reference_number `PR-`, sbu_id, created_by, status, supplier_name, supplier_email, procurement_email, notes, estimated_total, procurement_actioned_at, procurement_action, procurement_notes, procurement_document_url, internal_control_actioned_by, internal_control_actioned_at, internal_control_action, internal_control_notes)
+- `PurchaseRequestLineItem` — (id, purchase_request_id, product_id nullable, product_name, sku, quantity_requested, unit_cost, unit_of_measure, notes)
+- `ExternalActionToken` — (id, token_hash, entity_type, entity_id, actor_email, actor_type, allowed_actions[], expires_at, used_at, revoked_at, created_by, last_viewed_at, last_actor_ip, last_user_agent)
+- `IntraWarehouseTransfer` — (id, reference_number `IWT-YYYY-NNNNN`, product_id, quantity, from_sbu_id nullable, to_sbu_id, transferred_by, transfer_date, status `PENDING_FINANCE_APPROVAL | COMPLETED | CANCELLED`, notes)
+- `VarianceProposal` — (id, transfer_request_id, grn_id, proposed_by, proposal_notes, status `PENDING_FINANCE_REVIEW | APPROVED | REJECTED`, reviewed_by, reviewed_at, review_notes)
+- `VarianceProposalLine` — (id, proposal_id, grn_line_item_id, product_id, variance_quantity (signed), recommended_resolution `damage_writeoff | stock_reintegration`, finance_decision, finance_decision_notes)
+- `ExpiryLedger` — (id, reference_number, product_id, supplier_grn_line_item_id nullable, quantity_expired, expiry_date, unit_cost_at_expiry, value_expired, currency, expired_by, expired_at, notes)
 
 ## Success Criteria _(mandatory)_
 
@@ -281,6 +421,16 @@ BU Managers raising requests directly skip `PENDING_BU_APPROVAL` and go straight
 - **SC-004**: System retains transfer and audit records for a minimum of 3 years and can export CSVs for any supported date range.
 - **SC-005**: All variance lines on a `COMPLETED_WITH_VARIANCE` transfer are dispositioned (WRITE_BACK or LOSS) before the transfer is considered fully closed.
 - **SC-006**: Stock levels are never negative; `process_issuance` and `process_return_receipt` RPCs enforce atomicity.
+- **SC-007**: A purchase request can move from `DRAFT` to `EXPECTED_ORDER` (external procurement approval + Admin internal control) without any party needing a WMS login other than the originating BU Manager and the approving Admin.
+
+## Known Gaps & Technical Debt
+
+These are discrepancies between intended design and the current implementation, found while reconciling this spec against the codebase (2026-07-03). They are documented here rather than silently "fixed" in the spec so the team can decide intentionally:
+
+- **GAP-01 (Route authorization)**: [components/AuthGuard.tsx](../../components/AuthGuard.tsx) only clears the session and redirects on a `401` from an API call — it does **not** perform role-based route protection, and there is no `middleware.ts`. Any authenticated user can navigate directly to another role's page URL; the page will render (possibly with empty data) until an API call 403s. Authorization is correctly enforced at the API layer, but the UX gap means a curious user could see another role's screen layout. Recommendation: add a `middleware.ts` role-route allowlist, or a per-page role check in `DashboardLayout`.
+- **GAP-02 (Duplicate variance-resolution mechanisms) — RESOLVED 2026-07-03**: A single event — Unit Staff submitting a GRN with a quantity mismatch — used to trigger **two** parallel variance-handling paths: (1) the legacy BU Manager disposition flow (`variance_dispositions`/`stock_losses`, `/variance` page, User Story 5), and (2) the auto-raised, Finance-reviewed `variance_proposals` flow (User Story 12). Resolution: the BU Manager disposition path has been retired; the Finance-reviewed Variance Proposal flow (User Story 12) is now the sole official mechanism. The `execute_variance_resolution` RPC already closed the transfer to `COMPLETED` on approval, so no data-integrity gap existed there. The legacy `variance_dispositions`/`stock_losses` tables and `process_variance_disposition` RPC are kept in the schema (unused) for historical audit access; the Loss Account page was repointed from `stock_losses` to `damage_ledger` (`source_type = 'variance_proposal'`) so it continues to reflect live data.
+- **GAP-03 (Export/audit dev fallbacks)**: [app/admin/exports/page.tsx](../../app/admin/exports/page.tsx) and [app/admin/audit/page.tsx](../../app/admin/audit/page.tsx) fall back to mocked/simulated data when their respective API calls fail, rather than surfacing an error. This is convenient in development but risks a user mistaking mock data for a real export/audit result in production; recommend removing the fallback (or gating it behind a dev-only flag) before go-live.
+- **GAP-04 (No supplier self-service GRN)**: There is no external/token-based goods-receipt flow for suppliers — despite the naming similarity, `/grn/submit` is an authenticated, in-app UNIT_STAFF flow for internal transfer receipts, unrelated to supplier deliveries. All supplier goods receipt is recorded internally by the Warehouse Manager via the Supplier GRN screen. If external supplier self-service is desired, it does not exist yet.
 
 ## Assumptions
 
@@ -289,14 +439,16 @@ BU Managers raising requests directly skip `PENDING_BU_APPROVAL` and go straight
 - One Warehouse Manager account in v1.0.
 - One Finance Manager account in v1.0.
 - Users have internet access during business hours.
-- Email delivery is relied upon for external alerts.
+- Email delivery is relied upon for external alerts, including the external procurement approval link.
 - Supabase Storage bucket `hgl-wms` is provisioned for document attachments.
+- Only one named procurement contact per purchase request receives the external approval token at a time.
 
 ## Open Questions
 
 1. **OQ-01**: Confirmed application name? (Branding/email sender) — _pending_
 2. **OQ-04**: Recurring / standing transfer requests needed? — _deferred to v2_
 3. **OQ-05**: Multi-warehouse in v2? — **Resolved** (Option B — see below)
+4. **OQ-06**: Should the legacy BU Manager variance disposition flow (`/variance`) be retired now that Finance-reviewed variance proposals cover the same event? — **Resolved 2026-07-03**: Yes — retired in favor of the Finance Variance Proposal flow (see GAP-02 resolution).
 
 ## Resolved Decisions
 
@@ -333,99 +485,16 @@ See `supabase/migrations/` for the full authoritative schema:
 - `010_damage_recalls.sql` — `damage_recalls` table and RLS
 - `011_warehouse_location.sql` — `warehouse_location` column on products
 - `012_variance_disposition.sql` — Variance disposition RPC and `stock_losses` ledger
+- `013_expiry_dates.sql` — Expiry date tracking columns on products/supplier GRN line items
+- `014_return_finance_approval.sql` — Adds Finance approval gate to return receipt (`AWAITING_FINANCE_APPROVAL`, `process_return_stock_credit` RPC)
+- `015_expiry_ledger.sql` — `expiry_ledger` table and RLS
+- `016_intra_warehouse_transfers.sql` — `intra_warehouse_transfers` table and `process_intra_transfer` RPC
+- `017_direct_damage_writeoff.sql` — `source_type` discriminator on `damage_ledger` and `process_direct_damage_writeoff` RPC
+- `018_variance_resolution_notes.sql` — Additional notes columns for variance resolution
+- `019_sbu_stock.sql` — Per-SBU stock view
+- `020_sbu_stock_include_supplier_grns.sql` — Extends SBU stock view to include supplier GRN receipts
+- `021_sbu_stock_sku_tagged.sql` — SKU-prefix tagging for SBU stock view
+- `022_intra_transfer_finance_approval.sql` — Finance approval gate + `approve_intra_transfer` RPC for intra-warehouse transfers
+- `023_purchase_requests.sql` — `purchase_requests`, `purchase_request_line_items`, `external_action_tokens` tables; links `supplier_grns.purchase_request_id`
 
-- **EXP-01**: Admin, Warehouse Manager, and Finance Manager can export transfer request data as CSV.
-- **EXP-02**: CSV export supports `from`/`to` date range filters.
-- **EXP-03**: Exported data includes: reference number, status, SBU, raised by, required date, estimated value, finance flag, timestamps.
 
-- **NOT-01**: In-app notifications delivered to role queues; unread badge shown.
-- **NOT-02**: Email notifications sent for key events (issuance, finance decisions).
-- **NOT-03**: Notifications cannot be deleted; only marked as read.
-- **NOT-04**: Notification content and links are role-appropriate.
-- **NOT-05**: Notifications are scoped by role (e.g., BU_MANAGER, UNIT_STAFF, WAREHOUSE_MANAGER, FINANCE_MANAGER).
-
-- **ADM-01**: Admin manages users (create, deactivate, assign role/SBU/unit) via UI and CSV bulk import.
-- **ADM-02**: Admin manages SBUs and SBU Units.
-- **ADM-03**: Admin manages the product catalogue including warehouse locations.
-- **ADM-04**: Admin configures finance approval thresholds in settings.
-- **ADM-05**: Admin and Warehouse Manager can view the full audit log with filtering.
-- **ADM-06**: Admin can view variance disposition registry and damage ledger.
-- **ADM-07**: Admin exports data as CSV for any 90-day range.
-- **TRF-08..TRF-15**: Issuance rules — see TRF-09 through TRF-14 above.
-
-- **GRN-01..GRN-08**: See GRN-01 through GRN-07 above.
-
-- **NOT-01..NOT-05**: See NOT-01 through NOT-05 above.
-
-- **ADM-01..ADM-06**: See ADM-01 through ADM-07 above.
-
-### Key Entities
-
-- `User` — auth.users + `profiles` (id, full_name, role, sbu_id, unit_id, is_active)
-- `SBU` — Strategic Business Unit (id, name, code)
-- `SBUUnit` — Sub-unit/department within an SBU (id, name, code, sbu_id, is_active)
-- `Product` — (id, name, sku, description, unit_of_measure, stock_quantity, low_stock_threshold, unit_cost, warehouse_location `[A-Z][1-2]`, is_active)
-- `TransferRequest` — (id, reference_number `TRF-YYYY-NNNNN`, sbu_id, requesting_unit_id, status, required_date, notes, estimated_value, requires_finance_approval, approved_by, approved_at, bu_approved_at, finance_approval_notes, raised_by)
-- `TransferLineItem` — (id, transfer_request_id, product_id, quantity_requested)
-- `Issuance` — (id, transfer_request_id, issued_by, issue_date, logistics_notes)
-- `IssuanceLineItem` — (id, issuance_id, product_id, quantity_issued, shortfall_reason)
-- `GRN` — (id, transfer_request_id, received_by, date_received, condition_notes, has_variance, acknowledged)
-- `GRNLineItem` — (id, grn_id, product_id, issued_quantity, quantity_received, variance_notes)
-- `SupplierGRN` — (id, reference_number, supplier_name, supplier_invoice_reference, invoice_amount, date_received, status `AWAITING_FINANCE_APPROVAL | GRN_APPROVED | GRN_REJECTED`, sbu_id)
-- `SupplierGRNLineItem` — (id, supplier_grn_id, product_id, quantity_received, unit_cost)
-- `ReturnRequest` — (id, reference_number `RTN-YYYY-NNNNN`, sbu_id, original_transfer_request_id, status `PENDING_APPROVAL | APPROVED | RECEIVED | REJECTED`, reason, notes, raised_by, approved_by, received_by)
-- `ReturnLineItem` — (id, return_request_id, product_id, quantity_to_return, quantity_received)
-- `VarianceDisposition` — (id, transfer_request_id, grn_id, grn_line_item_id, product_id, sbu_id, quantity_variance, disposition `WRITE_BACK | LOSS`, decided_by, decided_at, notes)
-- `StockLoss` — (id, reference_number, variance_disposition_id, transfer_request_id, product_id, sbu_id, quantity_lost, unit_cost_at_loss, value_lost, decided_by, decided_at)
-- `DamageLedger` — (id, product_id, quantity, unit_cost_at_writeoff, estimated_value, writeoff_reason, written_off_by, written_off_at)
-- `DamageRecall` — (id, damage_ledger_id, initiated_by, status `PENDING | IN_TRANSIT | RECEIVED`, notes, received_by, received_at)
-- `TransactionDocument` — (id, transaction_type, transaction_id, storage_path, file_name, file_size, mime_type, document_label, uploaded_by)
-- `Notification` — (id, user_role, type, message, related_entity_id, is_read, created_at)
-- `AuditLog` — (id, entity_type, entity_id, action, performed_by, previous_value, new_value, created_at)
-
-## Success Criteria _(mandatory)_
-
-### Measurable Outcomes
-
-- **SC-001**: Users can complete the transfer request flow (request → BU approval → finance approval if applicable → issuance → GRN) end-to-end in under 10 minutes from initiation to finalisation.
-- **SC-002**: 95% of `APPROVED_FOR_ISSUE` requests are actioned (ISSUED or CANCELLED) within 48 hours during business days.
-- **SC-003**: 95% of in-app notifications are delivered and visible in the user's notification panel within 30 seconds of triggering.
-- **SC-004**: System retains transfer and audit records for a minimum of 3 years and can export CSVs for any 90-day range.
-- **SC-005**: All variance lines on a `COMPLETED_WITH_VARIANCE` transfer are dispositioned (WRITE_BACK or LOSS) before the transfer is considered fully closed.
-- **SC-006**: Stock levels are never negative; the `process_issuance` and `process_return_receipt` RPCs enforce atomicity.
-
-## Assumptions
-
-- Product catalogue seeded or entered before go-live.
-- Each SBU has at least one BU Manager, one Unit Staff member, and at least one SBU Unit at launch.
-- One Warehouse Manager account in v1.0.
-- One Finance Manager account in v1.0.
-- Users have internet access during business hours.
-- Email delivery is relied upon for external alerts.
-- Supabase Storage bucket `hgl-wms` is provisioned for document attachments.
-
-## Open Questions (prioritised)
-
-1. OQ-01: Confirmed application name? (Branding/email sender) — _pending_
-2. OQ-04: Recurring / standing transfer requests needed? — _pending, deferred to v2_
-3. OQ-05: Multi-warehouse in v2? — **Resolved**: Option B — single warehouse v1, extensible data model (see below).
-
-## Resolved Decisions
-
-### Decision: Multi-Warehouse Extensibility (OQ-05 — Resolved)
-
-- Add an optional `warehouse_id` FK to relevant entities (`TransferRequest`, `Issuance`, `Product` where applicable) but make it nullable and default to the single warehouse in v1.0.
-- Encapsulate warehouse-specific logic behind repository/service interfaces to allow adding `warehouse_id` filters with minimal code changes.
-- Document migrations and data population steps required to activate multi-warehouse mode in v2.
-
-Status: OQ-05 — Resolved (kept for v1, extensible path chosen)
-
-## Data Model (reference)
-
-See the Data Models section in the provided specification for detailed attributes for `User`, `SBU`, `Product`, `TransferRequest`, `TransferLineItem`, `Issuance`, `IssuanceLineItem`, `GRN`, `GRNLineItem`, `Notification`, `AuditLog`.
-
-## Next Steps
-
-1. Confirm Open Questions OQ-01, OQ-04, OQ-05 with stakeholders.
-2. Create Phase 1 plan: foundational tasks (auth, RBAC, database schema, migrations).
-3. Seed product catalogue and create initial SBUs and admin account for testing.

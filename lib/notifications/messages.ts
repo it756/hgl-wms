@@ -13,6 +13,41 @@ export interface ProductLineSummary {
   quantity?: Nullable<number>;
   unit?: Nullable<string>;
   warehouseLocation?: Nullable<string>;
+  /** Short annotation appended to the line, e.g. "issued 10, received 8" */
+  varianceNote?: Nullable<string>;
+}
+
+export interface ProfileContact {
+  name: string | null;
+  email: string | null;
+  role: string | null;
+}
+
+interface ProfileContactRow {
+  full_name?: Nullable<string>;
+  role?: Nullable<string>;
+}
+
+/** Acronyms that should stay fully uppercase when humanizing snake_case/SCREAMING_SNAKE labels. */
+const LABEL_ACRONYMS = new Set(["bu", "sbu", "sbus", "grn", "grns", "sku", "id"]);
+
+/**
+ * Converts SCREAMING_SNAKE_CASE or snake_case identifiers (role names, notification
+ * types, status codes) into a readable Title Case label, e.g.
+ * "FINANCE_MANAGER" -> "Finance Manager", "transfer_request_submitted" -> "Transfer Request Submitted".
+ */
+export function humanizeLabel(value: Nullable<string>): string {
+  if (!value) return "";
+  return value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      const lower = word.toLowerCase();
+      if (LABEL_ACRONYMS.has(lower)) return lower.toUpperCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
 }
 
 interface ProductRow {
@@ -37,6 +72,23 @@ interface TransferContextRow {
   sbus?: Nullable<LabelledEntity>;
   sbu_units?: Nullable<LabelledEntity>;
   transfer_line_items?: QuantityProductLineRow[];
+}
+
+interface GrnLineItemRow {
+  issued_quantity?: Nullable<number>;
+  quantity_received?: Nullable<number>;
+  products?: Nullable<ProductRow>;
+}
+
+interface GrnContextRow {
+  condition_notes?: Nullable<string>;
+  received_by?: Nullable<string>;
+  transfer_requests?: Nullable<{
+    reference_number?: Nullable<string>;
+    sbus?: Nullable<LabelledEntity>;
+    sbu_units?: Nullable<LabelledEntity>;
+  }>;
+  grn_line_items?: GrnLineItemRow[];
 }
 
 interface SupplierGrnContextRow {
@@ -69,10 +121,6 @@ interface IntraTransferContextRow {
   products?: Nullable<ProductRow>;
   to_sbu?: Nullable<LabelledEntity>;
   from_sbu?: Nullable<LabelledEntity>;
-}
-
-interface ProfileNameRow {
-  full_name?: Nullable<string>;
 }
 
 export interface DetailMessageInput {
@@ -123,7 +171,8 @@ function formatProducts(products: ProductLineSummary[]): string | null {
         : null;
       const sku = product.sku ? ` (${product.sku})` : "";
       const location = product.warehouseLocation ? ` @ ${product.warehouseLocation}` : "";
-      return [quantity, `${product.name}${sku}${location}`].filter(Boolean).join(" x ");
+      const variance = product.varianceNote ? ` [${product.varianceNote}]` : "";
+      return [quantity, `${product.name}${sku}${location}${variance}`].filter(Boolean).join(" x ");
     });
 
   if (labels.length === 0) return null;
@@ -156,24 +205,60 @@ export function buildDetailMessage(input: DetailMessageInput): string {
   return lines.join("\n");
 }
 
-export async function getProfileName(userId: Nullable<string>): Promise<string | null> {
+/**
+ * Resolves a user's display name, email, and role in one shot so notification
+ * emails can show a fully identifiable, human-readable party (e.g.
+ * "Jane Doe (jane@company.com) — BU Manager") instead of a bare name or ID.
+ */
+export async function getProfileContact(userId: Nullable<string>): Promise<ProfileContact | null> {
   if (!userId) return null;
 
   const { data: profile } = await supabaseAdmin
     .from("profiles")
-    .select("full_name")
+    .select("full_name, role")
     .eq("id", userId)
     .maybeSingle();
 
-  const profileRow = profile as ProfileNameRow | null;
-  if (isPresent(profileRow?.full_name)) return profileRow.full_name;
+  const profileRow = profile as ProfileContactRow | null;
 
+  let email: string | null = null;
   try {
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-    return authUser.user?.email ?? null;
+    email = authUser.user?.email ?? null;
   } catch {
-    return null;
+    email = null;
   }
+
+  return {
+    name: isPresent(profileRow?.full_name) ? (profileRow!.full_name as string) : null,
+    email,
+    role: isPresent(profileRow?.role) ? (profileRow!.role as string) : null,
+  };
+}
+
+/**
+ * Formats a resolved contact as a single readable string, e.g.
+ * "Jane Doe (jane@company.com) — BU Manager". Degrades gracefully when some
+ * fields are missing (e.g. external actors with only an email).
+ */
+export function formatContact(contact: Nullable<ProfileContact>): string | null {
+  if (!contact) return null;
+  const roleLabel = isPresent(contact.role) ? humanizeLabel(contact.role) : null;
+  const hasName = isPresent(contact.name);
+  const hasEmail = isPresent(contact.email);
+
+  let label: string;
+  if (hasName && hasEmail) {
+    label = `${contact.name} (${contact.email})`;
+  } else if (hasName) {
+    label = contact.name as string;
+  } else if (hasEmail) {
+    label = contact.email as string;
+  } else {
+    return roleLabel;
+  }
+
+  return roleLabel ? `${label} — ${roleLabel}` : label;
 }
 
 export async function buildTransferNotificationMessage(opts: {
@@ -199,8 +284,8 @@ export async function buildTransferNotificationMessage(opts: {
     headline: opts.headline,
     reference: row?.reference_number,
     actorLabel: opts.actorLabel,
-    actorName: await getProfileName(opts.actorId),
-    requesterName: await getProfileName(row?.raised_by),
+    actorName: formatContact(await getProfileContact(opts.actorId)),
+    requesterName: formatContact(await getProfileContact(row?.raised_by)),
     sbu: formatEntityLabel(row?.sbus),
     unit: formatEntityLabel(row?.sbu_units),
     invoiceAmount: row?.estimated_value,
@@ -237,8 +322,8 @@ export async function buildSupplierGrnNotificationMessage(opts: {
     headline: opts.headline,
     reference: row?.reference_number,
     actorLabel: opts.actorLabel,
-    actorName: await getProfileName(opts.actorId),
-    receiverName: await getProfileName(row?.received_by),
+    actorName: formatContact(await getProfileContact(opts.actorId)),
+    receiverName: formatContact(await getProfileContact(row?.received_by)),
     sbu: formatEntityLabel(row?.sbus),
     supplier: row?.supplier_name,
     invoiceReference: row?.supplier_invoice_reference,
@@ -277,10 +362,10 @@ export async function buildReturnNotificationMessage(opts: {
     headline: opts.headline,
     reference: row?.reference_number,
     actorLabel: opts.actorLabel,
-    actorName: await getProfileName(opts.actorId),
-    requesterName: await getProfileName(row?.raised_by),
-    approverName: await getProfileName(row?.approved_by),
-    receiverName: await getProfileName(row?.received_by),
+    actorName: formatContact(await getProfileContact(opts.actorId)),
+    requesterName: formatContact(await getProfileContact(row?.raised_by)),
+    approverName: formatContact(await getProfileContact(row?.approved_by)),
+    receiverName: formatContact(await getProfileContact(row?.received_by)),
     sbu: formatEntityLabel(row?.sbus),
     location: row?.original_transfer_request?.reference_number
       ? `Original transfer ${row.original_transfer_request.reference_number}`
@@ -321,8 +406,8 @@ export async function buildIntraTransferNotificationMessage(opts: {
     headline: opts.headline,
     reference: row?.reference_number,
     actorLabel: opts.actorLabel,
-    actorName: await getProfileName(opts.actorId),
-    requesterName: await getProfileName(row?.transferred_by),
+    actorName: formatContact(await getProfileContact(opts.actorId)),
+    requesterName: formatContact(await getProfileContact(row?.transferred_by)),
     sbu: toLabel,
     location: toLabel ? `${fromLabel} to ${toLabel}` : fromLabel,
     products: row?.products
@@ -337,5 +422,88 @@ export async function buildIntraTransferNotificationMessage(opts: {
         ]
       : [],
     notes: opts.notes ?? row?.notes,
+  });
+}
+
+export async function buildGrnNotificationMessage(opts: {
+  grnId: string;
+  headline: string;
+  actorId?: Nullable<string>;
+  actorLabel?: string;
+  notes?: Nullable<string>;
+}): Promise<string> {
+  const { data: grn } = await supabaseAdmin
+    .from("grns")
+    .select(
+      `condition_notes, received_by,
+       transfer_requests ( reference_number, sbus ( name, code ), sbu_units ( name, code ) ),
+       grn_line_items ( issued_quantity, quantity_received, products ( name, sku, unit_of_measure, warehouse_location ) )`,
+    )
+    .eq("id", opts.grnId)
+    .maybeSingle();
+
+  const row = grn as GrnContextRow | null;
+  const transfer = row?.transfer_requests;
+  return buildDetailMessage({
+    headline: opts.headline,
+    reference: transfer?.reference_number,
+    actorLabel: opts.actorLabel ?? "Received by",
+    actorName: formatContact(await getProfileContact(opts.actorId ?? row?.received_by)),
+    sbu: formatEntityLabel(transfer?.sbus),
+    unit: formatEntityLabel(transfer?.sbu_units),
+    products: (row?.grn_line_items ?? []).map((line) => {
+      const issued = Number(line.issued_quantity ?? 0);
+      const received = Number(line.quantity_received ?? 0);
+      return {
+        name: line.products?.name,
+        sku: line.products?.sku,
+        quantity: line.quantity_received,
+        unit: line.products?.unit_of_measure,
+        warehouseLocation: line.products?.warehouse_location,
+        varianceNote: received !== issued ? `issued ${issued}, received ${received}` : null,
+      };
+    }),
+    notes: opts.notes ?? row?.condition_notes,
+  });
+}
+
+export interface ProductActionInput {
+  headline: string;
+  reference?: Nullable<string>;
+  actorId?: Nullable<string>;
+  actorLabel?: string;
+  productName?: Nullable<string>;
+  sku?: Nullable<string>;
+  quantity?: Nullable<number>;
+  unit?: Nullable<string>;
+  location?: Nullable<string>;
+  reason?: Nullable<string>;
+  notes?: Nullable<string>;
+}
+
+/**
+ * Lightweight message builder for ad hoc product/ledger actions (damage
+ * write-off, expiry, recall, catalogue changes) that aren't tied to a
+ * transfer/GRN/return row. Still surfaces the actor's full contact details
+ * and the affected product/quantity for a detailed, readable email.
+ */
+export async function buildProductActionMessage(input: ProductActionInput): Promise<string> {
+  return buildDetailMessage({
+    headline: input.headline,
+    reference: input.reference,
+    actorLabel: input.actorLabel ?? "Action by",
+    actorName: formatContact(await getProfileContact(input.actorId)),
+    products: isPresent(input.productName)
+      ? [
+          {
+            name: input.productName,
+            sku: input.sku,
+            quantity: input.quantity,
+            unit: input.unit,
+            warehouseLocation: input.location,
+          },
+        ]
+      : undefined,
+    notes: [input.reason, input.notes].filter(isPresent).join(" \u2014 ") || null,
   });
 }
