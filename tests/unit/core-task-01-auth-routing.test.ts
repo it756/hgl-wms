@@ -29,6 +29,23 @@ vi.mock("@/lib/supabaseClient", () => ({
 }));
 
 function mockSuccessfulLogin(role: string) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() =>
+      Promise.resolve(
+        Response.json({
+          role,
+          full_name: `${role} User`,
+          sbu_name: "Demo SBU",
+          sbu_id: "sbu-001",
+          licensed: true,
+          license_type: "standard",
+          license_issued_at: "2026-01-01T00:00:00.000Z",
+          license_expires_at: "2999-01-01T00:00:00.000Z",
+        }),
+      ),
+    ),
+  );
   signInWithPasswordMock.mockResolvedValue({
     data: {
       session: { access_token: "access-token-001" },
