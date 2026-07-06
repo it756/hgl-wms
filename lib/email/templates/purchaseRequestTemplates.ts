@@ -28,7 +28,7 @@ export function procurementReviewHtml(opts: {
   reviewLink: string;
   expiryDays: number;
 }): string {
-  const currency = "KES";
+  const currency = "ZMW";
   const linesHtml = opts.lines
     .map(
       (l) => `

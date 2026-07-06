@@ -375,7 +375,7 @@ function NewPurchaseRequestContent() {
                         />
                       </div>
                       <div className="col-span-6 sm:col-span-2">
-                        <label className="block text-xs text-slate-500 mb-1">Unit Cost (KES)</label>
+                        <label className="block text-xs text-slate-500 mb-1">Unit Cost (ZMW)</label>
                         <input
                           type="text"
                           readOnly
@@ -442,7 +442,7 @@ function NewPurchaseRequestContent() {
               <div className="flex justify-end pt-2 border-t border-slate-100">
                 <span className="text-sm text-slate-500">
                   Estimated Total:{" "}
-                  <strong className="text-slate-800">KES {estimatedTotal.toLocaleString()}</strong>
+                  <strong className="text-slate-800">ZMW {estimatedTotal.toLocaleString()}</strong>
                 </span>
               </div>
             )}

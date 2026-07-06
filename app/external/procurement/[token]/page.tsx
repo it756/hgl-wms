@@ -200,7 +200,7 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
 
   if (!pr) return null;
 
-  const currency = "KES";
+  const currency = "ZMW";
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4">
