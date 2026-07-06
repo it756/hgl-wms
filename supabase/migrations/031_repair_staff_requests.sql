@@ -44,11 +44,17 @@ BEGIN
       AND tablename = 'staff_requests'
       AND policyname = 'BU Managers can create staff requests'
   ) THEN
-    CREATE POLICY "BU Managers can create staff requests"
-      ON public.staff_requests FOR INSERT TO authenticated
-      WITH CHECK (
-        EXISTS (
-          SELECT 1 FROM public.profiles p
+CREATE POLICY "BU Managers can create staff requests"
+  ON public.staff_requests FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid()
+        AND p.role = 'BU_MANAGER'
+        AND p.sbu_id = requested_by_sbu_id
+    )
+    AND created_by = auth.uid()
+  );
           WHERE p.id = auth.uid() AND p.role = 'BU_MANAGER'
         )
       );
