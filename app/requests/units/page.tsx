@@ -16,9 +16,6 @@ import {
   Activity,
   Loader2,
   UserPlus,
-  Lock,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 
 interface SBUUnit {
@@ -69,8 +66,6 @@ export default function BUUnitsPage() {
   const [showStaffForm, setShowStaffForm] = useState(false);
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffEmail, setNewStaffEmail] = useState("");
-  const [newStaffPassword, setNewStaffPassword] = useState("");
-  const [showNewStaffPassword, setShowNewStaffPassword] = useState(false);
   const [newStaffUnitId, setNewStaffUnitId] = useState("");
   const [staffFormError, setStaffFormError] = useState<string | null>(null);
   const [staffFormLoading, setStaffFormLoading] = useState(false);
@@ -215,14 +210,18 @@ export default function BUUnitsPage() {
     setStaffFormLoading(true);
     setStaffFormError(null);
     try {
-      const res = await fetch("/api/bu/staff", {
+      const selectedUnit = units.find((unit) => unit.id === newStaffUnitId);
+      const res = await fetch("/api/bu/staff-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({
-          full_name: newStaffName.trim() || undefined,
-          email: newStaffEmail.trim(),
-          password: newStaffPassword,
-          unit_id: newStaffUnitId || null,
+          requested_user_info: {
+            full_name: newStaffName.trim() || undefined,
+            email: newStaffEmail.trim(),
+            proposed_role: "UNIT_STAFF",
+          },
+          requested_roles: ["UNIT_STAFF"],
+          notes: selectedUnit ? `Preferred unit: ${selectedUnit.name} (${selectedUnit.code})` : undefined,
         }),
       });
       const data = await res.json();
@@ -230,9 +229,7 @@ export default function BUUnitsPage() {
       setShowStaffForm(false);
       setNewStaffName("");
       setNewStaffEmail("");
-      setNewStaffPassword("");
       setNewStaffUnitId("");
-      await loadStaff();
     } catch (e: any) {
       setStaffFormError(e.message);
     } finally {
@@ -558,7 +555,7 @@ export default function BUUnitsPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 <UserPlus className="w-4 h-4" />
-                Add Staff
+                Request Staff Creation
               </button>
             </div>
 
@@ -569,7 +566,7 @@ export default function BUUnitsPage() {
                 className="flex flex-col gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4"
               >
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  New Staff Account
+                  New Staff Request
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
@@ -593,34 +590,6 @@ export default function BUUnitsPage() {
                       placeholder="jane@example.com"
                       className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
                     />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">
-                      Password <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                      <input
-                        required
-                        type={showNewStaffPassword ? "text" : "password"}
-                        value={newStaffPassword}
-                        onChange={(e) => setNewStaffPassword(e.target.value)}
-                        placeholder="Min 8 chars, 1 number, 1 special"
-                        className="w-full pl-9 pr-10 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewStaffPassword((show) => !show)}
-                        aria-label={showNewStaffPassword ? "Hide password" : "Show password"}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
-                      >
-                        {showNewStaffPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-600">Assign Unit</label>
@@ -657,7 +626,7 @@ export default function BUUnitsPage() {
                     ) : (
                       <UserPlus className="w-4 h-4" />
                     )}
-                    Create Account
+                    Submit Request
                   </button>
                   <button
                     type="button"
