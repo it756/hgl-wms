@@ -92,6 +92,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Migration filename check
+        run: npm run migrations:check
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:

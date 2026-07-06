@@ -1,4 +1,4 @@
--- Migration: 024_enable_missing_rls.sql
+-- Migration: 025_enable_missing_rls.sql
 -- Purpose: Close the RLS coverage gap. Several tables added across migrations
 --          007, 005, 012, and 023 never received an
 --          `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` statement, unlike their
