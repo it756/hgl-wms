@@ -82,11 +82,12 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json(result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("does not have")
-        ? 409
-        : 500;
+    const status =
+      message === "Profile not found"
+        ? 404
+        : message === "Staff member does not have an active licence."
+          ? 409
+          : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }
