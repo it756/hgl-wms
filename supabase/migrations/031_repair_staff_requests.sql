@@ -1,4 +1,4 @@
--- Migration: 029_repair_staff_requests.sql
+-- Migration: 031_repair_staff_requests.sql
 -- Purpose: Repair environments where migration 028 was marked applied but
 --          public.staff_requests was not actually created.
 
