@@ -91,19 +91,19 @@ async function updateLinkedPurchaseRequestStatus(
     receivedByProduct[l.product_id] = (receivedByProduct[l.product_id] ?? 0) + l.quantity_received;
   }
 
-  const totalRequested = (prLines as { product_id: string; quantity_requested: number }[]).reduce(
-    (sum, l) => sum + l.quantity_requested,
-    0,
+  const prLinesTyped = prLines as { product_id: string | null; quantity_requested: number }[];
+
+  // If any PR line item has no product_id, we cannot reliably reconcile receipts to requests.
+  if (prLinesTyped.some((l) => !l.product_id)) return;
+
+  const fullyReceived = prLinesTyped.every(
+    (l) => (receivedByProduct[l.product_id!] ?? 0) >= l.quantity_requested,
   );
-  const totalReceived = (prLines as { product_id: string; quantity_requested: number }[]).reduce(
-    (sum, l) => sum + (receivedByProduct[l.product_id] ?? 0),
-    0,
-  );
 
-  if (totalReceived === 0) return;
+  const anyReceived = prLinesTyped.some((l) => (receivedByProduct[l.product_id!] ?? 0) > 0);
+  if (!anyReceived) return;
 
-  const newStatus = totalReceived >= totalRequested ? "RECEIVED" : "PARTIALLY_RECEIVED";
-
+  const newStatus = fullyReceived ? "RECEIVED" : "PARTIALLY_RECEIVED";
   await supabaseAdmin
     .from("purchase_requests")
     .update({ status: newStatus, updated_at: new Date().toISOString() })
