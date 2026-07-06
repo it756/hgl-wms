@@ -65,6 +65,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lockfile drift
+        run: npm run lockfile:check
+
       - name: Typecheck
         run: npm run typecheck
 

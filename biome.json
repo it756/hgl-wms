@@ -7,13 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      ".github/workflows/ui.yml",
-      "biome.json",
-      "playwright.config.ts",
-      "tests/e2e/**",
-      "docs/openapi/**"
-    ]
+    "includes": ["biome.json", "playwright.config.ts", "tests/e2e/**", "docs/openapi/**"]
   },
   "formatter": {
     "enabled": true,
