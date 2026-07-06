@@ -66,7 +66,8 @@ async function updateLinkedPurchaseRequestStatus(
     .select("product_id, quantity_requested")
     .eq("purchase_request_id", prId);
 
-  if (prLinesError || !prLines?.length) return;
+  if (prLinesError) throw prLinesError;
+  if (!prLines?.length) return;
 
   // All GRN_APPROVED GRNs linked to this PR (including the one just approved)
   const { data: linkedGrns } = await supabaseAdmin
