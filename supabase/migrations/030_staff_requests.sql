@@ -58,9 +58,6 @@ CREATE POLICY "BU Managers can create staff requests"
     )
     AND created_by = auth.uid()
   );
-      WHERE p.id = auth.uid() AND p.role = 'BU_MANAGER'
-    )
-  );
 
 -- BU Managers can read their own SBU's requests
 CREATE POLICY "BU Managers can view their SBU staff requests"
