@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../lib/services/auditService";
 import { createNotification } from "../../../../lib/services/notificationService";
+import { buildTransferNotificationMessage } from "../../../../lib/notifications/messages";
 
 /**
  * GET /api/bu/approvals
@@ -145,19 +146,34 @@ export async function POST(req: Request) {
 
   if (action === "approve") {
     // Notify Finance Manager(s) that a request is ready for their review
+    const message = await buildTransferNotificationMessage({
+      transferId: transfer_request_id,
+      headline: `Transfer ${refNum} approved by BU Manager — awaiting Finance review`,
+      actorId: user.id,
+      actorLabel: "BU Manager decision",
+    });
     await createNotification({
       user_role: "FINANCE_MANAGER",
       type: "transfer_request_pending_finance_approval",
-      message: `Transfer ${refNum} approved by BU Manager — awaiting Finance review`,
+      message,
       related_entity_id: transfer_request_id,
+      dispatchChannels: true,
     });
   } else {
     // Notify the originating unit staff member directly
+    const message = await buildTransferNotificationMessage({
+      transferId: transfer_request_id,
+      headline: `Transfer ${refNum} was rejected by BU Manager`,
+      actorId: user.id,
+      actorLabel: "BU Manager decision",
+      notes,
+    });
     await createNotification({
       user_id: raisedBy,
       type: "transfer_request_rejected_by_bu",
-      message: `Transfer ${refNum} was rejected by BU Manager`,
+      message,
       related_entity_id: transfer_request_id,
+      dispatchChannels: true,
     });
   }
 

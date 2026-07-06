@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "../supabaseServer";
 import type { Notification } from "../models/shared";
 import { dispatchToChannels } from "../notifications/channels";
+import { humanizeLabel } from "../notifications/messages";
 
 interface NotificationRecipientProfile {
   id: string;
@@ -55,7 +56,7 @@ export async function createNotification(input: NotifyInput): Promise<Notificati
   // Optionally fan out to email + WhatsApp channels.
   if (input.dispatchChannels) {
     try {
-      const subject = input.subject ?? input.type.replace(/_/g, " ");
+      const subject = input.subject ?? humanizeLabel(input.type);
       const recipients = await resolveRecipients({
         user_id: input.user_id,
         user_role: input.user_role,
@@ -114,7 +115,7 @@ async function resolveRecipients(opts: {
     // role-holders for the correct SBU only.
     const sbuId = await inferSbuId(opts.related_entity_id);
 
-    const { data: profiles } = sbuId
+    let { data: profiles } = sbuId
       ? await supabaseAdmin
           .from("profiles")
           .select("id, whatsapp_number")
@@ -126,6 +127,20 @@ async function resolveRecipients(opts: {
           .select("id, whatsapp_number")
           .eq("role", opts.user_role)
           .eq("is_active", true);
+
+    // If we scoped to an SBU but found no role-holders there, fall back to a
+    // global broadcast for *global* roles (e.g. Finance) so critical notifications
+    // are not silently dropped. Avoid broadcasting SBU-scoped roles (e.g. BU_MANAGER)
+    // across SBUs, which would leak context.
+    const allowGlobalFallback = new Set(["FINANCE_MANAGER", "WAREHOUSE_MANAGER", "ADMIN"]);
+    if ((!profiles || profiles.length === 0) && sbuId && allowGlobalFallback.has(opts.user_role)) {
+      const { data: globalProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, whatsapp_number")
+        .eq("role", opts.user_role)
+        .eq("is_active", true);
+      profiles = globalProfiles as any;
+    }
     if (!profiles || profiles.length === 0) return [];
 
     const out = await Promise.all(

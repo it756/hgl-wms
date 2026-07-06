@@ -284,7 +284,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/bu/queue", label: "BU Approval Queue", icon: ClipboardList },
           { href: "/requests/units", label: "Units & Staff", icon: Users },
           { href: "/returns/approvals", label: "Returns Approval", icon: ClipboardCheck },
-          { href: "/variance", label: "Variance Decisions", icon: AlertTriangle },
           { href: "/bu/stock", label: "My Stock", icon: Layers },
           { href: "/purchase-requests", label: "Purchase Requests", icon: ShoppingCart },
         ];

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../../lib/services/notificationService";
+import { buildTransferNotificationMessage } from "../../../../../../lib/notifications/messages";
 
 /**
  * PATCH /api/admin/variance/proposals/[id]
@@ -81,11 +82,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (rejectError) return NextResponse.json({ error: rejectError.message }, { status: 500 });
 
     // Notify the proposer
+    const rejectMessage = await buildTransferNotificationMessage({
+      transferId: (proposal as any).transfer_request_id,
+      headline: `Your variance resolution proposal for transfer ${transferRef} was rejected by Finance`,
+      actorId: user.id,
+      actorLabel: "Finance decision",
+      notes: review_notes,
+    });
     await createNotification({
       user_id: (proposal as any).proposed_by,
       type: "variance_proposal_rejected",
-      message: `Your variance resolution proposal for transfer ${transferRef} was rejected by Finance. You may submit a revised proposal.`,
+      message: rejectMessage,
       related_entity_id: proposalId,
+      dispatchChannels: true,
     });
 
     await writeAuditLog({
@@ -154,11 +163,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   // Notify the proposer of approval
+  const approveMessage = await buildTransferNotificationMessage({
+    transferId: (proposal as any).transfer_request_id,
+    headline: `Your variance resolution proposal for transfer ${transferRef} was approved by Finance and has been executed`,
+    actorId: user.id,
+    actorLabel: "Finance decision",
+    notes: review_notes,
+  });
   await createNotification({
     user_id: (proposal as any).proposed_by,
     type: "variance_proposal_approved",
-    message: `Your variance resolution proposal for transfer ${transferRef} was approved by Finance and has been executed.`,
+    message: approveMessage,
     related_entity_id: proposalId,
+    dispatchChannels: true,
   });
 
   return NextResponse.json({ id: proposalId, status: "APPROVED" });

@@ -141,7 +141,7 @@ export default function AdminPurchaseRequestsPage() {
                     )}
                     {r.estimated_total != null && (
                       <span className="text-sm font-medium text-slate-600">
-                        KES {r.estimated_total.toLocaleString()}
+                        ZMW {r.estimated_total.toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -212,11 +212,11 @@ export default function AdminPurchaseRequestsPage() {
                                 {l.quantity_requested} {l.unit_of_measure}
                               </td>
                               <td className="px-3 py-2 text-right">
-                                {l.unit_cost != null ? `KES ${l.unit_cost.toLocaleString()}` : "—"}
+                                {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
                               </td>
                               <td className="px-3 py-2 text-right font-medium">
                                 {l.unit_cost != null
-                                  ? `KES ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
+                                  ? `ZMW ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
                                   : "—"}
                               </td>
                             </tr>

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { createNotification } from "../../../lib/services/notificationService";
+import {
+  buildGrnNotificationMessage,
+  buildTransferNotificationMessage,
+} from "../../../lib/notifications/messages";
 
 export async function POST(req: Request) {
   try {
@@ -66,10 +70,17 @@ export async function POST(req: Request) {
 
     // notify warehouse manager on variance
     if (hasVariance) {
+      const grnVarianceMessage = await buildGrnNotificationMessage({
+        grnId,
+        headline: "A goods receipt reported a variance against the issued quantity",
+        actorId: user.id,
+        actorLabel: "Received by",
+        notes: condition_notes,
+      });
       await createNotification({
         related_entity_id: transfer_request_id,
         type: "grn_variance",
-        message: "GRN reported a variance",
+        message: grnVarianceMessage,
         user_role: "WAREHOUSE_MANAGER",
         dispatchChannels: true,
       });
@@ -120,10 +131,17 @@ export async function POST(req: Request) {
 
             if (varianceLines.length > 0) {
               await supabaseAdmin.from("variance_proposal_lines").insert(varianceLines);
+              const proposalMessage = await buildTransferNotificationMessage({
+                transferId: transfer_request_id,
+                headline: "Variance proposal auto-raised from receipt — pending Finance review",
+                actorId: user.id,
+                actorLabel: "Received by",
+                notes: condition_notes,
+              });
               await createNotification({
                 related_entity_id: proposalId,
                 type: "variance_proposal_submitted",
-                message: `Variance proposal auto-raised from receipt — pending Finance review`,
+                message: proposalMessage,
                 user_role: "FINANCE_MANAGER",
                 dispatchChannels: true,
               });
