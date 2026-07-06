@@ -181,15 +181,17 @@ export async function revokeLicense(
 
   if (updateError) throw updateError;
 
-  await supabaseAdmin.from("license_audit_log").insert({
+  const { error: auditError } = await supabaseAdmin.from("license_audit_log").insert({
     profile_id: profileId,
     action: "REVOKED",
     license_type: (existing as LicenseProfile).license_type,
-    issued_at: null,
-    expires_at: null,
+    issued_at: (existing as LicenseProfile).license_issued_at,
+    expires_at: (existing as LicenseProfile).license_expires_at,
     performed_by: performedBy,
     notes: notes ?? null,
   });
+
+  if (auditError) throw auditError;
 
   await writeAuditLog({
     entity_type: "profile",
