@@ -44,6 +44,9 @@ spec.md
 tasks.md
 manual-plan.md
 
+# BMAD generated output
+._bmad_output/
+
 # terraform
 **/.terraform/*
 *.tfstate
