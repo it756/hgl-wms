@@ -105,14 +105,53 @@ jobs:
         with:
           version: latest
 
+      - name: Supabase CLI version
+        run: supabase --version
+
       - name: Start Supabase
         run: supabase start
 
+      - name: Supabase service status after start
+        run: |
+          supabase status || true
+          docker ps -a --filter "name=supabase"
+
       - name: Validate migrations
-        run: supabase db reset --local --no-seed
+        run: supabase db reset --local --no-seed --debug
 
       - name: Supabase DB lint
         run: supabase db lint --local
+
+      - name: Capture Supabase diagnostics
+        if: failure()
+        run: |
+          mkdir -p supabase-debug-logs
+
+          {
+            echo "## Supabase version"
+            supabase --version || true
+            echo
+            echo "## Supabase status"
+            supabase status || true
+            echo
+            echo "## Docker containers"
+            docker ps -a --filter "name=supabase" || true
+          } | tee supabase-debug-logs/summary.log
+
+          for container in $(docker ps -a --filter "name=supabase" --format "{{.Names}}"); do
+            echo "::group::${container}"
+            docker logs --tail=500 "${container}" 2>&1 | tee "supabase-debug-logs/${container}.log" || true
+            docker inspect "${container}" > "supabase-debug-logs/${container}.inspect.json" || true
+            echo "::endgroup::"
+          done
+
+      - name: Upload Supabase diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-debug-logs
+          path: supabase-debug-logs
+          if-no-files-found: ignore
 
       - name: Stop Supabase
         if: always()
