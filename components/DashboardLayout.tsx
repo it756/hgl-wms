@@ -32,6 +32,7 @@ import {
   TrendingDown,
   ShoppingCart,
   Truck,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -49,6 +50,16 @@ interface HeaderNotification {
   entity?: string | null;
   entity_label?: string | null;
   link?: string | null;
+}
+
+interface AuthSessionProfile {
+  full_name: string | null;
+  role: string;
+  sbu_id: string | null;
+  sbu_name: string | null;
+  licensed: boolean;
+  license_type: string | null;
+  license_expires_at: string | null;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -156,7 +167,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     });
 
     // Verify session is still valid on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (
         !session &&
         localStorage.getItem("access_token") &&
@@ -166,6 +177,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         localStorage.clear();
         router.push("/");
         return;
+      }
+
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        const profileResponse = await fetch("/api/auth/session", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!profileResponse.ok) {
+          await supabase.auth.signOut();
+          localStorage.clear();
+          router.push("/");
+          return;
+        }
+
+        const profile = (await profileResponse.json()) as AuthSessionProfile;
+        localStorage.setItem("user_role", profile.role);
+        localStorage.setItem("user_name", profile.full_name || "User Account");
+        localStorage.setItem("user_sbu", profile.sbu_name || "Assigned SBU");
+        localStorage.setItem("user_sbu_id", profile.sbu_id ?? "");
+        localStorage.setItem("user_licensed", String(profile.licensed));
+        if (profile.license_type) localStorage.setItem("user_license_type", profile.license_type);
+        if (profile.license_expires_at) {
+          localStorage.setItem("user_license_expires_at", profile.license_expires_at);
+        }
       }
 
       // Read cached metadata or session
@@ -180,7 +215,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       // Dynamic unread count
       fetchNotifications();
 
-      const token = localStorage.getItem("access_token");
       if (!token && pathname !== "/" && pathname !== "/forgot-password") {
         localStorage.setItem("user_role", role);
         localStorage.setItem("user_name", name);
@@ -267,6 +301,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return [
           { href: "/admin", label: "Admin Panel", icon: Grid },
           { href: "/admin/users", label: "User Management", icon: Users },
+          { href: "/admin/licenses", label: "Licence Management", icon: ShieldCheck },
           { href: "/admin/sbus", label: "SBU Registry", icon: Building },
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
           { href: "/admin/settings", label: "Global Settings", icon: Settings },

@@ -2,9 +2,29 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Warehouse, Mail, Lock, Eye, EyeOff, Key } from "lucide-react";
+import { Warehouse, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import type { UserRole } from "@/lib/models/user";
+
+interface AuthSessionProfile {
+  full_name: string | null;
+  role: UserRole;
+  sbu_id: string | null;
+  sbu_name: string | null;
+  licensed: boolean;
+  license_type: string | null;
+  license_issued_at: string | null;
+  license_expires_at: string | null;
+}
+
+function routeForRole(role: UserRole): string {
+  if (role === "ADMIN") return "/admin";
+  if (role === "BU_MANAGER" || role === "UNIT_STAFF") return "/requests";
+  if (role === "WAREHOUSE_MANAGER") return "/warehouse/queue";
+  if (role === "FINANCE_MANAGER") return "/finance/queue";
+  return "/requests";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,40 +33,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Well-known credentials convenience helpers for testing/demo
-  const demoUsers = [
-    {
-      email: "david.okuku@harvestgl.net",
-      role: "WAREHOUSE_MANAGER",
-      name: "David Okuku",
-      sbu: "Central Warehousing Ops",
-    },
-    {
-      email: "admin@harvestgl.net",
-      role: "ADMIN",
-      name: "Admin Lead",
-      sbu: "System Administration",
-    },
-    {
-      email: "bu.manager@harvestgl.net",
-      role: "BU_MANAGER",
-      name: "Alexander Wright",
-      sbu: "Finance & Admin SBU",
-    },
-    {
-      email: "finance@harvestgl.net",
-      role: "FINANCE_MANAGER",
-      name: "Sarah Miller",
-      sbu: "Finance Global Hub",
-    },
-    {
-      email: "staff@harvestgl.net",
-      role: "UNIT_STAFF",
-      name: "Lisa Chen",
-      sbu: "Logistics Ops Center",
-    },
-  ];
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -60,64 +46,46 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        // Fallback for demo purposes if the specific supabase setup is not ready
-        const demo = demoUsers.find((u) => u.email === email);
-        if (demo && password === "password123") {
-          localStorage.setItem("access_token", "demo-token-123456");
-          localStorage.setItem("user_role", demo.role);
-          localStorage.setItem("user_name", demo.name);
-          localStorage.setItem("user_sbu", demo.sbu);
-
-          if (demo.role === "ADMIN") {
-            router.push("/admin");
-          } else if (demo.role === "BU_MANAGER" || demo.role === "UNIT_STAFF") {
-            router.push("/requests");
-          } else if (demo.role === "WAREHOUSE_MANAGER") {
-            router.push("/warehouse/queue");
-          } else if (demo.role === "FINANCE_MANAGER") {
-            router.push("/finance/queue");
-          }
-          return;
-        }
         throw new Error(authError.message);
       }
 
       const session = data.session;
       if (!session) throw new Error("No session active after sign in");
 
-      // Set items
-      const user = data.user;
-      const role = (user.user_metadata as any)?.role || "UNIT_STAFF";
-      const name = user.user_metadata?.full_name || "User Account";
-      const sbuName = user.user_metadata?.sbu_name || "Assigned SBU";
+      const profileResponse = await fetch("/api/auth/session", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const profileData = await profileResponse.json().catch(() => ({}));
 
-      const sbuId = (user.user_metadata as any)?.sbu_id || "";
+      if (!profileResponse.ok) {
+        await supabase.auth.signOut();
+        localStorage.clear();
+        throw new Error(
+          typeof profileData.error === "string" ? profileData.error : "Authentication failed",
+        );
+      }
+
+      const profile = profileData as AuthSessionProfile;
+      const name = profile.full_name || "User Account";
+      const sbuName = profile.sbu_name || "Assigned SBU";
+
       localStorage.setItem("access_token", session.access_token);
-      localStorage.setItem("user_role", role);
+      localStorage.setItem("user_role", profile.role);
       localStorage.setItem("user_name", name);
       localStorage.setItem("user_sbu", sbuName);
-      localStorage.setItem("user_sbu_id", sbuId);
-
-      // Routing
-      if (role === "ADMIN") {
-        router.push("/admin");
-      } else if (role === "BU_MANAGER" || role === "UNIT_STAFF") {
-        router.push("/requests");
-      } else if (role === "WAREHOUSE_MANAGER") {
-        router.push("/warehouse/queue");
-      } else if (role === "FINANCE_MANAGER") {
-        router.push("/finance/queue");
+      localStorage.setItem("user_sbu_id", profile.sbu_id ?? "");
+      localStorage.setItem("user_licensed", String(profile.licensed));
+      if (profile.license_type) localStorage.setItem("user_license_type", profile.license_type);
+      if (profile.license_expires_at) {
+        localStorage.setItem("user_license_expires_at", profile.license_expires_at);
       }
-    } catch (err: any) {
-      setError(err.message || "Authentication failed");
+
+      router.push(routeForRole(profile.role));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
-  }
-
-  function applyDemoUser(u: (typeof demoUsers)[0]) {
-    setEmail(u.email);
-    setPassword("password123");
   }
 
   return (

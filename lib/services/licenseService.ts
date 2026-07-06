@@ -27,6 +27,18 @@ export interface LicenseProfile {
   license_expires_at: string | null;
 }
 
+export interface LicenseAuditEntry {
+  id: string;
+  profile_id: string;
+  action: "ASSIGNED" | "UPDATED" | "REVOKED";
+  license_type: string | null;
+  issued_at: string | null;
+  expires_at: string | null;
+  performed_by: string;
+  notes: string | null;
+  created_at: string;
+}
+
 // ─────────────────────────────────────────────
 // Assign licence to a staff member
 // ─────────────────────────────────────────────
@@ -210,6 +222,20 @@ export async function listLicensedStaff(opts?: {
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as LicenseProfile[];
+}
+
+// ─────────────────────────────────────────────
+// List audit history for a staff member's licence
+// ─────────────────────────────────────────────
+export async function listLicenseAuditLog(profileId: string): Promise<LicenseAuditEntry[]> {
+  const { data, error } = await supabaseAdmin
+    .from("license_audit_log")
+    .select("id, profile_id, action, license_type, issued_at, expires_at, performed_by, notes, created_at")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as LicenseAuditEntry[];
 }
 
 // ─────────────────────────────────────────────
