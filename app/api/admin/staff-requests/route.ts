@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthHeader } from "../../../../lib/supabaseServer";
+import { getUserFromAuthHeader, supabaseAdmin } from "../../../../lib/supabaseServer";
 import { listStaffRequests } from "../../../../lib/services/staffRequestService";
-
-interface AuthMetadata {
-  role?: string;
-}
 
 /**
  * GET /api/admin/staff-requests
@@ -15,7 +11,13 @@ export async function GET(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if ((user.user_metadata as AuthMetadata | null)?.role !== "ADMIN") {
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || profile?.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
   }
 
