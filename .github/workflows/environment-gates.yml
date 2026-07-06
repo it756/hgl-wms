@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - QA
-      - prod
+      - main
 
 concurrency:
   group: gate-${{ github.ref_name }}
@@ -27,7 +27,7 @@ jobs:
 
   prod-gate:
     name: production guarded gate
-    if: github.ref_name == 'prod'
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:

@@ -5,6 +5,6 @@ Environment-specific Terraform compositions live here.
 Current placeholders:
 
 - `dev/`
-- `staging/`
 - `QA/`
-- `prod/`
+- `staging/`
+- `production/`

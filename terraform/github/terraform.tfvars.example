@@ -1,7 +1,7 @@
 github_owner    = "it756"
 repository_name = "hgl-wms"
 
-protected_branches = ["dev", "staging", "QA", "prod"]
+protected_branches = ["dev", "QA", "staging", "main"]
 
 # Use GitHub numeric user/team IDs for environment reviewers.
 required_reviewer_user_ids_qa = []

@@ -4,15 +4,15 @@ on:
   pull_request:
     branches:
       - dev
-      - staging
       - QA
-      - prod
+      - staging
+      - main
   push:
     branches:
       - dev
-      - staging
       - QA
-      - prod
+      - staging
+      - main
 
 concurrency:
   group: backend-${{ github.workflow }}-${{ github.ref }}
