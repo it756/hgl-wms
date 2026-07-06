@@ -1,0 +1,211 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HGL WMS API",
+    "version": "0.1.0",
+    "description": "Committed API contract snapshot used by the frontend OpenAPI drift check."
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/transfer-requests": {
+      "get": {
+        "operationId": "listTransferRequests",
+        "responses": {
+          "200": {
+            "description": "Transfer requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransferRequest"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTransferRequest",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransferRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created transfer request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "responses": {
+          "200": {
+            "description": "Notifications for the authenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Notification"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return-requests": {
+      "get": {
+        "operationId": "listReturnRequests",
+        "responses": {
+          "200": {
+            "description": "Return requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReturnRequest"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateTransferRequest": {
+        "type": "object",
+        "required": ["requesting_unit_id", "lines"],
+        "properties": {
+          "requesting_unit_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "required_date": {
+            "type": ["string", "null"],
+            "format": "date"
+          },
+          "notes": {
+            "type": ["string", "null"]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferRequestLineInput"
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "TransferRequestLineInput": {
+        "type": "object",
+        "required": ["product_id", "requested_quantity"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requested_quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "ReferenceResponse": {
+        "type": "object",
+        "required": ["id", "reference_number"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference_number": {
+            "type": "string"
+          }
+        }
+      },
+      "TransferRequest": {
+        "type": "object",
+        "required": ["id", "reference_number", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ReturnRequest": {
+        "type": "object",
+        "required": ["id", "reference_number", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Notification": {
+        "type": "object",
+        "required": ["id", "type", "message", "is_read"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "is_read": {
+            "type": "boolean"
+          },
+          "related_entity_id": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}
