@@ -1,0 +1,41 @@
+language: en-US
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!**/.next/**"
+    - "!**/node_modules/**"
+    - "!**/coverage/**"
+    - "!terraform/**/.terraform/**"
+    - "!**/*.tfstate"
+    - "!**/*.tfstate.*"
+    - "!package-lock.json"
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+
+tone_instructions: >
+  Keep review comments concise and high signal. Focus on correctness,
+  security, data integrity, missing tests, maintainability, and production
+  risk. Avoid style-only nitpicks unless they hide a bug or operational risk.
+
+early_access: false
+
+review_instructions: >
+  This is a warehouse management system. Pay special attention to auth/RBAC,
+  SBU and unit scoping, Supabase service-role usage, public environment
+  variables, stock mutation, finance approval transitions, audit logging,
+  notification fanout, and retry/concurrency risks. Flag API routes that trust
+  client-supplied role/SBU/unit data without server-side verification. Flag
+  direct stock mutations that bypass transaction-safe database functions.
