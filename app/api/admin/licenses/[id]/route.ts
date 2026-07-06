@@ -43,11 +43,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json(result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("does not have")
-        ? 409
-        : 500;
+    const status =
+      message === "Profile not found"
+        ? 404
+        : message === "Staff member does not have a licence. Use assign instead."
+          ? 409
+          : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }
