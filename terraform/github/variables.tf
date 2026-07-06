@@ -12,7 +12,7 @@ variable "repository_name" {
 variable "protected_branches" {
   description = "Long-lived branches that receive protection rules."
   type        = list(string)
-  default     = ["dev", "staging", "QA", "prod"]
+  default     = ["dev", "QA", "staging", "main"]
 }
 
 variable "required_reviewer_user_ids_qa" {

@@ -3,38 +3,43 @@
 This repo uses a guarded promotion flow:
 
 ```text
-jdmghk/core-tasks -> dev -> staging -> QA -> prod
+dev -> QA -> staging -> main
 ```
 
 The `QA` branch is intentionally uppercase to match the requested branch model.
 
 ## Branch Rules
 
-- `dev` is seeded from `jdmghk/core-tasks`.
 - Feature work targets `dev`.
-- Only `dev` can merge into `staging`.
-- Only `staging` can merge into `QA`.
-- Only `QA` can merge into `prod`.
+- PRs from any source branch can merge into `dev`.
+- Only `dev` can merge into `QA`.
+- Only `QA` can merge into `staging`.
+- Only `staging` can merge into `main`.
 - Long-lived branches must be protected from force pushes and deletion.
 
 ## GitHub Actions
 
 ### CI Quality Checks
 
-`.github/workflows/ci.yml` runs on pull requests and pushes to:
+`.github/workflows/ui.yml` and `.github/workflows/backend.yml` run on pull requests and pushes to:
 
 - `dev`
-- `staging`
 - `QA`
-- `prod`
+- `staging`
+- `main`
 
-The quality gate runs:
+The quality gates run:
 
 ```bash
-npm ci
-npm run format:check
-npm run lint
+npm run lockfile:check
+npm run migrations:check
+npm run typecheck
+npm run biome:check
+npm run lint:backend
 npm test
+npm run test:backend
+npm run openapi:check
+npm audit --omit=dev --audit-level=high
 npm run build
 ```
 
@@ -44,22 +49,23 @@ npm run build
 
 Examples:
 
-- `dev` -> `staging` passes.
-- `feature/foo` -> `staging` fails.
-- `staging` -> `QA` passes.
-- `dev` -> `QA` fails.
-- `QA` -> `prod` passes.
+- `feature/foo` -> `dev` passes.
+- `dev` -> `QA` passes.
+- `feature/foo` -> `QA` fails.
+- `QA` -> `staging` passes.
+- `dev` -> `staging` fails.
+- `staging` -> `main` passes.
 
 ### QA And Production Gates
 
-`.github/workflows/environment-gates.yml` runs on pushes to `QA` and `prod`.
+`.github/workflows/environment-gates.yml` runs on pushes to `QA` and `main`.
 
 The jobs use GitHub Environments:
 
 - `QA`
 - `prod`
 
-These are approval gates only for now. Deployment is intentionally a placeholder until a hosting provider is selected.
+`main` is the production branch. The production approval gate still uses the GitHub Environment named `prod`.
 
 ## Required Secrets
 
@@ -99,14 +105,15 @@ Create the branches with Git first:
 git switch dev
 git push -u origin dev
 
-git switch -c staging dev
-git push -u origin staging
-
-git switch -c QA staging
+git switch -c QA dev
 git push -u origin QA
 
-git switch -c prod QA
-git push -u origin prod
+git switch -c staging QA
+git push -u origin staging
+
+git switch main
+git merge staging
+git push -u origin main
 
 git switch dev
 ```
@@ -132,8 +139,5 @@ On this local machine, `terraform validate` failed before reading the HCL becaus
 Before opening a PR into `dev`, run:
 
 ```bash
-npm test
-npm run format:check
-npm run lint
-npm run build
+npm run prepush
 ```

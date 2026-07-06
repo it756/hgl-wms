@@ -4,7 +4,10 @@ data "github_repository" "repo" {
 
 locals {
   required_status_checks = [
-    "CI quality check",
+    "Frontend CI gate",
+    "API and service quality",
+    "Supabase migration contract",
+    "Backend dependency security",
     "promotion source guard",
   ]
 }
@@ -29,7 +32,7 @@ resource "github_branch_protection" "protected" {
   required_pull_request_reviews {
     dismiss_stale_reviews           = true
     require_code_owner_reviews      = false
-    required_approving_review_count = each.value == "prod" || each.value == "QA" ? 2 : 1
+    required_approving_review_count = each.value == "main" || each.value == "QA" ? 2 : 1
   }
 }
 
