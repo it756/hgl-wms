@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthHeader } from "../../../../lib/supabaseServer";
+import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 import { createStaffRequest } from "../../../../lib/services/staffRequestService";
-
-interface AuthMetadata {
-  role?: string;
-  sbu_id?: string;
-}
 
 /**
  * POST /api/bu/staff-requests
@@ -23,12 +18,17 @@ export async function POST(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const meta = user.user_metadata as AuthMetadata | null;
-  if (meta?.role !== "BU_MANAGER") {
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("sbu_id, role")
+    .eq("id", user.id)
+    .single();
+  if (profileError) throw profileError;
+  if (profile.role !== "BU_MANAGER") {
     return NextResponse.json({ error: "Forbidden: BU Manager only" }, { status: 403 });
   }
 
-  const sbu_id = meta?.sbu_id;
+  const sbu_id = profile.sbu_id;
   if (!sbu_id) {
     return NextResponse.json({ error: "BU Manager is not assigned to an SBU" }, { status: 422 });
   }
@@ -80,12 +80,17 @@ export async function GET(req: Request) {
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const meta = user.user_metadata as AuthMetadata | null;
-  if (meta?.role !== "BU_MANAGER") {
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("sbu_id, role")
+    .eq("id", user.id)
+    .single();
+  if (profileError) throw profileError;
+  if (profile.role !== "BU_MANAGER") {
     return NextResponse.json({ error: "Forbidden: BU Manager only" }, { status: 403 });
   }
 
-  const sbu_id = meta?.sbu_id;
+  const sbu_id = profile.sbu_id;
   if (!sbu_id) {
     return NextResponse.json({ error: "BU Manager is not assigned to an SBU" }, { status: 422 });
   }
