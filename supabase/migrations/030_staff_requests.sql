@@ -49,10 +49,16 @@ ALTER TABLE public.staff_requests ENABLE ROW LEVEL SECURITY;
 
 -- BU Managers can insert requests scoped to their own SBU
 CREATE POLICY "BU Managers can create staff requests"
-  ON public.staff_requests FOR INSERT
+  ON public.staff_requests FOR INSERT TO authenticated
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid()
+        AND p.role = 'BU_MANAGER'
+        AND p.sbu_id = requested_by_sbu_id
+    )
+    AND created_by = auth.uid()
+  );
       WHERE p.id = auth.uid() AND p.role = 'BU_MANAGER'
     )
   );
