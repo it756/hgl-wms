@@ -1,4 +1,4 @@
--- Migration: 025_sbu_finance_threshold.sql
+  -- Migration: 025_sbu_finance_threshold.sql
 -- The Admin → SBUs screen and /api/admin/sbus/[id] already read/write
 -- sbus.finance_approval_threshold, but the column was never created, so
 -- saving an SBU threshold failed and nothing could read it.

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../lib/services/notificationService";
+import { buildReturnNotificationMessage } from "../../../../../lib/notifications/messages";
 
 /**
  * POST /api/return-requests/[id]/receive
@@ -55,18 +56,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const ref = (existing as any).reference_number;
 
   // Notify Finance Manager that the return now needs stock-credit approval.
+  const message = await buildReturnNotificationMessage({
+    returnId: id,
+    headline: `Return ${ref} has been physically received and needs Finance approval to credit stock`,
+    actorId: user.id,
+    actorLabel: "Received by",
+  });
   await Promise.all([
     createNotification({
       user_role: "FINANCE_MANAGER",
       type: "return_awaiting_finance_approval",
-      message: `Return ${ref} has been physically received and needs Finance approval to credit stock`,
+      message,
       related_entity_id: id,
+      dispatchChannels: true,
     }),
     createNotification({
       user_role: "BU_MANAGER",
       type: "return_received_pending_finance",
-      message: `Return ${ref} received at warehouse — awaiting Finance approval to restore stock`,
+      message,
       related_entity_id: id,
+      dispatchChannels: true,
     }),
   ]);
 

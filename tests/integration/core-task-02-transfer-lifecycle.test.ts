@@ -24,6 +24,7 @@ function makeChain(result: unknown) {
   chain.in = vi.fn(self);
   chain.order = vi.fn(self);
   chain.single = vi.fn(() => Promise.resolve(result));
+  chain.maybeSingle = vi.fn(() => Promise.resolve(result));
   chain.then = (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject);
   return chain;
 }
@@ -41,19 +42,35 @@ describe("core-task-02-transfer-lifecycle", () => {
 
   it("creates a multi-line transfer request with validation and a TRF reference", async () => {
     const notificationChain = makeChain({ data: { id: "n-001" }, error: null });
-    const profileListChain = makeChain({ data: [], error: null });
-    mockRpc.mockResolvedValue({
+    const profileChain = makeChain({ data: { sbu_id: "sbu-001" }, error: null });
+    const unitChain = makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
+    const productsChain = makeChain({
+      data: [
+        { id: "prod-001", name: "Product One", stock_quantity: 10, unit_cost: 300 },
+        { id: "prod-002", name: "Product Two", stock_quantity: 10, unit_cost: 300 },
+      ],
+      error: null,
+    });
+    const transferChain = makeChain({
       data: {
         id: "tr-001",
         reference_number: "TRF-2026-12345",
-        status: "PENDING_APPROVAL",
-        requires_finance_approval: true,
+        transfer_line_items: [],
       },
       error: null,
     });
+    const lineItemsChain = makeChain({ data: null, error: null });
+    const settingsChain = makeChain({ data: { value: "1000" }, error: null });
+    const sbuChain = makeChain({ data: null, error: null });
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "profiles") return profileListChain;
+      if (table === "profiles") return profileChain;
+      if (table === "sbu_units") return unitChain;
+      if (table === "products") return productsChain;
+      if (table === "transfer_requests") return transferChain;
+      if (table === "transfer_line_items") return lineItemsChain;
+      if (table === "app_settings") return settingsChain;
+      if (table === "sbus") return sbuChain;
       if (table === "notifications") return notificationChain;
       return makeChain({ data: null, error: null });
     });
@@ -79,17 +96,18 @@ describe("core-task-02-transfer-lifecycle", () => {
     const body = await res.json();
     expect(res.status).toBe(201);
     expect(body.reference_number).toMatch(/^TRF-\d{4}-\d{5}$/);
-    expect(mockRpc).toHaveBeenCalledWith(
-      "create_transfer_request_atomic",
+    expect(transferChain.insert).toHaveBeenCalledWith([
       expect.objectContaining({
-        p_actor_id: "user-bu-001",
-        p_requesting_unit_id: "unit-001",
-        p_lines: [
-          { product_id: "prod-001", requested_quantity: 2 },
-          { product_id: "prod-002", requested_quantity: 3 },
-        ],
+        requesting_unit_id: "unit-001",
+        raised_by: "user-bu-001",
+        status: "PENDING_APPROVAL",
+        requires_finance_approval: true,
       }),
-    );
+    ]);
+    expect(lineItemsChain.insert).toHaveBeenCalledWith([
+      { transfer_request_id: "tr-001", product_id: "prod-001", requested_quantity: 2 },
+      { transfer_request_id: "tr-001", product_id: "prod-002", requested_quantity: 3 },
+    ]);
   });
 
   it("rejects missing line items before creating a transfer request", async () => {
@@ -109,12 +127,16 @@ describe("core-task-02-transfer-lifecycle", () => {
   });
 
   it("rejects requested quantities above available stock", async () => {
-    mockRpc.mockResolvedValue({
-      data: null,
-      error: {
-        message:
-          'create_transfer_request_atomic: insufficient stock for "Product One": requested 5, available 1',
-      },
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "profiles") return makeChain({ data: { sbu_id: "sbu-001" }, error: null });
+      if (table === "sbu_units")
+        return makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
+      if (table === "products")
+        return makeChain({
+          data: [{ id: "prod-001", name: "Product One", stock_quantity: 1, unit_cost: 10 }],
+          error: null,
+        });
+      return makeChain({ data: null, error: null });
     });
 
     const { POST } = await import("../../app/api/transfer-requests/route");
@@ -132,6 +154,7 @@ describe("core-task-02-transfer-lifecycle", () => {
     const body = await res.json();
     expect(res.status).toBe(422);
     expect(body.error).toContain("Insufficient stock");
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("allows the original requester to edit a request before issuance", async () => {

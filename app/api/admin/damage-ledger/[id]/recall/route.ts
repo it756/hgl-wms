@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
 import { writeAuditLog } from "../../../../../../lib/services/auditService";
 import { createNotification } from "../../../../../../lib/services/notificationService";
+import { buildProductActionMessage } from "../../../../../../lib/notifications/messages";
 
 /**
  * POST /api/admin/damage-ledger/[id]/recall
@@ -89,7 +90,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await createNotification({
     user_role: "WAREHOUSE_MANAGER",
     type: "damage_recall_initiated",
-    message: `Damage recall initiated for ${(ledgerEntry as any).quantity} unit(s) from transfer ${(ledgerEntry as any).transfer_reference}`,
+    message: await buildProductActionMessage({
+      headline: `Damage recall initiated for transfer ${(ledgerEntry as any).transfer_reference}`,
+      actorId: user.id,
+      actorLabel: "Initiated by",
+      quantity: (ledgerEntry as any).quantity,
+      notes,
+    }),
     related_entity_id: (recall as any).id,
   });
 

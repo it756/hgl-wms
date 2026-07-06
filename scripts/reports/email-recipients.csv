@@ -1,0 +1,28 @@
+id,full_name,role,sbu_id,whatsapp_number,is_active,email,should_receive,missing_email
+7401b61c-b161-456e-b8b7-b3056d0344a6,Nyamachabo Generoza,FINANCE_MANAGER,,,true,generoza.nyamachabo@harvestgl.net,true,false
+b0da5ef6-f9aa-4fce-bd5c-d5b6f23234cf,Prince Don-Ibeh,FINANCE_MANAGER,,,true,prince.don-ibeh@harvestgl.net,true,false
+4514043b-c32a-45c8-b135-5b2920251cad,Michael Mbanaso,FINANCE_MANAGER,,,true,michael.mbanaso@harvestgl.net,true,false
+4348b892-28ce-4f1d-bd8e-637bc7fa49be,Newlife Ogheneruemu Egbona,BU_MANAGER,6be0c1b0-1ae4-42b5-9707-5458285e1e15,,true,newlife@harvestgl.net,true,false
+45f53e5d-5471-4b55-913a-c3e78cbdc30b,Kingsley Utoh,BU_MANAGER,6be0c1b0-1ae4-42b5-9707-5458285e1e15,,true,kingsley@harvestgl.net,true,false
+fda055ea-5e0b-4234-a7ab-4fda2d3826f7,Ugo Nwosu-Utoh,BU_MANAGER,31d7943e-c62c-43b7-8be5-9c2c48a9a046,,true,ugou@harvestgl.net,true,false
+3da1222d-350b-46e2-9ed6-2897642705cc,Oghenetejiri Edje,BU_MANAGER,4d99779e-33e4-4dba-8b3e-1dc262a33bbf,,true,oghenetejiri.edje@harvestgl.net,true,false
+492c8cc3-78f2-41de-9e7d-d796f3db5842,Ezinne Obidike,BU_MANAGER,4d99779e-33e4-4dba-8b3e-1dc262a33bbf,,true,ezinne.obidike@harvestgl.net,true,false
+672c83e1-26a1-44a6-9fc0-73ab2a15e319,OG,BU_MANAGER,416e3dc8-f4a3-4acc-a234-814914b6af2e,,true,og@harvestgl.net,true,false
+63057d23-d8d4-4a96-918e-d26a1cd6c38c,Ewuzie Chinedu,FINANCE_MANAGER,,,true,chinedu.ewuzie@harvestgl.net,true,false
+f118e649-0388-4bde-8d8c-3b60ac2e8a70,Iberedem Ikwo,FINANCE_MANAGER,,,true,iberedem.ikwo@harvestgl.net,true,false
+bebe3e00-e828-4842-80ef-2999fb8d0d80,Chiedozie Alozie,UNIT_STAFF,26df3f92-4734-4716-9aea-672f48ebe4b7,,true,chiedozie.alozie@harvestgl.net,true,false
+e208bd4a-2e90-42ba-aca9-d3f7d643cb0c,System Administrator,ADMIN,,,true,admin@hgl-wms.com,true,false
+0ad910cc-6cfe-4fae-8f99-edb7d7a8ff4e,Warehouse Manager,WAREHOUSE_MANAGER,,,true,warehouse@hgl-wms.com,true,false
+7b52702e-2895-478d-b5da-497e83402b54,Finance Manager,FINANCE_MANAGER,,,true,finance@hgl-wms.com,true,false
+6914205b-b68b-4232-93cb-efab5a85c9ad,Jara Branch Manager,BU_MANAGER,4d99779e-33e4-4dba-8b3e-1dc262a33bbf,,true,manager.jara@hgl-wms.com,true,false
+4910e67d-8a71-49d8-95ae-17eb8435cfa0,Jara Store Staff,UNIT_STAFF,4d99779e-33e4-4dba-8b3e-1dc262a33bbf,,true,staff.jara@hgl-wms.com,true,false
+7c948505-5161-4fb2-b746-1041c7780308,Grand Access Manager,BU_MANAGER,b117d2e6-b035-469a-b5f0-845afcc4c746,,true,manager.grandaccess@hgl-wms.com,true,false
+c84f232e-5341-4f6a-a8a4-fd3cf2288a14,Grand Access Staff,UNIT_STAFF,b117d2e6-b035-469a-b5f0-845afcc4c746,,true,staff.grandaccess@hgl-wms.com,true,false
+8bc557db-4055-45a9-818e-bc4e666d3246,Bounty Wholesale Manager,BU_MANAGER,5bdc6e7d-6e9c-43ec-ae71-5e642e40a399,,true,manager.bounty@hgl-wms.com,true,false
+efde8155-1b30-4af6-8178-fd4cb8127abb,Bounty Wholesale Staff,UNIT_STAFF,5bdc6e7d-6e9c-43ec-ae71-5e642e40a399,,true,staff.bounty@hgl-wms.com,true,false
+e807e292-dfd2-4c2a-aef5-a64bc965b949,LaBamba Operations Manager,BU_MANAGER,31d7943e-c62c-43b7-8be5-9c2c48a9a046,,true,manager.labamba@hgl-wms.com,true,false
+36090887-d4e0-4b04-9852-5ab4d7bfa13e,LaBamba Kitchen Staff,UNIT_STAFF,31d7943e-c62c-43b7-8be5-9c2c48a9a046,,true,staff.labamba@hgl-wms.com,true,false
+f13d1d9d-5ba0-4b3a-9501-fa0a4f4768e0,HGC Fleet Manager,BU_MANAGER,416e3dc8-f4a3-4acc-a234-814914b6af2e,,true,manager.hgc@hgl-wms.com,true,false
+51e62149-2e56-46d5-a931-9e367274a166,HGC Logistics Staff,UNIT_STAFF,416e3dc8-f4a3-4acc-a234-814914b6af2e,,true,staff.hgc@hgl-wms.com,true,false
+a2140b07-192b-400d-a4c5-d15f5d0b2688,Chinwendu Gozie-Nwachukwu,ADMIN,,,true,chinwe@harvestgl.net,true,false
+2ef3f80b-c2e4-450e-a043-65f477c3dfd7,Olabisi Popoola,BU_MANAGER,5bdc6e7d-6e9c-43ec-ae71-5e642e40a399,,true,bisi@harvestgl.net,true,false

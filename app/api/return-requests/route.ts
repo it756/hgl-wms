@@ -1,24 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
+import { writeAuditLog } from "../../../lib/services/auditService";
 import { createNotification } from "../../../lib/services/notificationService";
-
-interface AtomicReturnResult {
-  id: string;
-  reference_number: string;
-}
+import { buildReturnNotificationMessage } from "../../../lib/notifications/messages";
 
 function generateReturnReference(): string {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 90000 + 10000);
   return `RTN-${year}-${seq}`;
-}
-
-function statusForRpcError(message: string): number {
-  if (message.includes("not found")) return 404;
-  if (message.includes("forbidden") || message.includes("does not belong")) return 403;
-  if (message.includes("completed transfers")) return 409;
-  if (message.includes("required") || message.includes("at least one")) return 400;
-  return 500;
 }
 
 /**
@@ -58,39 +47,89 @@ export async function POST(req: Request) {
     }
   }
 
-  const reference_number = generateReturnReference();
+  // If an original transfer is linked, verify it belongs to the user's SBU and is completed
+  if (original_transfer_request_id) {
+    const { data: transfer } = await supabaseAdmin
+      .from("transfer_requests")
+      .select("id, sbu_id, status")
+      .eq("id", original_transfer_request_id)
+      .single();
 
-  const { data, error: rpcError } = await supabaseAdmin.rpc("create_return_request_atomic", {
-    p_actor_id: user.id,
-    p_reference_number: reference_number,
-    p_original_transfer_request_id: original_transfer_request_id ?? null,
-    p_reason: reason.trim(),
-    p_notes: notes?.trim() ?? null,
-    p_items: items,
-  });
-
-  if (rpcError) {
-    return NextResponse.json(
-      { error: rpcError.message },
-      { status: statusForRpcError(rpcError.message) },
-    );
+    if (!transfer) {
+      return NextResponse.json({ error: "Transfer request not found" }, { status: 404 });
+    }
+    if (transfer.sbu_id !== sbu_id) {
+      return NextResponse.json({ error: "Transfer does not belong to your SBU" }, { status: 403 });
+    }
+    if (!["COMPLETED", "COMPLETED_WITH_VARIANCE"].includes(transfer.status)) {
+      return NextResponse.json(
+        { error: "Returns can only be raised against completed transfers" },
+        { status: 409 },
+      );
+    }
   }
 
-  const created = data as AtomicReturnResult;
-  const returnId = created.id;
+  const reference_number = generateReturnReference();
+
+  const { data: returnRequest, error: insertError } = await supabaseAdmin
+    .from("return_requests")
+    .insert([
+      {
+        reference_number,
+        original_transfer_request_id: original_transfer_request_id ?? null,
+        sbu_id,
+        raised_by: user.id,
+        status: "PENDING_APPROVAL",
+        reason: reason.trim(),
+        notes: notes?.trim() ?? null,
+      },
+    ])
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error(insertError);
+    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
+
+  const returnId = (returnRequest as any).id;
+
+  const lineInserts = items.map((item: any) => ({
+    return_request_id: returnId,
+    product_id: item.product_id,
+    quantity_to_return: item.quantity_to_return,
+  }));
+
+  const { error: lineError } = await supabaseAdmin.from("return_line_items").insert(lineInserts);
+  if (lineError) {
+    console.error(lineError);
+    return NextResponse.json({ error: lineError.message }, { status: 500 });
+  }
 
   // Notify BU Manager for their SBU
+  const message = await buildReturnNotificationMessage({
+    returnId,
+    headline: `Return request ${reference_number} requires your approval`,
+    actorId: user.id,
+    actorLabel: "Raised by",
+  });
   await createNotification({
     user_role: "BU_MANAGER",
     type: "return_request_submitted",
-    message: `Return request ${created.reference_number} requires your approval`,
+    message,
     related_entity_id: returnId,
+    dispatchChannels: true,
   });
 
-  return NextResponse.json(
-    { id: returnId, reference_number: created.reference_number },
-    { status: 201 },
-  );
+  await writeAuditLog({
+    entity_type: "return_request",
+    entity_id: returnId,
+    action: "create",
+    performed_by: user.id,
+    new_value: { reference_number, status: "PENDING_APPROVAL", sbu_id, reason },
+  });
+
+  return NextResponse.json({ id: returnId, reference_number }, { status: 201 });
 }
 
 /**
