@@ -77,8 +77,14 @@ CREATE POLICY "BU Managers can view their SBU staff requests"
 
 -- Admins have full access
 CREATE POLICY "Admins can manage all staff requests"
-  ON public.staff_requests
+  ON public.staff_requests FOR ALL TO authenticated
   USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid() AND p.role = 'ADMIN'
+    )
+  )
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.profiles p
       WHERE p.id = auth.uid() AND p.role = 'ADMIN'
