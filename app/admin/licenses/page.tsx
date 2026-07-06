@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
+import IconButton from "@/components/IconButton";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import type { UserRole } from "@/lib/models/user";
 import {
   AlertTriangle,
@@ -236,31 +240,24 @@ export default function LicenseManagementPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full font-sans text-slate-850">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Admin</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-[#005c55]">Licence Management</span>
+        <PageHeader
+          title="Staff Licences"
+          description="Assign, renew, revoke, and audit operational access licences."
+          actions={
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-bold">
+              <span className="rounded-lg border border-slate-200 bg-white px-3 py-2">Total: {staff.length}</span>
+              <span className="rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 px-3 py-2">
+                Active: {staff.filter((profile) => profile.licensed && !isExpired(profile)).length}
+              </span>
+              <span className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2">
+                Unlicensed: {staff.filter((profile) => !profile.licensed).length}
+              </span>
+              <span className="rounded-lg border border-rose-200 bg-rose-50 text-rose-800 px-3 py-2">
+                Expired: {staff.filter(isExpired).length}
+              </span>
             </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">Staff Licences</h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Assign, renew, revoke, and audit operational access licences.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-bold">
-            <span className="rounded-lg border border-slate-200 bg-white px-3 py-2">Total: {staff.length}</span>
-            <span className="rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 px-3 py-2">
-              Active: {staff.filter((profile) => profile.licensed && !isExpired(profile)).length}
-            </span>
-            <span className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2">
-              Unlicensed: {staff.filter((profile) => !profile.licensed).length}
-            </span>
-            <span className="rounded-lg border border-rose-200 bg-rose-50 text-rose-800 px-3 py-2">
-              Expired: {staff.filter(isExpired).length}
-            </span>
-          </div>
-        </div>
+          }
+        />
 
         {error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-800 flex items-center gap-2">
@@ -308,32 +305,32 @@ export default function LicenseManagementPage() {
           ) : filtered.length === 0 ? (
             <div className="py-16 text-center text-xs font-bold uppercase text-slate-400">No matching licence records.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left">
-                <thead className="bg-slate-50/80 text-[10px] uppercase tracking-widest text-slate-400">
-                  <tr>
-                    <th className="px-5 py-3 font-extrabold">Staff</th>
-                    <th className="px-5 py-3 font-extrabold">Role</th>
-                    <th className="px-5 py-3 font-extrabold">SBU</th>
-                    <th className="px-5 py-3 font-extrabold">Status</th>
-                    <th className="px-5 py-3 font-extrabold">Issued</th>
-                    <th className="px-5 py-3 font-extrabold">Expires</th>
-                    <th className="px-5 py-3 text-right font-extrabold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+            <HScrollArea>
+              <table className="min-w-full divide-y divide-slate-100 text-xs">
+                <TableHead>
+                    <Th pinned>Staff</Th>
+                    <Th>Role</Th>
+                    <Th>SBU</Th>
+                    <Th>Status</Th>
+                    <Th>Issued</Th>
+                    <Th>Expires</Th>
+                    <Th align="right">Actions</Th>
+                </TableHead>
+                <tbody className="divide-y divide-slate-100">
                   {filtered.map((profile) => {
                     const sbu = sbus.find((item) => item.id === profile.sbu_id);
                     const expired = isExpired(profile);
                     return (
-                      <tr key={profile.id} className="hover:bg-slate-50/60">
-                        <td className="px-5 py-3">
-                          <div className="font-extrabold text-slate-800">{profile.full_name ?? "Unnamed Staff"}</div>
+                      <Tr key={profile.id}>
+                        <Td pinned className="max-w-50">
+                          <div className="font-extrabold text-slate-800 truncate" title={profile.full_name ?? "Unnamed Staff"}>
+                            {profile.full_name ?? "Unnamed Staff"}
+                          </div>
                           <div className="font-mono text-[10px] uppercase text-slate-400">{profile.id.slice(0, 8)}</div>
-                        </td>
-                        <td className="px-5 py-3 text-xs font-bold text-slate-600">{profile.role.replace("_", " ")}</td>
-                        <td className="px-5 py-3 text-xs font-semibold text-slate-500">{sbu ? `${sbu.name} (${sbu.code})` : "Independent"}</td>
-                        <td className="px-5 py-3">
+                        </Td>
+                        <td className="px-6 py-3.5 font-bold text-slate-600">{profile.role.replace("_", " ")}</td>
+                        <td className="px-6 py-3.5 font-semibold text-slate-500">{sbu ? `${sbu.name} (${sbu.code})` : "Independent"}</td>
+                        <td className="px-6 py-3.5">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase ${
                               !profile.licensed
@@ -347,41 +344,36 @@ export default function LicenseManagementPage() {
                             {!profile.licensed ? "Unlicensed" : expired ? "Expired" : profile.license_type ?? "Licensed"}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-xs font-semibold text-slate-500">{formatDate(profile.license_issued_at)}</td>
-                        <td className="px-5 py-3 text-xs font-semibold text-slate-500">{formatDate(profile.license_expires_at)}</td>
-                        <td className="px-5 py-3">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
+                        <td className="px-6 py-3.5 font-semibold text-slate-500">{formatDate(profile.license_issued_at)}</td>
+                        <td className="px-6 py-3.5 font-semibold text-slate-500">{formatDate(profile.license_expires_at)}</td>
+                        <td className="px-6 py-3.5">
+                          <div className="flex justify-end gap-1.5">
+                            <IconButton
+                              icon={<Pencil className="h-3.5 w-3.5" />}
+                              label={profile.licensed ? "Update licence" : "Assign licence"}
                               onClick={() => openModal(profile, profile.licensed ? "update" : "assign")}
-                              className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1"
-                            >
-                              <Pencil className="h-3 w-3" /> {profile.licensed ? "Update" : "Assign"}
-                            </button>
+                            />
                             {profile.licensed && (
-                              <button
-                                type="button"
+                              <IconButton
+                                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                                label="Revoke licence"
+                                variant="danger"
                                 onClick={() => openModal(profile, "revoke")}
-                                className="rounded-lg border border-rose-100 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-1"
-                              >
-                                <RotateCcw className="h-3 w-3" /> Revoke
-                              </button>
+                              />
                             )}
-                            <button
-                              type="button"
+                            <IconButton
+                              icon={<FileClock className="h-3.5 w-3.5" />}
+                              label="View audit history"
                               onClick={() => void openAudit(profile)}
-                              className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1"
-                            >
-                              <FileClock className="h-3 w-3" /> Audit
-                            </button>
+                            />
                           </div>
                         </td>
-                      </tr>
+                      </Tr>
                     );
                   })}
                 </tbody>
               </table>
-            </div>
+            </HScrollArea>
           )}
         </section>
       </div>

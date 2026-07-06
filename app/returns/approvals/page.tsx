@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   ClipboardList,
   Package,
@@ -102,20 +103,10 @@ export default function ReturnsApprovalPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-800">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>BU Manager</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary">Returns Approval</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-            Returns Approval Queue
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Review return requests raised by unit staff and provide sign-off before the warehouse
-            can receive the goods.
-          </p>
-        </div>
+        <PageHeader
+          title="Returns Approval Queue"
+          description="Review return requests raised by unit staff and provide sign-off before the warehouse can receive the goods."
+        />
 
         {/* KPI strip */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

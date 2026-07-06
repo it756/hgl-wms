@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   User,
   Mail,
@@ -208,17 +209,10 @@ export default function ProfilePage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 max-w-2xl w-full font-sans">
         {/* Page Header */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>Account</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-[#005c55]">My Profile</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">My Profile</h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Manage your personal information and account security.
-          </p>
-        </div>
+        <PageHeader
+          title="My Profile"
+          description="Manage your personal information and account security."
+        />
 
         {/* Personal Information Card */}
         <section className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">

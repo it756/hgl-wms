@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
+import IconButton from "@/components/IconButton";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Search,
@@ -353,33 +356,17 @@ function RequestsListContent() {
               No matching transfer requests found.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <HScrollArea>
               <table className="w-full border-collapse text-left">
-                <thead className="bg-[#eff4ff] border-b border-outline-variant">
-                  <tr>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Reference
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Unit
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Required Date
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Est. Value
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Date Raised
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider text-right">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
+                <TableHead>
+                    <Th pinned>Reference</Th>
+                    <Th>Unit</Th>
+                    <Th>Status</Th>
+                    <Th>Required Date</Th>
+                    <Th>Est. Value</Th>
+                    <Th>Date Raised</Th>
+                    <Th align="right">Actions</Th>
+                </TableHead>
                 <tbody className="divide-y divide-outline-variant">
                   {pending && (
                     <tr
@@ -388,12 +375,12 @@ function RequestsListContent() {
                         pending.status === "FAILED" ? "bg-rose-50/40" : "bg-sky-50/40 animate-pulse"
                       }
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-3.5">
                         <span className="font-bold text-slate-400 font-mono text-sm leading-none">
                           {pending.status === "SUBMITTING" ? "Submitting…" : "—"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-slate-500">
+                      <td className="px-6 py-3.5 text-sm font-semibold text-slate-500">
                         {pending.snapshot.unit ? (
                           <span className="inline-flex items-center gap-1">
                             <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
@@ -405,7 +392,7 @@ function RequestsListContent() {
                           "—"
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-3.5">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[pending.status]}`}
                         >
@@ -415,7 +402,7 @@ function RequestsListContent() {
                           {pending.status === "SUBMITTING" ? "SUBMITTING" : "FAILED TO SUBMIT"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-slate-500">
+                      <td className="px-6 py-3.5 text-sm font-semibold text-slate-500">
                         {pending.snapshot.required_date
                           ? new Date(pending.snapshot.required_date).toLocaleDateString("en-US", {
                               month: "short",
@@ -424,17 +411,17 @@ function RequestsListContent() {
                             })
                           : "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm font-mono font-bold text-slate-600">
+                      <td className="px-6 py-3.5 text-sm font-mono font-bold text-slate-600">
                         {fmt(pending.snapshot.estimated_value)}
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-slate-400">
+                      <td className="px-6 py-3.5 text-sm font-semibold text-slate-400">
                         {new Date(pending.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
                         })}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-3.5 text-right">
                         {pending.status === "FAILED" ? (
                           <div className="flex justify-end gap-2">
                             <button
@@ -455,13 +442,13 @@ function RequestsListContent() {
                     </tr>
                   )}
                   {filteredRequests.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-6 py-4">
+                    <Tr key={r.id} className="group">
+                      <Td pinned>
                         <span className="font-bold text-primary font-mono text-sm leading-none">
                           {r.reference_number}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-slate-500">
+                      </Td>
+                      <td className="px-6 py-3.5 text-sm font-semibold text-slate-500">
                         {r.sbu_units ? (
                           <span className="inline-flex items-center gap-1">
                             <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
@@ -473,7 +460,7 @@ function RequestsListContent() {
                           "—"
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-3.5">
                         <span
                           className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[r.status] ?? "bg-slate-100 text-slate-600 border border-slate-200"}`}
                         >
@@ -485,7 +472,7 @@ function RequestsListContent() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-slate-500">
+                      <td className="px-6 py-3.5 text-sm font-semibold text-slate-500">
                         {r.required_date
                           ? new Date(r.required_date).toLocaleDateString("en-US", {
                               month: "short",
@@ -494,32 +481,30 @@ function RequestsListContent() {
                             })
                           : "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm font-mono font-bold text-slate-600">
+                      <td className="px-6 py-3.5 text-sm font-mono font-bold text-slate-600">
                         {fmt(r.estimated_value)}
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-slate-400">
+                      <td className="px-6 py-3.5 text-sm font-semibold text-slate-400">
                         {new Date(r.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
                         })}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <button
-                            className="p-1.5 hover:bg-slate-100 rounded text-slate-600 cursor-pointer"
-                            title="View Details"
+                      <td className="px-6 py-3.5 text-right">
+                        <div className="flex justify-end opacity-80 group-hover:opacity-100 transition-opacity">
+                          <IconButton
+                            icon={<Eye className="w-3.5 h-3.5" />}
+                            label="View details"
                             onClick={() => router.push(`/requests/${r.id}`)}
-                          >
-                            <Eye className="w-4.5 h-4.5" />
-                          </button>
+                          />
                         </div>
                       </td>
-                    </tr>
+                    </Tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            </HScrollArea>
           )}
         </div>
       </div>

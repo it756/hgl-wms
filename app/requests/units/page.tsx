@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   Building2,
   Users,
@@ -12,7 +13,6 @@ import {
   Check,
   X,
   AlertCircle,
-  ChevronRight,
   Activity,
   Loader2,
   UserPlus,
@@ -272,21 +272,10 @@ export default function BUUnitsPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full font-sans">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>My BU</span>
-              <ChevronRight className="w-3 h-3 text-slate-300" />
-              <span className="text-[#005c55]">Units &amp; Staff</span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
-              Units &amp; Staff
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Manage your business unit's sub-units and assign staff members.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Units & Staff"
+          description="Manage your business unit's sub-units and assign staff members."
+        />
 
         {/* Tabs */}
         <div className="flex gap-0 border-b border-slate-200">

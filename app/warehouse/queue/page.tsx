@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import {
   ClipboardList,
   Clock,
@@ -565,29 +567,27 @@ export default function WarehouseQueuePage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <HScrollArea>
                   <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="px-6 py-4">Reference</th>
-                        <th className="px-6 py-4">SBU / Dept</th>
-                        <th className="px-6 py-4">Products</th>
-                        <th className="px-6 py-4">Required by</th>
-                        <th className="px-6 py-4 text-right">Est. Value</th>
-                        <th className="px-6 py-4 text-center">Status</th>
-                        <th className="px-6 py-4 text-center">Stock</th>
-                        <th className="px-6 py-4 text-right pr-6 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
+                    <TableHead>
+                        <Th pinned>Reference</Th>
+                        <Th>SBU / Dept</Th>
+                        <Th>Products</Th>
+                        <Th>Required by</Th>
+                        <Th align="right">Est. Value</Th>
+                        <Th align="center">Status</Th>
+                        <Th align="center">Stock</Th>
+                        <Th align="right" className="pr-6">Actions</Th>
+                    </TableHead>
                     <tbody className="divide-y divide-slate-100 text-xs">
                       {filteredRequests.map((r) => {
                         const stockStatus = getStockStatus(r);
                         return (
-                          <tr key={r.id} className="hover:bg-slate-50/30 transition-all">
-                            <td className="px-6 py-4. font-bold font-mono text-[#005c55] text-[13px] leading-none">
+                          <Tr key={r.id}>
+                            <Td pinned className="font-bold font-mono text-[#005c55] text-[13px] leading-none">
                               {r.reference_number}
-                            </td>
-                            <td className="px-6 py-4.5">
+                            </Td>
+                            <td className="px-6 py-3.5">
                               <p className="font-extrabold text-slate-800 text-xs leading-snug">
                                 {r.sbu_name || r.sbu_id}
                               </p>
@@ -595,7 +595,7 @@ export default function WarehouseQueuePage() {
                                 Harvest Ops Node
                               </p>
                             </td>
-                            <td className="px-6 py-4.5">
+                            <td className="px-6 py-3.5">
                               <p className="font-bold text-slate-700">
                                 {r.transfer_line_items.length} items
                               </p>
@@ -615,13 +615,13 @@ export default function WarehouseQueuePage() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-6 py-4.5 font-semibold text-slate-600">
+                            <td className="px-6 py-3.5 font-semibold text-slate-600">
                               {formatDate(r.required_date)}
                             </td>
-                            <td className="px-6 py-4.5 font-bold font-mono text-right text-slate-700 pr-8">
+                            <td className="px-6 py-3.5 font-bold font-mono text-right text-slate-700 pr-8">
                               ${r.estimated_value?.toLocaleString() || "0.00"}
                             </td>
-                            <td className="px-6 py-4.5 text-center">
+                            <td className="px-6 py-3.5 text-center">
                               <span
                                 className={`px-2.5 py-0.5 text-[9px] font-extrabold rounded-full uppercase tracking-wider border ${
                                   r.status === "APPROVED_FOR_ISSUE" || r.status === "APPROVED"
@@ -636,7 +636,7 @@ export default function WarehouseQueuePage() {
                                 {r.status.replace("_", " ")}
                               </span>
                             </td>
-                            <td className="px-6 py-4.5 text-center">
+                            <td className="px-6 py-3.5 text-center">
                               {stockStatus === "FULL_STOCK" ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] text-teal-700 bg-teal-50 border border-teal-100 rounded-full px-2 py-0.5 font-bold">
                                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span>{" "}
@@ -649,7 +649,7 @@ export default function WarehouseQueuePage() {
                                 </span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-right pr-6">
+                            <td className="px-6 py-3.5 text-right pr-6">
                               {isReadyToIssue(r) ? (
                                 <button
                                   onClick={() => startIssuing(r)}
@@ -666,12 +666,12 @@ export default function WarehouseQueuePage() {
                                 </button>
                               )}
                             </td>
-                          </tr>
+                          </Tr>
                         );
                       })}
                     </tbody>
                   </table>
-                </div>
+                </HScrollArea>
               )}
             </div>
           </>
@@ -852,18 +852,18 @@ export default function WarehouseQueuePage() {
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <HScrollArea>
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="pb-3 pr-4 w-12 text-center">Verify</th>
-                        <th className="pb-3 pr-4">Product / Description</th>
-                        <th className="pb-3 px-4 font-mono">Sku ID</th>
-                        <th className="pb-3 px-3 text-center">Location</th>
-                        <th className="pb-3 px-4 text-center">Requested</th>
-                        <th className="pb-3 px-4 text-center">Stock</th>
-                        <th className="pb-3 px-4 text-left w-36">Issue Qty</th>
-                        <th className="pb-3 pl-4 text-left">Shortfall Reason</th>
+                      <tr className="bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)] whitespace-nowrap border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="sticky left-0 z-20 bg-slate-50 py-3.5 pl-4 pr-4 w-12 text-center">Verify</th>
+                        <th className="py-3.5 pr-4">Product / Description</th>
+                        <th className="py-3.5 px-4 font-mono">Sku ID</th>
+                        <th className="py-3.5 px-3 text-center">Location</th>
+                        <th className="py-3.5 px-4 text-center">Requested</th>
+                        <th className="py-3.5 px-4 text-center">Stock</th>
+                        <th className="py-3.5 px-4 text-left w-36">Issue Qty</th>
+                        <th className="py-3.5 pl-4 pr-4 text-left">Shortfall Reason</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
@@ -879,7 +879,11 @@ export default function WarehouseQueuePage() {
                               exceedsStock ? "bg-red-50/40" : isVerified ? "bg-teal-50/20" : ""
                             }`}
                           >
-                            <td className="py-4 pr-4 text-center">
+                            <td
+                              className={`sticky left-0 z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] py-4 pl-4 pr-4 text-center ${
+                                exceedsStock ? "bg-red-50" : isVerified ? "bg-teal-50" : "bg-white"
+                              }`}
+                            >
                               <input
                                 type="checkbox"
                                 checked={isVerified || false}
@@ -887,10 +891,11 @@ export default function WarehouseQueuePage() {
                                 className="w-4.5 h-4.5 text-primary border-slate-300 rounded focus:ring-primary focus:border-primary cursor-pointer"
                               />
                             </td>
-                            <td className="py-4 pr-4">
-                              <div className="flex flex-col">
+                            <td className="py-4 pr-4 max-w-[220px]">
+                              <div className="flex flex-col min-w-0">
                                 <p
-                                  className={`font-extrabold text-slate-800 text-sm leading-snug flex items-center gap-1.5 ${isVerified ? "line-through text-slate-400 opacity-60" : ""}`}
+                                  className={`font-extrabold text-slate-800 text-sm leading-snug flex items-center gap-1.5 truncate ${isVerified ? "line-through text-slate-400 opacity-60" : ""}`}
+                                  title={item.product_name}
                                 >
                                   {item.product_name}
                                   {isVerified && (
@@ -938,7 +943,7 @@ export default function WarehouseQueuePage() {
                                 )}
                               </div>
                             </td>
-                            <td className="py-4 pl-4">
+                            <td className="py-4 pl-4 pr-4">
                               {item.stock >= item.requested && !exceedsStock ? (
                                 <input
                                   type="text"
@@ -1001,7 +1006,7 @@ export default function WarehouseQueuePage() {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </HScrollArea>
 
                 {/* Shortfall Warnings Banner */}
                 {issuanceItems.some((item) => item.quantity_issued < item.requested) && (

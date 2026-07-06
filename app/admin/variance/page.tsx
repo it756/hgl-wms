@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Td } from "@/components/Table";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -252,19 +254,17 @@ export default function AdminVarianceRegistryPage() {
                         </p>
                       )}
 
-                      <div className="overflow-x-auto rounded-lg border border-slate-100">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide border-b border-slate-100">
-                              <th className="px-4 py-3 text-left font-semibold">Product</th>
-                              <th className="px-4 py-3 text-center font-semibold">Issued</th>
-                              <th className="px-4 py-3 text-center font-semibold">Received</th>
-                              <th className="px-4 py-3 text-center font-semibold">Variance</th>
-                              <th className="px-4 py-3 text-right font-semibold">Est. Value Gap</th>
-                              <th className="px-4 py-3 text-left font-semibold">Notes</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-50">
+                      <HScrollArea className="rounded-xl border border-slate-100" maxHeightClassName="max-h-[40vh]">
+                        <table className="min-w-full divide-y divide-slate-100 text-xs">
+                          <TableHead>
+                              <Th pinned>Product</Th>
+                              <Th align="center">Issued</Th>
+                              <Th align="center">Received</Th>
+                              <Th align="center">Variance</Th>
+                              <Th align="right">Est. Value Gap</Th>
+                              <Th>Notes</Th>
+                          </TableHead>
+                          <tbody className="divide-y divide-slate-100">
                             {grn.grn_line_items.map((li) => {
                               const delta = li.issued_quantity - li.quantity_received;
                               const valueGap =
@@ -274,39 +274,42 @@ export default function AdminVarianceRegistryPage() {
 
                               return (
                                 <tr key={li.id} className={delta !== 0 ? "bg-amber-50/40" : ""}>
-                                  <td className="px-4 py-3">
-                                    <p className="font-medium text-slate-800">
+                                  <Td pinned className={`max-w-50 ${delta !== 0 ? "bg-amber-50" : "bg-white"}`}>
+                                    <p className="font-bold text-slate-800 truncate" title={li.products?.name ?? "Unknown"}>
                                       {li.products?.name ?? "Unknown"}
                                     </p>
-                                    <p className="text-xs text-slate-400 font-mono">
+                                    <p className="text-[10px] text-slate-400 font-mono">
                                       {li.products?.sku ?? li.product_id}
                                     </p>
-                                  </td>
-                                  <td className="px-4 py-3 text-center font-mono text-slate-600">
+                                  </Td>
+                                  <td className="px-6 py-3.5 text-center font-mono text-slate-600">
                                     {li.issued_quantity}
                                   </td>
-                                  <td className="px-4 py-3 text-center font-mono text-slate-600">
+                                  <td className="px-6 py-3.5 text-center font-mono text-slate-600">
                                     {li.quantity_received}
                                   </td>
-                                  <td className="px-4 py-3 text-center">
+                                  <td className="px-6 py-3.5 text-center">
                                     {delta === 0 ? (
-                                      <span className="text-xs text-slate-400">None</span>
+                                      <span className="text-slate-400">None</span>
                                     ) : (
                                       <span className="font-bold text-amber-700 text-sm">
                                         -{delta}
                                       </span>
                                     )}
                                   </td>
-                                  <td className="px-4 py-3 text-right text-sm">
+                                  <td className="px-6 py-3.5 text-right">
                                     {valueGap != null && delta !== 0 ? (
                                       <span className="font-semibold text-rose-600">
                                         ${valueGap.toFixed(2)}
                                       </span>
                                     ) : (
-                                      <span className="text-slate-400 text-xs">—</span>
+                                      <span className="text-slate-400">—</span>
                                     )}
                                   </td>
-                                  <td className="px-4 py-3 text-xs text-slate-500">
+                                  <td
+                                    className="px-6 py-3.5 text-slate-500 max-w-[180px] truncate"
+                                    title={li.variance_notes ?? "—"}
+                                  >
                                     {li.variance_notes ?? "—"}
                                   </td>
                                 </tr>
@@ -314,7 +317,7 @@ export default function AdminVarianceRegistryPage() {
                             })}
                           </tbody>
                         </table>
-                      </div>
+                      </HScrollArea>
 
                       {/* Resolution legend */}
                       <div className="mt-4 flex gap-6 text-xs text-slate-500">

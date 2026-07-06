@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   CheckCircle,
   Calendar,
@@ -147,21 +148,11 @@ export default function SubmitGRNPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-800">
-        {/* Dynamic header breadcrumb */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>Inbound Logistics</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary">Receive SBU Transfer</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-            Receive Goods Received Note (GRN)
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Verify quantities, record physical conditions, note variances on inbound transfers, and
-            update available stock.
-          </p>
-        </div>
+        {/* Header */}
+        <PageHeader
+          title="Receive Goods Received Note (GRN)"
+          description="Verify quantities, record physical conditions, note variances on inbound transfers, and update available stock."
+        />
 
         {/* Status Alerts */}
         {success && (

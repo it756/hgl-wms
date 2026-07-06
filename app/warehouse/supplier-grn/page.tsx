@@ -2,6 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
+import IconButton from "@/components/IconButton";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Building,
@@ -457,90 +461,79 @@ export default function SupplierGRNPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-800">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Inbound Logistics</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-primary">
-                {view === "list"
-                  ? "Supplier GRN Queue"
-                  : editingGrnId
-                    ? "Edit Supplier GRN"
-                    : "New Supplier GRN"}
-              </span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-              {view === "list"
-                ? "Supplier GRN Queue"
-                : editingGrnId
-                  ? "Edit Supplier GRN"
-                  : "Record Supplier GRN"}
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              {view === "list"
-                ? "All inbound supplier receipts submitted for Finance approval."
-                : editingGrnId
-                  ? "Update the details of this pending GRN before Finance reviews it."
-                  : "Record a new supplier delivery and queue for Finance approval."}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleCurrency}
-                disabled={rateFetching}
-                title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
-                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
-              >
-                {rateFetching ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+        <PageHeader
+          title={
+            view === "list"
+              ? "Supplier GRN Queue"
+              : editingGrnId
+                ? "Edit Supplier GRN"
+                : "Record Supplier GRN"
+          }
+          description={
+            view === "list"
+              ? "All inbound supplier receipts submitted for Finance approval."
+              : editingGrnId
+                ? "Update the details of this pending GRN before Finance reviews it."
+                : "Record a new supplier delivery and queue for Finance approval."
+          }
+          actions={
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleCurrency}
+                  disabled={rateFetching}
+                  title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
+                >
+                  {rateFetching ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                  )}
+                  {rateFetching
+                    ? "Fetching rate…"
+                    : currency === "ZMW"
+                      ? "View in USD"
+                      : "View in ZMW"}
+                </button>
+                {view === "list" ? (
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      setSuccess(null);
+                      setView("form");
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold transition shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" /> New Supplier GRN
+                  </button>
                 ) : (
-                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      setSuccess(null);
+                      resetForm();
+                      setView("list");
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 shadow-sm transition"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back to Queue
+                  </button>
                 )}
-                {rateFetching
-                  ? "Fetching rate…"
-                  : currency === "ZMW"
-                    ? "View in USD"
-                    : "View in ZMW"}
-              </button>
-              {view === "list" ? (
-                <button
-                  onClick={() => {
-                    setError(null);
-                    setSuccess(null);
-                    setView("form");
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold transition shadow-sm"
+              </div>
+              {currency === "USD" && rate != null && (
+                <a
+                  href="https://open.er-api.com/v6/latest/ZMW"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
                 >
-                  <Plus className="w-4 h-4" /> New Supplier GRN
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setError(null);
-                    setSuccess(null);
-                    resetForm();
-                    setView("list");
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 shadow-sm transition"
-                >
-                  <ArrowLeft className="w-4 h-4" /> Back to Queue
-                </button>
+                  1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
+                </a>
               )}
             </div>
-            {currency === "USD" && rate != null && (
-              <a
-                href="https://open.er-api.com/v6/latest/ZMW"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
-              >
-                1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
-              </a>
-            )}
-          </div>
-        </div>
+          }
+        />
 
         {/* KPI Row — always visible */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -697,66 +690,62 @@ export default function SupplierGRNPage() {
                 </button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                      <th className="px-6 py-3">Reference</th>
-                      <th className="px-4 py-3">Supplier</th>
-                      <th className="px-4 py-3">Date Received</th>
-                      <th className="px-4 py-3">Items</th>
-                      <th className="px-4 py-3 text-right">Invoice Value</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
+              <HScrollArea>
+                <table className="min-w-full divide-y divide-slate-100 text-xs">
+                  <TableHead>
+                      <Th pinned>Reference</Th>
+                      <Th>Supplier</Th>
+                      <Th>Date Received</Th>
+                      <Th>Items</Th>
+                      <Th align="right">Invoice Value</Th>
+                      <Th>Status</Th>
+                      <Th align="right">Actions</Th>
+                  </TableHead>
                   <tbody className="divide-y divide-slate-100">
                     {grns.map((g) => (
-                      <tr key={g.id} className="hover:bg-slate-50/50 transition">
-                        <td className="px-6 py-3.5 font-mono font-extrabold text-primary">
+                      <Tr key={g.id}>
+                        <Td pinned className="font-mono font-extrabold text-primary">
                           {g.reference_number}
-                        </td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-700">
+                        </Td>
+                        <td className="px-6 py-3.5 font-semibold text-slate-700 max-w-[180px] truncate" title={g.supplier_name}>
                           {g.supplier_name}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-500">
+                        <td className="px-6 py-3.5 text-slate-500">
                           {new Date(g.date_received).toLocaleDateString("en-US", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
                           })}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-500">
+                        <td className="px-6 py-3.5 text-slate-500">
                           {g.supplier_grn_line_items?.length ?? 0} line
                           {(g.supplier_grn_line_items?.length ?? 0) !== 1 ? "s" : ""}
                         </td>
-                        <td className="px-4 py-3.5 font-mono font-bold text-slate-800 text-right">
+                        <td className="px-6 py-3.5 font-mono font-bold text-slate-800 text-right">
                           {fmt(g.invoice_amount)}
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-6 py-3.5">
                           <span
                             className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusBadge(g.status)}`}
                           >
                             {statusLabel(g.status)}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-right">
+                        <td className="px-6 py-3.5 text-right">
                           {g.status === "AWAITING_FINANCE_APPROVAL" && (
-                            <button
-                              onClick={() => startEdit(g.id)}
+                            <IconButton
+                              icon={<Edit2 className="w-3.5 h-3.5" />}
+                              label="Edit GRN"
                               disabled={editLoading}
-                              title="Edit GRN"
-                              className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition disabled:opacity-50"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
+                              onClick={() => startEdit(g.id)}
+                            />
                           )}
                         </td>
-                      </tr>
+                      </Tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </HScrollArea>
             )}
           </div>
         )}

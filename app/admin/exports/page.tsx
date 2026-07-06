@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   Download,
   Calendar,
@@ -110,20 +111,10 @@ export default function ExportsPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-850">
         {/* Header section */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>Administration</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary font-extrabold">Data Exports</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-            Corporate Data Exports
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Generate and request secure ledger CSV exports for external accounting, audits, and
-            physical reconciliation.
-          </p>
-        </div>
+        <PageHeader
+          title="Corporate Data Exports"
+          description="Generate and request secure ledger CSV exports for external accounting, audits, and physical reconciliation."
+        />
 
         {/* Global Toast Success Alerts */}
         {toasts.length > 0 && (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import { RotateCcw, Plus, Clock, CheckCircle2, XCircle, Package, AlertCircle } from "lucide-react";
 
 interface ReturnRequest {
@@ -87,28 +88,19 @@ export default function MyReturnsPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-800">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Unit Staff</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-primary">My Returns</span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-              Return Requests
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Track goods you have raised for return to the warehouse.
-            </p>
-          </div>
-          <Link
-            href="/returns/new"
-            className="inline-flex items-center gap-2 bg-primary text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:bg-primary/90 transition self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            New Return
-          </Link>
-        </div>
+        <PageHeader
+          title="Return Requests"
+          description="Track goods you have raised for return to the warehouse."
+          actions={
+            <Link
+              href="/returns/new"
+              className="inline-flex items-center gap-2 bg-primary text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:bg-primary/90 transition"
+            >
+              <Plus className="w-4 h-4" />
+              New Return
+            </Link>
+          }
+        />
 
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">

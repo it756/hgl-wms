@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   CheckCircle2,
@@ -362,47 +365,37 @@ export default function FinanceQueuePage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-850">
         {/* Header Block */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Corporate Control</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-[#005c55] font-extrabold">Finance Approvals</span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-              Financial Control Queue
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Verify internal corporate stock allocations and sign off on high-value supplier
-              invoices.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <button
-              onClick={toggleCurrency}
-              disabled={rateFetching}
-              title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
-              className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
-            >
-              {rateFetching ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-              )}
-              {rateFetching ? "Fetching rate…" : currency === "ZMW" ? "View in USD" : "View in ZMW"}
-            </button>
-            {currency === "USD" && rate != null && (
-              <a
-                href="https://open.er-api.com/v6/latest/ZMW"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
+        <PageHeader
+          title="Financial Control Queue"
+          description="Verify internal corporate stock allocations and sign off on high-value supplier invoices."
+          actions={
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={toggleCurrency}
+                disabled={rateFetching}
+                title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
               >
-                1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
-              </a>
-            )}
-          </div>
-        </div>
+                {rateFetching ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                )}
+                {rateFetching ? "Fetching rate…" : currency === "ZMW" ? "View in USD" : "View in ZMW"}
+              </button>
+              {currency === "USD" && rate != null && (
+                <a
+                  href="https://open.er-api.com/v6/latest/ZMW"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
+                >
+                  1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
+                </a>
+              )}
+            </div>
+          }
+        />
 
         {/* Global Banner Log Notifications */}
         {success && (
@@ -690,28 +683,26 @@ export default function FinanceQueuePage() {
                             )}
 
                             {/* Per-line resolution table */}
-                            <div className="overflow-x-auto border border-slate-100 rounded-lg">
-                              <table className="min-w-full text-xs font-medium">
-                                <thead>
-                                  <tr className="bg-slate-50/70 text-slate-400 font-semibold uppercase tracking-wider text-[9px]">
-                                    <th className="px-4 py-2.5 text-left">Product</th>
-                                    <th className="px-4 py-2.5 text-center">Delta</th>
-                                    <th className="px-4 py-2.5 text-left">Recommended</th>
-                                    <th className="px-4 py-2.5 text-left">Finance Override</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50 text-slate-700">
+                            <HScrollArea className="rounded-xl border border-slate-100" maxHeightClassName="max-h-[40vh]">
+                              <table className="min-w-full divide-y divide-slate-100 text-xs">
+                                <TableHead>
+                                    <Th pinned>Product</Th>
+                                    <Th align="center">Delta</Th>
+                                    <Th>Recommended</Th>
+                                    <Th>Finance Override</Th>
+                                </TableHead>
+                                <tbody className="divide-y divide-slate-100 text-slate-700">
                                   {(p.variance_proposal_lines ?? []).map((li: any) => (
-                                    <tr key={li.id} className="hover:bg-slate-50/20">
-                                      <td className="px-4 py-3">
-                                        <span className="font-bold text-slate-800 block">
+                                    <Tr key={li.id}>
+                                      <Td pinned className="max-w-[200px]">
+                                        <span className="font-bold text-slate-800 block truncate" title={li.products?.name ?? "—"}>
                                           {li.products?.name ?? "—"}
                                         </span>
-                                        <span className="font-mono text-[9px] text-slate-400">
+                                        <span className="font-mono text-[10px] text-slate-400">
                                           {li.products?.sku ?? li.product_id}
                                         </span>
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
+                                      </Td>
+                                      <td className="px-6 py-3.5 text-center">
                                         <span
                                           className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold font-mono ${
                                             li.variance_quantity > 0
@@ -724,9 +715,9 @@ export default function FinanceQueuePage() {
                                             : li.variance_quantity}
                                         </span>
                                       </td>
-                                      <td className="px-4 py-3">
+                                      <td className="px-6 py-3.5">
                                         <span
-                                          className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ${
+                                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${
                                             li.recommended_resolution === "stock_reintegration"
                                               ? "bg-blue-50 border-blue-200 text-blue-700"
                                               : "bg-rose-50 border-rose-200 text-rose-700"
@@ -737,7 +728,7 @@ export default function FinanceQueuePage() {
                                             : "Damage W/O"}
                                         </span>
                                       </td>
-                                      <td className="px-4 py-3">
+                                      <td className="px-6 py-3.5">
                                         <select
                                           value={
                                             lineDecisions[p.id]?.[li.id]?.finance_decision ?? ""
@@ -762,11 +753,11 @@ export default function FinanceQueuePage() {
                                           )}
                                         </select>
                                       </td>
-                                    </tr>
+                                    </Tr>
                                   ))}
                                 </tbody>
                               </table>
-                            </div>
+                            </HScrollArea>
 
                             {/* Review notes + actions */}
                             <div className="flex flex-col gap-2">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   CheckCircle2,
@@ -139,46 +140,36 @@ export default function BuApprovalQueuePage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-850">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Operations</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-primary font-extrabold">BU Approval Queue</span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-              Unit Staff Requests
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Review and approve transfer requests raised by unit staff before they proceed to
-              Finance.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <button
-              onClick={toggleCurrency}
-              disabled={rateFetching}
-              className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
-            >
-              {rateFetching ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-              )}
-              {rateFetching ? "Fetching rate…" : currency === "ZMW" ? "View in USD" : "View in ZMW"}
-            </button>
-            {currency === "USD" && rate != null && (
-              <a
-                href="https://open.er-api.com/v6/latest/ZMW"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
+        <PageHeader
+          title="Unit Staff Requests"
+          description="Review and approve transfer requests raised by unit staff before they proceed to Finance."
+          actions={
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={toggleCurrency}
+                disabled={rateFetching}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
               >
-                1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
-              </a>
-            )}
-          </div>
-        </div>
+                {rateFetching ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                )}
+                {rateFetching ? "Fetching rate…" : currency === "ZMW" ? "View in USD" : "View in ZMW"}
+              </button>
+              {currency === "USD" && rate != null && (
+                <a
+                  href="https://open.er-api.com/v6/latest/ZMW"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
+                >
+                  1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
+                </a>
+              )}
+            </div>
+          }
+        />
 
         {/* Banners */}
         {success && (

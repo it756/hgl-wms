@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   Sliders,
   Coins,
@@ -79,20 +80,10 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-850 font-sans">
         {/* Header Block */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>Administration</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary font-extrabold">System Settings</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
-            System Configuration
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Manage financial threshold gates, configure automated worker alerts, and set default
-            compliance limits.
-          </p>
-        </div>
+        <PageHeader
+          title="System Configuration"
+          description="Manage financial threshold gates, configure automated worker alerts, and set default compliance limits."
+        />
 
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">

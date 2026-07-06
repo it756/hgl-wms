@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import {
   ArrowLeft,
   AlertCircle,
@@ -156,21 +159,11 @@ export default function NewReturnPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-800">
-        {/* Breadcrumb + Header */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>Returns</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary">New Return Request</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-            Raise a Return Request
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            Select a completed transfer, specify items and quantities to return, and provide a
-            reason. Your BU Manager will review and approve before the warehouse receives the goods.
-          </p>
-        </div>
+        {/* Header */}
+        <PageHeader
+          title="Raise a Return Request"
+          description="Select a completed transfer, specify items and quantities to return, and provide a reason. Your BU Manager will review and approve before the warehouse receives the goods."
+        />
 
         {/* Alerts */}
         {success && (
@@ -306,27 +299,29 @@ export default function NewReturnPage() {
                   Return Quantities
                 </h2>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
-                      <th className="text-left py-2 pr-4 font-extrabold">Product</th>
-                      <th className="text-left py-2 pr-4 font-extrabold">SKU</th>
-                      <th className="text-center py-2 pr-4 font-extrabold">Issued Qty</th>
-                      <th className="text-center py-2 font-extrabold">Qty to Return</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <HScrollArea className="rounded-xl border border-slate-100" maxHeightClassName="max-h-[50vh]">
+                <table className="min-w-full divide-y divide-slate-100 text-xs">
+                  <TableHead>
+                      <Th pinned>Product</Th>
+                      <Th>SKU</Th>
+                      <Th align="center">Issued Qty</Th>
+                      <Th align="center">Qty to Return</Th>
+                  </TableHead>
+                  <tbody className="divide-y divide-slate-100">
                     {lineItems.map((item, idx) => (
-                      <tr key={item.product_id} className="border-b border-slate-50 last:border-0">
-                        <td className="py-3 pr-4 font-semibold text-slate-800">
+                      <Tr key={item.product_id}>
+                        <Td
+                          pinned
+                          className="font-semibold text-slate-800 max-w-55 truncate"
+                          title={item.product_name}
+                        >
                           {item.product_name}
-                        </td>
-                        <td className="py-3 pr-4 font-mono text-xs text-slate-500">{item.sku}</td>
-                        <td className="py-3 pr-4 text-center text-slate-600 font-bold">
+                        </Td>
+                        <td className="px-6 py-3.5 font-mono text-slate-500">{item.sku}</td>
+                        <td className="px-6 py-3.5 text-center text-slate-600 font-bold">
                           {item.issued_quantity}
                         </td>
-                        <td className="py-3 text-center">
+                        <td className="px-6 py-3.5 text-center">
                           <input
                             type="number"
                             min={0}
@@ -336,11 +331,11 @@ export default function NewReturnPage() {
                             className="w-20 text-center border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                           />
                         </td>
-                      </tr>
+                      </Tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </HScrollArea>
             </div>
 
             {/* Reason + Notes */}

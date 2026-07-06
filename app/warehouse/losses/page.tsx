@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { TrendingDown, Package, Building, Loader2, AlertTriangle, Search, X } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -189,41 +191,39 @@ export default function LossAccountPage() {
         {/* Table */}
         {!loading && !error && filtered.length > 0 && (
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wide">
-                    <th className="px-4 py-3 text-left font-semibold">Transfer Ref</th>
-                    <th className="px-4 py-3 text-left font-semibold">Product</th>
-                    <th className="px-4 py-3 text-left font-semibold">SBU</th>
-                    <th className="px-4 py-3 text-left font-semibold">Transfer</th>
-                    <th className="px-4 py-3 text-right font-semibold">Qty Lost</th>
-                    <th className="px-4 py-3 text-right font-semibold">Unit Cost</th>
-                    <th className="px-4 py-3 text-right font-semibold">Value Lost</th>
-                    <th className="px-4 py-3 text-left font-semibold">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold">Notes</th>
-                  </tr>
-                </thead>
+            <HScrollArea>
+              <table className="min-w-full divide-y divide-slate-100 text-xs">
+                <TableHead>
+                    <Th pinned>Transfer Ref</Th>
+                    <Th>Product</Th>
+                    <Th>SBU</Th>
+                    <Th>Transfer</Th>
+                    <Th align="right">Qty Lost</Th>
+                    <Th align="right">Unit Cost</Th>
+                    <Th align="right">Value Lost</Th>
+                    <Th>Date</Th>
+                    <Th>Notes</Th>
+                </TableHead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((loss) => (
-                    <tr key={loss.id} className="hover:bg-slate-50 transition-colors">
+                    <Tr key={loss.id}>
                       {/* Loss reference */}
-                      <td className="px-4 py-3 font-mono text-xs text-rose-600 font-semibold whitespace-nowrap">
+                      <Td pinned className="font-mono text-rose-600 font-semibold whitespace-nowrap">
                         {loss.reference_number}
-                      </td>
+                      </Td>
 
                       {/* Product */}
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-slate-800 leading-tight">
+                      <td className="px-6 py-3.5 max-w-50">
+                        <p className="font-bold text-slate-800 leading-tight truncate" title={loss.products?.name ?? "Unknown product"}>
                           {loss.products?.name ?? "Unknown product"}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
                           {loss.products?.sku} · {loss.products?.unit_of_measure}
                         </p>
                       </td>
 
                       {/* SBU */}
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-3.5">
                         <div className="flex items-center gap-1.5">
                           <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="text-slate-700">{loss.sbus?.name ?? loss.sbu_id}</span>
@@ -231,40 +231,40 @@ export default function LossAccountPage() {
                       </td>
 
                       {/* Transfer reference */}
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">
+                      <td className="px-6 py-3.5 font-mono text-slate-500 whitespace-nowrap">
                         {loss.transfer_requests?.reference_number ?? "—"}
                       </td>
 
                       {/* Qty lost */}
-                      <td className="px-4 py-3 text-right font-bold text-rose-600">
+                      <td className="px-6 py-3.5 text-right font-bold text-rose-600">
                         {loss.quantity_lost}
                       </td>
 
                       {/* Unit cost */}
-                      <td className="px-4 py-3 text-right text-slate-600">
+                      <td className="px-6 py-3.5 text-right text-slate-600">
                         {loss.unit_cost_at_loss != null ? (
                           `$${fmt(loss.unit_cost_at_loss, 4)}`
                         ) : (
-                          <span className="text-slate-400 text-xs">no cost</span>
+                          <span className="text-slate-400">no cost</span>
                         )}
                       </td>
 
                       {/* Value lost */}
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-6 py-3.5 text-right">
                         {loss.value_lost != null ? (
                           <span className="font-bold text-rose-700">${fmt(loss.value_lost)}</span>
                         ) : (
-                          <span className="text-slate-400 text-xs">—</span>
+                          <span className="text-slate-400">—</span>
                         )}
                       </td>
 
                       {/* Date */}
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">
+                      <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap">
                         {fmtDate(loss.decided_at)}
                       </td>
 
                       {/* Notes */}
-                      <td className="px-4 py-3 text-slate-500 text-xs max-w-45">
+                      <td className="px-6 py-3.5 text-slate-500 max-w-45">
                         {loss.reason_notes ? (
                           <span className="block truncate" title={loss.reason_notes}>
                             {loss.reason_notes}
@@ -273,7 +273,7 @@ export default function LossAccountPage() {
                           <span className="text-slate-300">—</span>
                         )}
                       </td>
-                    </tr>
+                    </Tr>
                   ))}
                 </tbody>
 
@@ -283,15 +283,15 @@ export default function LossAccountPage() {
                     <tr className="bg-slate-50 border-t border-slate-200 font-semibold text-slate-700">
                       <td
                         colSpan={4}
-                        className="px-4 py-3 text-xs uppercase tracking-wide text-slate-500"
+                        className="px-6 py-3.5 text-[10px] uppercase tracking-widest text-slate-500"
                       >
                         {filtered.length} entries
                       </td>
-                      <td className="px-4 py-3 text-right text-rose-600">
+                      <td className="px-6 py-3.5 text-right text-rose-600">
                         {filtered.reduce((s, l) => s + l.quantity_lost, 0).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3" />
-                      <td className="px-4 py-3 text-right text-rose-700">
+                      <td className="px-6 py-3.5" />
+                      <td className="px-6 py-3.5 text-right text-rose-700">
                         ${fmt(filtered.reduce((s, l) => s + (l.value_lost ?? 0), 0))}
                       </td>
                       <td colSpan={2} />
@@ -299,7 +299,7 @@ export default function LossAccountPage() {
                   </tfoot>
                 )}
               </table>
-            </div>
+            </HScrollArea>
           </div>
         )}
 

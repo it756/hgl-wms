@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   ArrowLeft,
@@ -318,33 +320,17 @@ export default function TransferRequestDetailPage() {
                   No line items found.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <HScrollArea>
                   <table className="w-full border-collapse text-left">
-                    <thead className="bg-slate-50 border-b border-outline-variant">
-                      <tr>
-                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                          #
-                        </th>
-                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                          Product
-                        </th>
-                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                          SKU
-                        </th>
-                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                          UOM
-                        </th>
-                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                          Qty Requested
-                        </th>
-                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                          Unit Cost
-                        </th>
-                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                          Line Total
-                        </th>
-                      </tr>
-                    </thead>
+                    <TableHead>
+                        <Th pinned>#</Th>
+                        <Th>Product</Th>
+                        <Th>SKU</Th>
+                        <Th>UOM</Th>
+                        <Th align="right">Qty Requested</Th>
+                        <Th align="right">Unit Cost</Th>
+                        <Th align="right">Line Total</Th>
+                    </TableHead>
                     <tbody className="divide-y divide-outline-variant">
                       {request.transfer_line_items.map((item, idx) => {
                         const lineTotal =
@@ -352,53 +338,56 @@ export default function TransferRequestDetailPage() {
                             ? item.products.unit_cost * item.requested_quantity
                             : null;
                         return (
-                          <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-6 py-3 text-xs text-slate-400 font-mono">
+                          <Tr key={item.id}>
+                            <Td pinned className="text-xs text-slate-400 font-mono">
                               {idx + 1}
-                            </td>
-                            <td className="px-6 py-3 text-sm font-semibold text-slate-700">
+                            </Td>
+                            <td
+                              className="px-6 py-3.5 text-xs font-semibold text-slate-700 max-w-55 truncate"
+                              title={item.products?.name ?? undefined}
+                            >
                               {item.products?.name ?? (
                                 <span className="text-slate-400 italic">Unknown product</span>
                               )}
                             </td>
-                            <td className="px-6 py-3 text-xs font-mono text-slate-500">
+                            <td className="px-6 py-3.5 text-xs font-mono text-slate-500">
                               {item.products?.sku ?? "—"}
                             </td>
-                            <td className="px-6 py-3 text-xs text-slate-500">
+                            <td className="px-6 py-3.5 text-xs text-slate-500">
                               {item.products?.unit_of_measure ?? "—"}
                             </td>
-                            <td className="px-6 py-3 text-sm font-bold text-slate-700 text-right font-mono">
+                            <td className="px-6 py-3.5 text-xs font-bold text-slate-700 text-right font-mono">
                               {item.requested_quantity.toLocaleString()}
                             </td>
-                            <td className="px-6 py-3 text-sm text-slate-500 text-right font-mono">
+                            <td className="px-6 py-3.5 text-xs text-slate-500 text-right font-mono">
                               {item.products?.unit_cost != null
                                 ? fmt(item.products.unit_cost)
                                 : "—"}
                             </td>
-                            <td className="px-6 py-3 text-sm font-bold text-slate-700 text-right font-mono">
+                            <td className="px-6 py-3.5 text-xs font-bold text-slate-700 text-right font-mono">
                               {lineTotal != null ? fmt(lineTotal) : "—"}
                             </td>
-                          </tr>
+                          </Tr>
                         );
                       })}
                     </tbody>
                     {request.estimated_value != null && (
-                      <tfoot className="border-t-2 border-outline-variant bg-slate-50">
+                      <tfoot className="border-t-2 border-outline-variant bg-slate-50/60">
                         <tr>
                           <td
                             colSpan={6}
-                            className="px-6 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider text-right"
+                            className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right"
                           >
                             Total Est. Value
                           </td>
-                          <td className="px-6 py-3 text-sm font-extrabold text-primary text-right font-mono">
+                          <td className="px-6 py-3.5 text-xs font-extrabold text-primary text-right font-mono">
                             {fmt(request.estimated_value)}
                           </td>
                         </tr>
                       </tfoot>
                     )}
                   </table>
-                </div>
+                </HScrollArea>
               )}
             </div>
 

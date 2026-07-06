@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   ArrowUpRight,
   TrendingUp,
@@ -74,40 +75,28 @@ export default function WarehouseDashboardPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-800">
-        {/* Dynamic header breadcrumb */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Warehouse Manager</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-primary font-bold">Performance Overview</span>
+        {/* Header */}
+        <PageHeader
+          title="Warehouse Ops Command Center"
+          description="Real-time inbound/outbound fulfillment diagnostics, bento analytics, and inventory verification."
+          actions={
+            <div className="flex bg-slate-100 border border-slate-200 rounded-lg p-1 text-xs font-bold shadow-sm">
+              {(["TODAY", "WEEK", "MONTH"] as const).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setSelectedPeriod(period)}
+                  className={`px-3 py-1.5 rounded-md transition cursor-pointer leading-none ${
+                    selectedPeriod === period
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  {period}
+                </button>
+              ))}
             </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-              Warehouse Ops Command Center
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Real-time inbound/outbound fulfillment diagnostics, bento analytics, and inventory
-              verification.
-            </p>
-          </div>
-
-          {/* Period selector tabs */}
-          <div className="flex bg-slate-100 border border-slate-200 rounded-lg p-1 self-start text-xs font-bold shadow-sm">
-            {(["TODAY", "WEEK", "MONTH"] as const).map((period) => (
-              <button
-                key={period}
-                onClick={() => setSelectedPeriod(period)}
-                className={`px-3 py-1.5 rounded-md transition cursor-pointer leading-none ${
-                  selectedPeriod === period
-                    ? "bg-white text-slate-800 shadow-sm"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                {period}
-              </button>
-            ))}
-          </div>
-        </div>
+          }
+        />
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { ArrowLeftRight, Search, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface Product {
@@ -258,19 +260,17 @@ export default function IntraTransferPage() {
             </h2>
             <span className="text-[10px] text-slate-400">{transfers.length} total</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50/50 text-slate-500 uppercase text-[10px]">
-                <tr>
-                  <th className="px-4 py-2 text-left">Reference</th>
-                  <th className="px-4 py-2 text-left">Product</th>
-                  <th className="px-4 py-2 text-right">Qty</th>
-                  <th className="px-4 py-2 text-left">To SBU</th>
-                  <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Date</th>
-                </tr>
-              </thead>
-              <tbody>
+          <HScrollArea>
+            <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <TableHead>
+                  <Th pinned>Reference</Th>
+                  <Th>Product</Th>
+                  <Th align="right">Qty</Th>
+                  <Th>To SBU</Th>
+                  <Th>Status</Th>
+                  <Th>Date</Th>
+              </TableHead>
+              <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="text-center py-6 text-slate-400">
@@ -285,23 +285,23 @@ export default function IntraTransferPage() {
                   </tr>
                 ) : (
                   transfers.map((t) => (
-                    <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50/40">
-                      <td className="px-4 py-2 font-mono text-primary font-bold">
+                    <Tr key={t.id}>
+                      <Td pinned className="font-mono text-primary font-bold">
                         {t.reference_number}
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="font-semibold text-slate-700">
+                      </Td>
+                      <td className="px-6 py-3.5 max-w-[200px]">
+                        <div className="font-semibold text-slate-700 truncate" title={t.products?.name ?? "—"}>
                           {t.products?.name ?? "—"}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
                           {t.products?.sku ?? ""}
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-right font-bold">{t.quantity}</td>
-                      <td className="px-4 py-2">{t.to_sbu?.name ?? "—"}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-6 py-3.5 text-right font-bold">{t.quantity}</td>
+                      <td className="px-6 py-3.5">{t.to_sbu?.name ?? "—"}</td>
+                      <td className="px-6 py-3.5">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded font-bold text-[10px] ${
+                          className={`inline-block px-2 py-0.5 rounded-full font-bold text-[10px] ${
                             t.status === "COMPLETED"
                               ? "bg-emerald-50 border border-emerald-100 text-emerald-700"
                               : t.status === "PENDING_FINANCE_APPROVAL"
@@ -312,15 +312,15 @@ export default function IntraTransferPage() {
                           {t.status === "PENDING_FINANCE_APPROVAL" ? "Pending Finance" : t.status}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-slate-500">
+                      <td className="px-6 py-3.5 text-slate-500">
                         {new Date(t.created_at).toLocaleDateString()}
                       </td>
-                    </tr>
+                    </Tr>
                   ))
                 )}
               </tbody>
             </table>
-          </div>
+          </HScrollArea>
         </div>
       </div>
     </DashboardLayout>

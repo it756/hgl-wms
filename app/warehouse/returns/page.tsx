@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   PackageCheck,
   Package,
@@ -90,20 +91,10 @@ export default function WarehouseReturnsPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full text-slate-800">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>Warehouse</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary">Incoming Returns</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-            Returns Incoming
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            BU Manager–approved returns awaiting physical receipt. Confirm receipt to restore stock
-            to the warehouse.
-          </p>
-        </div>
+        <PageHeader
+          title="Returns Incoming"
+          description="BU Manager–approved returns awaiting physical receipt. Confirm receipt to restore stock to the warehouse."
+        />
 
         {/* KPI strip */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

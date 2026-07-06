@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
+import IconButton from "@/components/IconButton";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import {
   Building2,
   Plus,
@@ -144,28 +148,19 @@ export default function SBUsPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full font-sans">
         {/* Header Block */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Admin</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-[#005c55]">SBU Registry</span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">
-              Strategic Business Units
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Manage corporate branches, custom threshold configurations, and transaction rules.
-            </p>
-          </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="self-start md:self-auto px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Add Strategic Unit
-          </button>
-        </div>
+        <PageHeader
+          title="Strategic Business Units"
+          description="Manage corporate branches, custom threshold configurations, and transaction rules."
+          actions={
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add Strategic Unit
+            </button>
+          }
+        />
 
         {/* Global Error Banner */}
         {error && (
@@ -266,33 +261,21 @@ export default function SBUsPage() {
               No matching Strategic Business Units found.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
-                <thead>
-                  <tr className="bg-slate-50/50">
-                    <th className="px-6 py-4.5 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-2/5">
-                      Business Unit Name
-                    </th>
-                    <th className="px-6 py-4.5 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-1/5">
-                      SBU Code
-                    </th>
-                    <th className="px-6 py-4.5 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-1/4">
-                      Approval Threshold Override
-                    </th>
-                    <th className="px-6 py-4.5 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
-                      Status
-                    </th>
-                    <th className="px-6 py-4.5 text-right font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[15%]">
-                      Operations
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
+            <HScrollArea>
+              <table className="min-w-full divide-y divide-slate-100 text-xs">
+                <TableHead>
+                    <Th pinned className="w-2/5">Business Unit Name</Th>
+                    <Th className="w-1/5">SBU Code</Th>
+                    <Th className="w-1/4">Approval Threshold Override</Th>
+                    <Th className="w-[10%]">Status</Th>
+                    <Th align="right" className="w-[15%]">Operations</Th>
+                </TableHead>
+                <tbody className="divide-y divide-slate-100">
                   {filtered.map((s) => {
                     const isEditingThisSBU = editing === s.id;
                     return (
-                      <tr key={s.id} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="px-6 py-3.5">
+                      <Tr key={s.id}>
+                        <Td pinned>
                           {isEditingThisSBU ? (
                             <input
                               value={editName}
@@ -305,7 +288,7 @@ export default function SBUsPage() {
                               <span className="font-bold text-slate-800 text-sm">{s.name}</span>
                             </div>
                           )}
-                        </td>
+                        </Td>
                         <td className="px-6 py-3.5">
                           {isEditingThisSBU ? (
                             <input
@@ -357,51 +340,44 @@ export default function SBUsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-2.5">
+                          <div className="flex items-center justify-end gap-1.5">
                             {isEditingThisSBU ? (
                               <>
-                                <button
+                                <IconButton
+                                  icon={<Check className="w-3.5 h-3.5" />}
+                                  label="Save changes"
+                                  variant="success"
                                   onClick={() => saveEdit(s.id)}
-                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-850 font-bold rounded-lg transition-all flex items-center gap-1 text-[11px] cursor-pointer"
-                                >
-                                  <Check className="w-3 h-3" /> Save
-                                </button>
-                                <button
+                                />
+                                <IconButton
+                                  icon={<X className="w-3.5 h-3.5" />}
+                                  label="Cancel edit"
                                   onClick={() => setEditing(null)}
-                                  className="px-2.5 py-1 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-lg transition-all flex items-center gap-1 text-[11px] cursor-pointer"
-                                >
-                                  <X className="w-3 h-3" /> Cancel
-                                </button>
+                                />
                               </>
                             ) : (
                               <>
-                                <button
+                                <IconButton
+                                  icon={<Edit3 className="w-3.5 h-3.5" />}
+                                  label="Edit SBU"
                                   onClick={() => startEdit(s)}
-                                  className="p-1 px-2 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-100 rounded-md transition-all flex items-center gap-1 text-[11px] cursor-pointer"
-                                >
-                                  <Edit3 className="w-3 h-3" /> Edit
-                                </button>
-                                <button
+                                />
+                                <IconButton
+                                  icon={<Power className="w-3.5 h-3.5" />}
+                                  label={s.is_active ? "Deactivate SBU" : "Activate SBU"}
+                                  variant={s.is_active ? "danger" : "success"}
                                   onClick={() => toggleActive(s)}
-                                  className={`p-1 px-2 border rounded-md transition-all flex items-center gap-1 text-[11px] cursor-pointer ${
-                                    s.is_active
-                                      ? "bg-rose-50/10 border-rose-200/50 text-rose-600 hover:bg-rose-50 hover:border-rose-300"
-                                      : "bg-teal-50/10 border-teal-200/50 text-teal-650 hover:bg-teal-50 hover:border-teal-300"
-                                  }`}
-                                >
-                                  <Power className="w-3 h-3" />
-                                  {s.is_active ? "Deactivate" : "Activate"}
-                                </button>
+                                />
                               </>
                             )}
                           </div>
                         </td>
-                      </tr>
+                      </Tr>
                     );
                   })}
                 </tbody>
               </table>
-            </div>
+            </HScrollArea>
           )}
         </div>
       </div>

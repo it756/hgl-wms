@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Package,
@@ -156,21 +157,14 @@ export default function SbuStockPage() {
     <DashboardLayout>
       <div className="px-6 py-6 space-y-6 w-full">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <span>{isPrivileged ? "SBU Overview" : "My SBU"}</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-primary font-bold">Stock Inventory</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans">
-            {isPrivileged ? "SBU Stock" : "My Stock"}
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-            {isPrivileged
+        <PageHeader
+          title={isPrivileged ? "SBU Stock" : "My Stock"}
+          description={
+            isPrivileged
               ? "Browse stock held by any SBU. Use the selector below to switch between units."
-              : "Items currently held by your business unit. Only goods issued to your SBU and not yet returned are shown here."}
-          </p>
-        </div>
+              : "Items currently held by your business unit. Only goods issued to your SBU and not yet returned are shown here."
+          }
+        />
 
         {/* SBU selector — privileged roles only */}
         {isPrivileged && (
