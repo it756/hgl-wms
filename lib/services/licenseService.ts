@@ -158,7 +158,7 @@ export async function revokeLicense(
 ): Promise<LicenseProfile> {
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("profiles")
-    .select("id, licensed, license_type")
+    .select("id, licensed, license_type, license_issued_at, license_expires_at")
     .eq("id", profileId)
     .single();
 
