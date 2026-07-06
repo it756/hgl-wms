@@ -79,9 +79,11 @@ async function main() {
   }
 
   console.table(rows);
-  console.log(`\n${rows.length} email(s) — ${rows.filter((r) => r.status === "SENT").length} sent, ${
-    rows.filter((r) => r.status === "FAILED").length
-  } failed.`);
+  console.log(
+    `\n${rows.length} email(s) — ${rows.filter((r) => r.status === "SENT").length} sent, ${
+      rows.filter((r) => r.status === "FAILED").length
+    } failed.`,
+  );
 
   if (csvPath) {
     const header = "when,to,subject,status,attempts,error";

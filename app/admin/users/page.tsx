@@ -37,6 +37,9 @@ interface UserRow {
   sbu_id: string | null;
   is_active: boolean;
   whatsapp_number: string | null;
+  licensed: boolean;
+  license_type: string | null;
+  license_expires_at: string | null;
 }
 
 interface SBU {
@@ -373,10 +376,7 @@ export default function UsersPage() {
               </div>
             )}
 
-            <form
-              onSubmit={handleRequestUser}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-            >
+            <form onSubmit={handleRequestUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                   Full Name
@@ -557,6 +557,9 @@ export default function UsersPage() {
                         SBU Node
                       </th>
                       <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        Licence
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
                         State
                       </th>
                       <th className="px-6 py-4 text-right font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
@@ -610,6 +613,20 @@ export default function UsersPage() {
                               Independent
                             </span>
                           )}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
+                              u.licensed
+                                ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                                : "bg-amber-50 border border-amber-200 text-amber-800"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${u.licensed ? "bg-emerald-600" : "bg-amber-500"}`}
+                            ></span>
+                            {u.licensed ? u.license_type ?? "Licensed" : "Unlicensed"}
+                          </span>
                         </td>
                         <td className="px-6 py-3.5">
                           <span

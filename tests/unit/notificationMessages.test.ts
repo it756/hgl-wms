@@ -49,7 +49,9 @@ describe("notification message formatting", () => {
       ],
     });
 
-    expect(message).toContain("Products: 8 units x Printer Toner (FIN-TONER) [issued 10, received 8]");
+    expect(message).toContain(
+      "Products: 8 units x Printer Toner (FIN-TONER) [issued 10, received 8]",
+    );
   });
 
   it("humanizes SCREAMING_SNAKE_CASE and snake_case labels while preserving acronyms", () => {
@@ -62,9 +64,9 @@ describe("notification message formatting", () => {
   });
 
   it("formats a contact with name, email, and role", () => {
-    expect(
-      formatContact({ name: "Jane Doe", email: "jane@company.com", role: "BU_MANAGER" }),
-    ).toBe("Jane Doe (jane@company.com) — BU Manager");
+    expect(formatContact({ name: "Jane Doe", email: "jane@company.com", role: "BU_MANAGER" })).toBe(
+      "Jane Doe (jane@company.com) — BU Manager",
+    );
   });
 
   it("degrades gracefully when only some contact fields are present", () => {

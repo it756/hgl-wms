@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
-import { writeAuditLog } from "../../../lib/services/auditService";
 import { createNotification } from "../../../lib/services/notificationService";
 import { buildSupplierGrnNotificationMessage } from "../../../lib/notifications/messages";
 import type { SupplierGRNCreateInput } from "../../../lib/models/grn";
@@ -9,14 +8,23 @@ interface AuthMetadata {
   role?: string;
 }
 
-interface CreatedSupplierGrnRow {
+interface AtomicSupplierGrnResult {
   id: string;
+  reference_number: string;
+  has_packing_variance: boolean;
 }
 
 function generateSupplierGRNReference(): string {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 90000 + 10000);
   return `SGRN-${year}-${seq}`;
+}
+
+function statusForRpcError(message: string): number {
+  if (message.includes("not found")) return 404;
+  if (message.includes("forbidden")) return 403;
+  if (message.includes("required") || message.includes("at least one")) return 400;
+  return 500;
 }
 
 /**
@@ -52,53 +60,30 @@ export async function POST(req: Request) {
 
   const reference_number = generateSupplierGRNReference();
 
-  const { data: grn, error: grnError } = await supabaseAdmin
-    .from("supplier_grns")
-    .insert([
-      {
-        reference_number,
-        supplier_name,
-        supplier_invoice_reference: supplier_invoice_reference ?? null,
-        invoice_amount: invoice_amount ?? null,
-        received_by: user.id,
-        date_received: date_received ?? new Date().toISOString().split("T")[0],
-        status: "AWAITING_FINANCE_APPROVAL",
-        sbu_id: sbu_id ?? null,
-      },
-    ])
-    .select()
-    .single();
-
-  if (grnError) throw grnError;
-  const grnId = (grn as CreatedSupplierGrnRow).id;
-
-  // Detect packing-list variance: any line with quantity_expected != quantity_received
-  let hasPackingVariance = false;
-
-  const lineInserts = items.map((item) => {
-    if (
-      typeof item.quantity_expected === "number" &&
-      item.quantity_expected !== item.quantity_received
-    ) {
-      hasPackingVariance = true;
-    }
-    return {
-      supplier_grn_id: grnId,
-      product_id: item.product_id,
-      quantity_received: item.quantity_received,
-      unit_cost: item.unit_cost ?? null,
-      expiry_date: item.expiry_date ?? null,
-    };
+  const { data, error: rpcError } = await supabaseAdmin.rpc("create_supplier_grn_atomic", {
+    p_actor_id: user.id,
+    p_reference_number: reference_number,
+    p_supplier_name: supplier_name,
+    p_supplier_invoice_reference: supplier_invoice_reference ?? null,
+    p_invoice_amount: invoice_amount ?? null,
+    p_date_received: date_received ?? null,
+    p_sbu_id: sbu_id ?? null,
+    p_items: items,
   });
 
-  const { error: liError } = await supabaseAdmin
-    .from("supplier_grn_line_items")
-    .insert(lineInserts);
-  if (liError) throw liError;
+  if (rpcError) {
+    return NextResponse.json(
+      { error: rpcError.message },
+      { status: statusForRpcError(rpcError.message) },
+    );
+  }
+
+  const created = data as AtomicSupplierGrnResult;
+  const grnId = created.id;
 
   const baseMessage = await buildSupplierGrnNotificationMessage({
     grnId,
-    headline: `Supplier GRN ${reference_number} requires Finance approval before stock can be updated`,
+    headline: `Supplier GRN ${created.reference_number} requires Finance approval before stock can be updated`,
     actorId: user.id,
     actorLabel: role === "ADMIN" ? "Admin recorder" : "Received by",
   });
@@ -113,10 +98,10 @@ export async function POST(req: Request) {
   });
 
   // Notify Admin + Finance silently if there was a packing variance
-  if (hasPackingVariance) {
+  if (created.has_packing_variance) {
     const varianceMessage = await buildSupplierGrnNotificationMessage({
       grnId,
-      headline: `Packing variance detected on Supplier GRN ${reference_number}`,
+      headline: `Packing variance detected on Supplier GRN ${created.reference_number}`,
       actorId: user.id,
       actorLabel: role === "ADMIN" ? "Admin recorder" : "Received by",
     });
@@ -139,21 +124,12 @@ export async function POST(req: Request) {
     ]);
   }
 
-  await writeAuditLog({
-    entity_type: "supplier_grn",
-    entity_id: grnId,
-    action: "create",
-    performed_by: user.id,
-    new_value: {
-      reference_number,
-      status: "AWAITING_FINANCE_APPROVAL",
-      supplier_name,
-      has_packing_variance: hasPackingVariance,
-    },
-  });
-
   return NextResponse.json(
-    { id: grnId, reference_number, has_packing_variance: hasPackingVariance },
+    {
+      id: grnId,
+      reference_number: created.reference_number,
+      has_packing_variance: created.has_packing_variance,
+    },
     { status: 201 },
   );
 }

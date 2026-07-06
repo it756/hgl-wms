@@ -311,8 +311,7 @@ export default function WarehouseQueuePage() {
         r.status === "AWAITING_FINANCE_APPROVAL" ||
         r.status === "PENDING_APPROVAL"
       );
-    if (activeTab === "APPROVED_FOR_ISSUE")
-      return isReadyToIssue(r);
+    if (activeTab === "APPROVED_FOR_ISSUE") return isReadyToIssue(r);
     if (activeTab === "ISSUED_TODAY") return r.status === "ISSUED" || r.status === "COMPLETED";
     return true;
   });

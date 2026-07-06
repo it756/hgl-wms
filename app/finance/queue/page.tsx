@@ -963,8 +963,7 @@ export default function FinanceQueuePage() {
                             </span>
                           </div>
                           <span className="text-[11px] font-semibold text-slate-500 font-sans">
-                            From{" "}
-                            <strong className="text-slate-700">{t.from_sbu_name}</strong>
+                            From <strong className="text-slate-700">{t.from_sbu_name}</strong>
                             {" → "}
                             <strong className="text-slate-700">{t.to_sbu_name}</strong>
                           </span>
@@ -1175,7 +1174,7 @@ export default function FinanceQueuePage() {
                         readOnly={true}
                         token={
                           typeof window !== "undefined"
-                            ? localStorage.getItem("access_token") ?? ""
+                            ? (localStorage.getItem("access_token") ?? "")
                             : ""
                         }
                       />

@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
-import { writeAuditLog } from "../../../../lib/services/auditService";
+
+interface AtomicSupplierGrnUpdateResult {
+  id: string;
+  reference_number: string;
+}
+
+function statusForRpcError(message: string): number {
+  if (message.includes("not found")) return 404;
+  if (message.includes("forbidden")) return 403;
+  if (message.includes("awaiting Finance approval")) return 422;
+  if (message.includes("required") || message.includes("at least one")) return 400;
+  return 500;
+}
 
 /** GET /api/supplier-grns/[id] — single GRN with line items + product info */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -40,23 +52,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const { id } = await params;
-
-  const { data: existing, error: fetchError } = await supabaseAdmin
-    .from("supplier_grns")
-    .select("id, status, reference_number")
-    .eq("id", id)
-    .single();
-
-  if (fetchError || !existing) {
-    return NextResponse.json({ error: "GRN not found" }, { status: 404 });
-  }
-  if ((existing as any).status !== "AWAITING_FINANCE_APPROVAL") {
-    return NextResponse.json(
-      { error: "Only GRNs awaiting Finance approval can be edited." },
-      { status: 422 },
-    );
-  }
-
   const body = await req.json();
   const {
     supplier_name,
@@ -74,41 +69,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     );
   }
 
-  const { error: updateError } = await supabaseAdmin
-    .from("supplier_grns")
-    .update({
-      supplier_name,
-      supplier_invoice_reference: supplier_invoice_reference ?? null,
-      invoice_amount: invoice_amount ?? null,
-      date_received,
-      sbu_id: sbu_id ?? null,
-    })
-    .eq("id", id);
-
-  if (updateError) throw updateError;
-
-  // Replace line items
-  await supabaseAdmin.from("supplier_grn_line_items").delete().eq("supplier_grn_id", id);
-
-  const lineInserts = items.map((item: any) => ({
-    supplier_grn_id: id,
-    product_id: item.product_id,
-    quantity_received: item.quantity_received,
-    unit_cost: item.unit_cost ?? null,
-  }));
-
-  const { error: liError } = await supabaseAdmin
-    .from("supplier_grn_line_items")
-    .insert(lineInserts);
-  if (liError) throw liError;
-
-  await writeAuditLog({
-    entity_type: "supplier_grn",
-    entity_id: id,
-    action: "update",
-    performed_by: user.id,
-    new_value: { supplier_name, item_count: items.length },
+  const { data, error: rpcError } = await supabaseAdmin.rpc("update_supplier_grn_atomic", {
+    p_grn_id: id,
+    p_actor_id: user.id,
+    p_supplier_name: supplier_name,
+    p_supplier_invoice_reference: supplier_invoice_reference ?? null,
+    p_invoice_amount: invoice_amount ?? null,
+    p_date_received: date_received ?? null,
+    p_sbu_id: sbu_id ?? null,
+    p_items: items,
   });
 
-  return NextResponse.json({ id, reference_number: (existing as any).reference_number });
+  if (rpcError) {
+    return NextResponse.json(
+      { error: rpcError.message },
+      { status: statusForRpcError(rpcError.message) },
+    );
+  }
+
+  const updated = data as AtomicSupplierGrnUpdateResult;
+
+  return NextResponse.json({ id: updated.id, reference_number: updated.reference_number });
 }
