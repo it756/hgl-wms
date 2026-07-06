@@ -1,4 +1,4 @@
--- Migration: 024_fix_increment_stock_after_grn.sql
+-- Migration: 026_fix_increment_stock_after_grn.sql
 -- Fixes two defects in increment_stock_after_grn (from 003):
 --   1. It read the wrong tables: `grns`/`grn_line_items` instead of
 --      `supplier_grns`/`supplier_grn_line_items`, so every finance approval

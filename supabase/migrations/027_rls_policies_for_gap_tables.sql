@@ -1,7 +1,7 @@
--- Migration: 025_rls_policies_for_gap_tables.sql
+-- Migration: 027_rls_policies_for_gap_tables.sql
 -- Purpose: Add real RLS policies (mirroring the app's own RBAC / SBU-scoping
 --          rules) for the tables that had RLS enabled with zero policies in
---          024_enable_missing_rls.sql. This ensures that if these tables are
+--          025_enable_missing_rls.sql. This ensures that if these tables are
 --          ever queried directly with a user JWT (not just the service role
 --          the app uses today via lib/supabaseServer.ts), access is correctly
 --          scoped instead of blanket-denied — matching, not restricting,

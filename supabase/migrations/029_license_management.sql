@@ -1,4 +1,4 @@
--- Migration: 028_license_management.sql
+-- Migration: 029_license_management.sql
 -- Purpose: Adds licensed-staff tracking to the profiles table and introduces a
 --          license_audit_log table for a full history of license assignments and
 --          revocations.
