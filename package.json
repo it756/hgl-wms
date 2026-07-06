@@ -17,6 +17,7 @@
     "openapi:check": "openapi-typescript docs/openapi/openapi.json -o lib/api/openapi-types.ts --check",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "prepare": "husky",
     "seed": "npx tsx scripts/seed/seed_data.ts",
     "report:emails": "npx tsx scripts/reports/email-activity-report.ts"
   },
@@ -44,7 +45,9 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "lint-staged": "^16.4.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.3",
     "tailwindcss": "^4",
@@ -52,5 +55,14 @@
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.7"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": "eslint --fix",
+    "*.{json,md,yml,yaml,css}": "prettier --write",
+    ".github/workflows/ui.yml": "biome check --write",
+    "biome.json": "biome check --write",
+    "playwright.config.ts": "biome check --write",
+    "tests/e2e/**/*": "biome check --write",
+    "docs/openapi/**/*": "biome check --write"
   }
 }
