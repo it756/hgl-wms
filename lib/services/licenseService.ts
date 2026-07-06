@@ -129,7 +129,7 @@ export async function updateLicense(
 
   if (updateError) throw updateError;
 
-  await supabaseAdmin.from("license_audit_log").insert({
+  const { error: auditError } = await supabaseAdmin.from("license_audit_log").insert({
     profile_id: profileId,
     action: "UPDATED",
     license_type: (updated as LicenseProfile).license_type,
@@ -138,6 +138,8 @@ export async function updateLicense(
     performed_by: performedBy,
     notes: input.notes ?? null,
   });
+
+  if (auditError) throw auditError;
 
   await writeAuditLog({
     entity_type: "profile",
