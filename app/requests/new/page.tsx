@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Plus, Trash, CheckCircle2, ChevronRight, HelpCircle, ArrowLeft } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { Plus, Trash, CheckCircle2, HelpCircle } from "lucide-react";
 import Link from "next/link";
 
 interface LineItem {
@@ -193,24 +194,10 @@ export default function NewTransferRequestPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full">
-        {/* Breadcrumbs & Title */}
-        <div>
-          <nav className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Link className="hover:text-primary transition-all" href="/requests">
-              Requests
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-on-surface font-extrabold text-primary">
-              New Transfer Request
-            </span>
-          </nav>
-          <h2 className="text-2xl font-extrabold text-on-surface font-sans">
-            New Transfer Request
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Initiate internal stock movement between sub-units or warehouses.
-          </p>
-        </div>
+        <PageHeader
+          title="New Transfer Request"
+          description="Initiate internal stock movement between sub-units or warehouses."
+        />
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Left Column: Form parameters */}

@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
@@ -5,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
 import { TableHead, Th, Tr, Td } from "@/components/Table";
@@ -202,58 +205,50 @@ function RequestsListContent() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full">
-        {/* Page Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">
-              <span>Workspace</span>
-              <span>/</span>
-              <span className="text-primary font-bold">Transfer Requests</span>
+        <PageHeader
+          title="My Transfer Requests"
+          description="Manage and track internal warehouse inventory transfers across SBUs."
+          actions={
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleCurrency}
+                  disabled={rateFetching}
+                  title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
+                  className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
+                >
+                  {rateFetching ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                  )}
+                  {rateFetching
+                    ? "Fetching rate…"
+                    : currency === "ZMW"
+                      ? "View in USD"
+                      : "View in ZMW"}
+                </button>
+                <Link
+                  href="/requests/new"
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  New Request
+                </Link>
+              </div>
+              {currency === "USD" && rate != null && (
+                <a
+                  href="https://open.er-api.com/v6/latest/ZMW"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
+                >
+                  1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
+                </a>
+              )}
             </div>
-            <h1 className="text-2xl font-extrabold text-on-surface">My Transfer Requests</h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage and track internal warehouse inventory transfers across SBUs.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleCurrency}
-                disabled={rateFetching}
-                title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
-                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
-              >
-                {rateFetching ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ArrowLeftRight className="w-3.5 h-3.5" />
-                )}
-                {rateFetching
-                  ? "Fetching rate…"
-                  : currency === "ZMW"
-                    ? "View in USD"
-                    : "View in ZMW"}
-              </button>
-              <Link
-                href="/requests/new"
-                className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
-              >
-                <Plus className="w-4 h-4" />
-                New Request
-              </Link>
-            </div>
-            {currency === "USD" && rate != null && (
-              <a
-                href="https://open.er-api.com/v6/latest/ZMW"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
-              >
-                1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
-              </a>
-            )}
-          </div>
-        </div>
+          }
+        />
 
         {(bannerSuccess || created) && (
           <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-4 py-3 text-xs font-semibold animate-pulse">

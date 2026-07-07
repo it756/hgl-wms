@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Plus, Trash, CheckCircle2, ChevronRight, HelpCircle, ArrowLeft } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { Plus, Trash, CheckCircle2, HelpCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 const EDITABLE_STATUSES = ["PENDING", "PENDING_APPROVAL", "PENDING_BU_APPROVAL"];
@@ -138,43 +139,25 @@ export default function EditTransferRequestPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full">
-        {/* Breadcrumbs & Title */}
-        <div>
-          <nav className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Link className="hover:text-primary transition-all" href="/requests">
-              Requests
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            {referenceNumber && (
+        <PageHeader
+          title="Edit Transfer Request"
+          description={
+            referenceNumber ? (
               <>
-                <Link className="hover:text-primary transition-all" href={`/requests/${id}`}>
-                  {referenceNumber}
-                </Link>
-                <ChevronRight className="w-3.5 h-3.5" />
+                {referenceNumber} &middot; <span className="font-bold">{status.replace(/_/g, " ")}</span>
               </>
-            )}
-            <span className="font-extrabold text-primary">Edit</span>
-          </nav>
-          <div className="flex items-center gap-3">
+            ) : undefined
+          }
+          actions={
             <Link
               href={`/requests/${id}`}
-              className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
+              className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-4 py-2 transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
+              Back
             </Link>
-            <div>
-              <h2 className="text-2xl font-extrabold text-on-surface font-sans">
-                Edit Transfer Request
-              </h2>
-              {referenceNumber && (
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {referenceNumber} &middot;{" "}
-                  <span className="font-bold">{status.replace(/_/g, " ")}</span>
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+          }
+        />
 
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">

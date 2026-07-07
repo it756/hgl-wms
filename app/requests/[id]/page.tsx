@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import HScrollArea from "@/components/HScrollArea";
 import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
@@ -118,75 +119,59 @@ export default function TransferRequestDetailPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6 w-full">
-        {/* Breadcrumb + Back */}
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">
-              <span>Workspace</span>
-              <span>/</span>
-              <Link href="/requests" className="hover:text-primary transition-colors">
-                Transfer Requests
-              </Link>
-              <span>/</span>
-              <span className="text-primary font-bold">
-                {request?.reference_number ?? "Details"}
-              </span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-on-surface">
-              {request?.reference_number ?? "Transfer Request"}
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              View details and line items for this transfer request.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleCurrency}
-                disabled={rateFetching}
-                title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
-                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
-              >
-                {rateFetching ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ArrowLeftRight className="w-3.5 h-3.5" />
-                )}
-                {rateFetching
-                  ? "Fetching rate…"
-                  : currency === "ZMW"
-                    ? "View in USD"
-                    : "View in ZMW"}
-              </button>
-              {request && EDITABLE_STATUSES.includes(request.status) && (
-                <Link
-                  href={`/requests/${request.id}/edit`}
-                  className="flex items-center gap-2 text-sm font-bold text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg px-4 py-2 transition-all"
+        <PageHeader
+          title={request?.reference_number ?? "Transfer Request"}
+          description="View details and line items for this transfer request."
+          actions={
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleCurrency}
+                  disabled={rateFetching}
+                  title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
+                  className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
                 >
-                  <Pencil className="w-4 h-4" />
-                  Edit
+                  {rateFetching ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                  )}
+                  {rateFetching
+                    ? "Fetching rate…"
+                    : currency === "ZMW"
+                      ? "View in USD"
+                      : "View in ZMW"}
+                </button>
+                {request && EDITABLE_STATUSES.includes(request.status) && (
+                  <Link
+                    href={`/requests/${request.id}/edit`}
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg transition-all"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                  </Link>
+                )}
+                <Link
+                  href="/requests"
+                  className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-all"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back
                 </Link>
+              </div>
+              {currency === "USD" && rate != null && (
+                <a
+                  href="https://open.er-api.com/v6/latest/ZMW"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
+                >
+                  1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
+                </a>
               )}
-              <Link
-                href="/requests"
-                className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-4 py-2 transition-all"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </Link>
             </div>
-            {currency === "USD" && rate != null && (
-              <a
-                href="https://open.er-api.com/v6/latest/ZMW"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-mono text-primary/70 hover:text-primary hover:underline transition-colors"
-              >
-                1 ZMW = ${rate.toFixed(6)} USD · open.er-api.com
-              </a>
-            )}
-          </div>
-        </div>
+          }
+        />
 
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-xs font-semibold">

@@ -272,7 +272,7 @@ export default function ProductsPage() {
                   onClick={toggleCurrency}
                   disabled={rateFetching}
                   title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
                 >
                   {rateFetching ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
