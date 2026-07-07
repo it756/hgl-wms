@@ -56,6 +56,17 @@ Examples:
 - `dev` -> `staging` fails.
 - `staging` -> `main` passes.
 
+### AI PR Review
+
+CodeRabbit is the AI PR reviewer for PRs into `dev`, `QA`, `staging`, and `main`.
+Its behavior is configured in `.coderabbit.yaml`. GitHub Copilot is not part of
+the required review or merge workflow.
+
+The pull request template requires authors to provide spec/task context, test
+evidence, and risk flags for security, migrations, dependencies, and operational
+flows. CODEOWNERS requests review from `@it756`, `@b0yw0nder3100`, `@jdmghk`,
+and `@batsy3` for repository changes.
+
 ### QA And Production Gates
 
 `.github/workflows/environment-gates.yml` runs on pushes to `QA` and `main`.
