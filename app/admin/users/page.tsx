@@ -376,10 +376,7 @@ export default function UsersPage() {
               </div>
             )}
 
-            <form
-              onSubmit={handleRequestUser}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-            >
+            <form onSubmit={handleRequestUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                   Full Name

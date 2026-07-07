@@ -52,20 +52,32 @@ describe("core-task-06-notifications", () => {
   it("creates a transfer-submitted notification for the Finance queue", async () => {
     mockGetUser.mockResolvedValue(BU_MANAGER);
 
-    const profileListChain = makeChain({ data: [], error: null });
-    mockRpc.mockResolvedValue({
+    const profileChain = makeChain({ data: { sbu_id: "sbu-001" }, error: null });
+    const unitChain = makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
+    const productsChain = makeChain({
+      data: [{ id: "prod-001", name: "Product One", stock_quantity: 10, unit_cost: 600 }],
+      error: null,
+    });
+    const transferChain = makeChain({
       data: {
         id: "tr-001",
         reference_number: "TRF-2026-10001",
-        status: "PENDING_APPROVAL",
-        requires_finance_approval: true,
       },
       error: null,
     });
+    const lineItemsChain = makeChain({ data: null, error: null });
+    const settingsChain = makeChain({ data: { value: "1000" }, error: null });
+    const sbuChain = makeChain({ data: null, error: null });
     const notificationChain = makeChain({ data: { id: "n-001" }, error: null });
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === "profiles") return profileListChain;
+      if (table === "profiles") return profileChain;
+      if (table === "sbu_units") return unitChain;
+      if (table === "products") return productsChain;
+      if (table === "transfer_requests") return transferChain;
+      if (table === "transfer_line_items") return lineItemsChain;
+      if (table === "app_settings") return settingsChain;
+      if (table === "sbus") return sbuChain;
       if (table === "notifications") return notificationChain;
       return makeChain({ data: null, error: null });
     });

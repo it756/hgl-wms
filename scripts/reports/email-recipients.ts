@@ -101,7 +101,9 @@ async function run() {
     }
   }
 
-  console.log("\nSummary of recipients by role (only profiles that should receive emails are counted):");
+  console.log(
+    "\nSummary of recipients by role (only profiles that should receive emails are counted):",
+  );
   for (const role of Object.keys(totals).sort()) {
     const t = totals[role];
     console.log(` - ${role}: ${t.total} should receive, ${t.missingEmail} missing email`);
