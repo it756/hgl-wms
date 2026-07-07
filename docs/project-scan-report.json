@@ -1,0 +1,73 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-07-06T12:50:35.000Z",
+    "last_updated": "2026-07-06T13:45:00.000Z",
+    "completed": "2026-07-06T13:45:00.000Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "C:/Users/marti/OneDrive/Desktop/hgl/hgl-wms",
+  "project_knowledge": "C:/Users/marti/OneDrive/Desktop/hgl/hgl-wms/docs",
+  "completed_steps": [
+    {
+      "step": "step_1",
+      "status": "completed",
+      "summary": "Classified as monolith, project_type_id=web (Next.js App Router)"
+    },
+    {
+      "step": "step_2",
+      "status": "completed",
+      "summary": "Found 7 existing docs (README + 5 docs/*.md + openapi.json), no ARCHITECTURE/CONTRIBUTING/DEPLOYMENT.md"
+    },
+    {
+      "step": "step_3",
+      "status": "completed",
+      "summary": "Tech stack: Next.js 16 / React 19 / Supabase / Tailwind v4 / Vitest+Playwright"
+    },
+    {
+      "step": "step_4",
+      "status": "completed",
+      "summary": "API, data model, UI, and services/tests/CI surveyed via 4 parallel deep-scan passes"
+    },
+    { "step": "step_5", "status": "completed", "summary": "Source tree documented" },
+    {
+      "step": "step_6",
+      "status": "completed",
+      "summary": "Dev/deployment guides written; no committed Railway/Docker config found"
+    },
+    {
+      "step": "step_8",
+      "status": "completed",
+      "summary": "architecture.md written (single-part project)"
+    },
+    {
+      "step": "step_9",
+      "status": "completed",
+      "summary": "project-overview, component-inventory, api-contracts, data-models written"
+    },
+    { "step": "step_10", "status": "completed", "summary": "Master index.md generated" },
+    { "step": "step_12", "status": "completed", "summary": "Workflow complete" }
+  ],
+  "current_step": "completed",
+  "findings": {
+    "repository_type": "monolith",
+    "project_type_id": "web",
+    "primary_language": "TypeScript",
+    "api_route_count": 61,
+    "migration_count": 29
+  },
+  "outputs_generated": [
+    "project-scan-report.json",
+    "project-overview.md",
+    "architecture.md",
+    "source-tree-analysis.md",
+    "component-inventory.md",
+    "development-guide.md",
+    "deployment-guide.md",
+    "api-contracts.md",
+    "data-models.md",
+    "index.md"
+  ],
+  "resume_instructions": "Complete. Re-run bmad-document-project and select 'Re-scan entire project' to refresh after significant changes."
+}
