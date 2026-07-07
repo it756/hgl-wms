@@ -52,6 +52,24 @@ export async function POST(req: Request) {
     const grnId = result.grn_id;
     const newStatus = result.status;
     const hasVariance = result.has_variance;
+    const proposalId = result.proposal_id;
+
+    if (hasVariance && proposalId) {
+      const proposalMessage = await buildGrnNotificationMessage({
+        grnId,
+        headline: "Variance proposal auto-raised from receipt — pending Finance review",
+        actorId: user.id,
+        actorLabel: "Received by",
+        notes: condition_notes,
+      });
+      await createNotification({
+        related_entity_id: proposalId,
+        type: "variance_proposal_submitted",
+        message: proposalMessage,
+        user_role: "FINANCE_MANAGER",
+        dispatchChannels: true,
+      });
+    }
 
     // notify warehouse manager on variance
     if (hasVariance) {
