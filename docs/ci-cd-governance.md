@@ -89,11 +89,12 @@ the `QA` branch only.
 
 ### Emergency Hotfixes
 
-Normal production promotion is `staging` -> `main`. Emergency fixes can use a
-`hotfix/*` branch directly into `main`, but they still require a pull request,
-required status checks, and production review. After a hotfix lands in `main`,
-back-merge or cherry-pick the fix into lower branches so `dev`, `QA`, and
-`staging` do not drift from production.
+Normal promotion remains `dev` -> `QA` -> `staging` -> `main`. Emergency or
+conflict-resolution fixes can use a `hotfix/*` branch directly into `QA`,
+`staging`, or `main`, but they still require a pull request, required status
+checks, and the relevant environment/production review. After a hotfix lands in
+any protected branch, back-merge or cherry-pick the fix into the other long-lived
+branches so `dev`, `QA`, `staging`, and `main` do not drift.
 
 ## Required Secrets
 

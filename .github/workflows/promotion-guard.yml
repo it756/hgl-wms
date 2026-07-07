@@ -34,14 +34,14 @@ jobs:
               echo "PRs from any source branch can target dev."
               ;;
             QA)
-              if [ "${HEAD_BRANCH}" != "dev" ]; then
-                echo "Only dev can be merged into QA."
+              if [ "${HEAD_BRANCH}" != "dev" ] && [[ ! "${HEAD_BRANCH}" =~ ^hotfix/ ]]; then
+                echo "Only dev or hotfix/* branches can be merged into QA."
                 exit 1
               fi
               ;;
             staging)
-              if [ "${HEAD_BRANCH}" != "QA" ]; then
-                echo "Only QA can be merged into staging."
+              if [ "${HEAD_BRANCH}" != "QA" ] && [[ ! "${HEAD_BRANCH}" =~ ^hotfix/ ]]; then
+                echo "Only QA or hotfix/* branches can be merged into staging."
                 exit 1
               fi
               ;;
