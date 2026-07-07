@@ -55,9 +55,6 @@ CREATE POLICY "BU Managers can create staff requests"
     )
     AND created_by = auth.uid()
   );
-          WHERE p.id = auth.uid() AND p.role = 'BU_MANAGER'
-        )
-      );
   END IF;
 END $$;
 
