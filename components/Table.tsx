@@ -1,9 +1,12 @@
+"use client";
+
 import type {
   HTMLAttributes,
   ReactNode,
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from "react";
+import { useHScrollOverflow } from "./HScrollArea";
 
 /**
  * Shared table primitives. Change header/row/cell styling here and it
@@ -25,8 +28,10 @@ interface ThProps extends ThHTMLAttributes<HTMLTableCellElement> {
 }
 
 export function Th({ align = "left", pinned = false, className = "", children, ...rest }: ThProps) {
+  const hasOverflow = useHScrollOverflow();
+  const isPinned = pinned && hasOverflow;
   const alignClass = align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
-  const pinnedClass = pinned ? "sticky left-0 z-30" : "sticky z-20";
+  const pinnedClass = isPinned ? "sticky left-0 z-30" : "sticky z-20";
   return (
     <th
       className={`px-6 py-3.5 top-0 bg-slate-50 text-xs font-semibold text-slate-400 capitalize ${alignClass} ${pinnedClass} ${className}`}
@@ -52,8 +57,10 @@ interface TdProps extends TdHTMLAttributes<HTMLTableCellElement> {
 }
 
 export function Td({ align = "left", pinned = false, className = "", children, ...rest }: TdProps) {
+  const hasOverflow = useHScrollOverflow();
+  const isPinned = pinned && hasOverflow;
   const alignClass = align === "right" ? "text-right" : align === "center" ? "text-center" : "";
-  const pinnedClass = pinned
+  const pinnedClass = isPinned
     ? "sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]"
     : "";
   return (

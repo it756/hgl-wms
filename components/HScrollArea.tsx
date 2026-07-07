@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 interface HScrollAreaProps {
   children: ReactNode;
@@ -10,6 +10,13 @@ interface HScrollAreaProps {
 }
 
 const DEFAULT_MAX_HEIGHT = "max-h-[65vh]";
+
+const HScrollOverflowContext = createContext(false);
+
+/** Whether the nearest enclosing HScrollArea currently overflows horizontally. */
+export function useHScrollOverflow() {
+  return useContext(HScrollOverflowContext);
+}
 
 /**
  * Wraps a table that may overflow both horizontally and vertically.
@@ -117,7 +124,9 @@ export default function HScrollArea({
         onScroll={handleContentScroll}
         className={`no-scrollbar overflow-auto ${maxHeightClassName} ${className}`}
       >
-        {children}
+        <HScrollOverflowContext.Provider value={hasOverflow}>
+          {children}
+        </HScrollOverflowContext.Provider>
       </div>
 
       {hasOverflow && (
