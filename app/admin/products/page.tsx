@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import DamageWriteOffModal from "@/components/DamageWriteOffModal";
 import IconButton from "@/components/IconButton";
@@ -259,7 +258,7 @@ export default function ProductsPage() {
   const { currency, rate, fetching: rateFetching, rateError, toggleCurrency, fmt } = useCurrency();
 
   return (
-    <DashboardLayout>
+    <>
       <div className="flex flex-col gap-6 w-full font-sans">
         {/* Header block */}
         <PageHeader
@@ -562,24 +561,33 @@ export default function ProductsPage() {
             <HScrollArea className="text-[#1E293B]">
               <table className="min-w-full divide-y divide-slate-100 text-xs">
                 <TableHead>
-                    <Th pinned className="w-[16%]">SKU</Th>
-                    <Th className="w-[24%]">Product Specification Name</Th>
-                    <Th className="w-[8%]">Location</Th>
-                    <Th className="w-[8%]">UOM</Th>
-                    <Th className="w-[8%]">Stock Qty</Th>
-                    <Th className="w-[8%]">Low Safe Limit</Th>
-                    <Th className="w-[8%]">Unit Cost</Th>
-                    <Th className="w-[10%]">State</Th>
-                    <Th align="right" className="w-[14%]">Operations</Th>
+                  <Th pinned className="w-[16%]">
+                    SKU
+                  </Th>
+                  <Th className="w-[24%]">Product Specification Name</Th>
+                  <Th className="w-[8%]">Location</Th>
+                  <Th className="w-[8%]">UOM</Th>
+                  <Th className="w-[8%]">Stock Qty</Th>
+                  <Th className="w-[8%]">Low Safe Limit</Th>
+                  <Th className="w-[8%]">Unit Cost</Th>
+                  <Th className="w-[10%]">State</Th>
+                  <Th align="right" className="w-[14%]">
+                    Operations
+                  </Th>
                 </TableHead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {products.map((p) => {
                     const isLow = lowStock(p);
                     return (
                       <Tr key={p.id}>
-                        <Td pinned className="font-mono text-slate-705 font-bold w-24">{p.sku}</Td>
+                        <Td pinned className="font-mono text-slate-705 font-bold w-24">
+                          {p.sku}
+                        </Td>
                         <Td className="px-6 py-3.5 max-w-60">
-                          <span className="font-semibold text-slate-800 text-sm block truncate" title={p.name}>
+                          <span
+                            className="font-semibold text-slate-800 text-sm block truncate"
+                            title={p.name}
+                          >
                             {p.name}
                           </span>
                           {isLow && (
@@ -899,6 +907,6 @@ export default function ProductsPage() {
           </form>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }

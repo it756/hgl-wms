@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
@@ -268,7 +267,7 @@ export default function UsersPage() {
   const endIndex = Math.min(filtered.length, page * pageSize);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="flex flex-col gap-6 w-full font-sans">
         {/* Header Block */}
         <PageHeader
@@ -538,13 +537,17 @@ export default function UsersPage() {
               <HScrollArea className="text-[#1E293B]">
                 <table className="min-w-full divide-y divide-slate-100 text-xs">
                   <TableHead>
-                      <Th pinned className="w-[28%]">Team Member Info</Th>
-                      <Th className="w-[20%]">Email Address</Th>
-                      <Th className="w-[16%]">Operational Role</Th>
-                      <Th className="w-[10%]">SBU Node</Th>
-                      <Th className="w-[10%]">Licence</Th>
-                      <Th className="w-[8%]">State</Th>
-                      <Th align="right" className="w-[8%]">Operations</Th>
+                    <Th pinned className="w-[28%]">
+                      Team Member Info
+                    </Th>
+                    <Th className="w-[20%]">Email Address</Th>
+                    <Th className="w-[16%]">Operational Role</Th>
+                    <Th className="w-[10%]">SBU Node</Th>
+                    <Th className="w-[10%]">Licence</Th>
+                    <Th className="w-[8%]">State</Th>
+                    <Th align="right" className="w-[8%]">
+                      Operations
+                    </Th>
                   </TableHead>
                   <tbody className="divide-y divide-slate-100">
                     {paginated.map((u) => (
@@ -609,7 +612,7 @@ export default function UsersPage() {
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${u.licensed ? "bg-emerald-600" : "bg-amber-500"}`}
                             ></span>
-                            {u.licensed ? u.license_type ?? "Licensed" : "Unlicensed"}
+                            {u.licensed ? (u.license_type ?? "Licensed") : "Unlicensed"}
                           </span>
                         </td>
                         <td className="px-6 py-3.5">
@@ -877,6 +880,6 @@ export default function UsersPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }

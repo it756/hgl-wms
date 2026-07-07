@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import HScrollArea from "@/components/HScrollArea";
 import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
@@ -193,7 +192,7 @@ export default function DamageLedgerPage() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <DashboardLayout>
+    <>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
@@ -272,8 +271,8 @@ export default function DamageLedgerPage() {
       ) : (
         <div className="bg-white border border-slate-200/90 rounded-xl shadow-sm overflow-hidden">
           <HScrollArea>
-          <table className="min-w-full divide-y divide-slate-100 text-xs">
-            <TableHead>
+            <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <TableHead>
                 <Th pinned>Product</Th>
                 <Th>Qty</Th>
                 <Th align="right">Est. Value</Th>
@@ -283,105 +282,111 @@ export default function DamageLedgerPage() {
                 <Th>Date</Th>
                 <Th>Recall Status</Th>
                 {canMutate && <Th align="center">Actions</Th>}
-            </TableHead>
-            <tbody className="divide-y divide-slate-100">
-              {entries.map((entry) => {
-                const recall = entry.damage_recalls;
-                const statusCfg = recall ? RECALL_STATUS_CONFIG[recall.status] : null;
+              </TableHead>
+              <tbody className="divide-y divide-slate-100">
+                {entries.map((entry) => {
+                  const recall = entry.damage_recalls;
+                  const statusCfg = recall ? RECALL_STATUS_CONFIG[recall.status] : null;
 
-                return (
-                  <Tr key={entry.id}>
-                    <Td pinned className="max-w-55">
-                      <div className="font-bold text-slate-800 truncate" title={entry.products?.name ?? "—"}>
-                        {entry.products?.name ?? "—"}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {entry.products?.sku ?? ""}
-                        {entry.products?.unit_of_measure
-                          ? ` · ${entry.products.unit_of_measure}`
-                          : ""}
-                      </div>
-                    </Td>
-                    <td className="px-6 py-3.5 text-slate-600 tabular-nums">{entry.quantity}</td>
-                    <td className="px-6 py-3.5 text-right font-bold tabular-nums text-slate-700">
-                      {fmt(entry.estimated_value)}
-                    </td>
-                    <td className="px-6 py-3.5">
-                      <span className="font-mono text-[11px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                        {entry.transfer_reference ?? "—"}
-                      </span>
-                    </td>
-                    <td
-                      className="px-6 py-3.5 text-slate-600 max-w-45 truncate"
-                      title={entry.writeoff_reason}
-                    >
-                      {entry.writeoff_reason}
-                    </td>
-                    <td className="px-6 py-3.5 text-slate-600">{entry.written_off_by_name ?? "—"}</td>
-                    <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap">
-                      {new Date(entry.written_off_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-3.5">
-                      {recall && statusCfg ? (
-                        <div>
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${statusCfg.color}`}
-                          >
-                            {statusCfg.icon}
-                            {statusCfg.label}
-                          </span>
-                          {recall.status === "RECEIVED" && recall.received_at && (
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              {new Date(recall.received_at).toLocaleDateString()}
-                              {recall.received_by_name ? ` · ${recall.received_by_name}` : ""}
-                            </div>
-                          )}
-                          {recall.notes && (
-                            <div
-                              className="text-[10px] text-slate-400 mt-0.5 italic truncate max-w-40"
-                              title={recall.notes}
-                            >
-                              {recall.notes}
-                            </div>
-                          )}
+                  return (
+                    <Tr key={entry.id}>
+                      <Td pinned className="max-w-55">
+                        <div
+                          className="font-bold text-slate-800 truncate"
+                          title={entry.products?.name ?? "—"}
+                        >
+                          {entry.products?.name ?? "—"}
                         </div>
-                      ) : (
-                        <span className="text-[10px] text-slate-400 italic">No recall</span>
-                      )}
-                    </td>
-                    {canMutate && (
-                      <td className="px-6 py-3.5 text-center">
-                        {!recall ? (
-                          <button
-                            onClick={() => {
-                              setRecallTarget(entry);
-                              setRecallNotes("");
-                              setRecallError(null);
-                            }}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-                          >
-                            Initiate Recall
-                          </button>
-                        ) : recall.status !== "RECEIVED" ? (
-                          <button
-                            onClick={() =>
-                              setAdvanceTarget({
-                                entry,
-                                nextStatus: recall.status === "PENDING" ? "IN_TRANSIT" : "RECEIVED",
-                              })
-                            }
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                          >
-                            {ADVANCE_LABEL[recall.status]}
-                          </button>
-                        ) : null}
+                        <div className="text-[10px] text-slate-400">
+                          {entry.products?.sku ?? ""}
+                          {entry.products?.unit_of_measure
+                            ? ` · ${entry.products.unit_of_measure}`
+                            : ""}
+                        </div>
+                      </Td>
+                      <td className="px-6 py-3.5 text-slate-600 tabular-nums">{entry.quantity}</td>
+                      <td className="px-6 py-3.5 text-right font-bold tabular-nums text-slate-700">
+                        {fmt(entry.estimated_value)}
                       </td>
-                    )}
-                  </Tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="px-6 py-3.5">
+                        <span className="font-mono text-[11px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                          {entry.transfer_reference ?? "—"}
+                        </span>
+                      </td>
+                      <td
+                        className="px-6 py-3.5 text-slate-600 max-w-45 truncate"
+                        title={entry.writeoff_reason}
+                      >
+                        {entry.writeoff_reason}
+                      </td>
+                      <td className="px-6 py-3.5 text-slate-600">
+                        {entry.written_off_by_name ?? "—"}
+                      </td>
+                      <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap">
+                        {new Date(entry.written_off_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-3.5">
+                        {recall && statusCfg ? (
+                          <div>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${statusCfg.color}`}
+                            >
+                              {statusCfg.icon}
+                              {statusCfg.label}
+                            </span>
+                            {recall.status === "RECEIVED" && recall.received_at && (
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                {new Date(recall.received_at).toLocaleDateString()}
+                                {recall.received_by_name ? ` · ${recall.received_by_name}` : ""}
+                              </div>
+                            )}
+                            {recall.notes && (
+                              <div
+                                className="text-[10px] text-slate-400 mt-0.5 italic truncate max-w-40"
+                                title={recall.notes}
+                              >
+                                {recall.notes}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic">No recall</span>
+                        )}
+                      </td>
+                      {canMutate && (
+                        <td className="px-6 py-3.5 text-center">
+                          {!recall ? (
+                            <button
+                              onClick={() => {
+                                setRecallTarget(entry);
+                                setRecallNotes("");
+                                setRecallError(null);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                            >
+                              Initiate Recall
+                            </button>
+                          ) : recall.status !== "RECEIVED" ? (
+                            <button
+                              onClick={() =>
+                                setAdvanceTarget({
+                                  entry,
+                                  nextStatus:
+                                    recall.status === "PENDING" ? "IN_TRANSIT" : "RECEIVED",
+                                })
+                              }
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                            >
+                              {ADVANCE_LABEL[recall.status]}
+                            </button>
+                          ) : null}
+                        </td>
+                      )}
+                    </Tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </HScrollArea>
         </div>
       )}
@@ -522,7 +527,7 @@ export default function DamageLedgerPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }
 

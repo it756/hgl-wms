@@ -358,8 +358,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary"></div>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-5">
+        <div className="flex items-center gap-2.5">
+          <Warehouse className="text-teal-600 w-8 h-8" />
+          <span className="font-extrabold text-2xl tracking-tight text-[#1E293B] uppercase">
+            Harvest WMS
+          </span>
+        </div>
+        <div className="relative h-9 w-9">
+          <div className="absolute inset-0 rounded-full border-2 border-slate-200"></div>
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin"></div>
+        </div>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          Loading your workspace…
+        </p>
       </div>
     );
   }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import HScrollArea from "@/components/HScrollArea";
 import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { TrendingDown, Package, Building, Loader2, AlertTriangle, Search, X } from "lucide-react";
@@ -95,221 +94,222 @@ export default function LossAccountPage() {
   }, [losses, search]);
 
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-1">
-            <TrendingDown className="w-6 h-6 text-rose-500" />
-            <h1 className="text-2xl font-bold text-slate-800">Loss Account</h1>
-          </div>
-          <p className="text-slate-500 text-sm ml-9">
-            Stock shortages written off as damage following Finance Manager approval of a variance
-            proposal.
-          </p>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <TrendingDown className="w-6 h-6 text-rose-500" />
+          <h1 className="text-2xl font-bold text-slate-800">Loss Account</h1>
         </div>
+        <p className="text-slate-500 text-sm ml-9">
+          Stock shortages written off as damage following Finance Manager approval of a variance
+          proposal.
+        </p>
+      </div>
 
-        {/* KPI Cards */}
-        {!loading && !error && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                Total Loss Entries
-              </p>
-              <p className="text-3xl font-bold text-slate-800">{losses.length}</p>
-              <p className="text-xs text-slate-400 mt-1">across all SBUs and transfers</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                Total Units Lost
-              </p>
-              <p className="text-3xl font-bold text-rose-600">{totalQtyLost.toLocaleString()}</p>
-              <p className="text-xs text-slate-400 mt-1">sum of all quantity_lost values</p>
-            </div>
-            <div className="border border-rose-100 rounded-xl p-5 shadow-sm bg-rose-50">
-              <p className="text-xs font-semibold text-rose-400 uppercase tracking-wide mb-1">
-                Total Value Lost
-              </p>
-              <p className="text-3xl font-bold text-rose-700">${fmt(totalValueLost)}</p>
-              <p className="text-xs text-rose-400 mt-1">
-                {totalWithValue} of {losses.length} entries have costed value
-              </p>
-            </div>
+      {/* KPI Cards */}
+      {!loading && !error && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+              Total Loss Entries
+            </p>
+            <p className="text-3xl font-bold text-slate-800">{losses.length}</p>
+            <p className="text-xs text-slate-400 mt-1">across all SBUs and transfers</p>
           </div>
-        )}
-
-        {/* Search */}
-        {!loading && !error && losses.length > 0 && (
-          <div className="mb-4 relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by product, SKU, SBU, reference…"
-              className="w-full pl-9 pr-9 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+              Total Units Lost
+            </p>
+            <p className="text-3xl font-bold text-rose-600">{totalQtyLost.toLocaleString()}</p>
+            <p className="text-xs text-slate-400 mt-1">sum of all quantity_lost values</p>
           </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="flex items-center justify-center py-24 text-slate-400">
-            <Loader2 className="w-6 h-6 animate-spin mr-3" />
-            Loading loss account…
-          </div>
-        )}
-
-        {/* Error */}
-        {!loading && error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            {error}
-          </div>
-        )}
-
-        {/* Empty */}
-        {!loading && !error && losses.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-            <Package className="w-12 h-12 mb-4 text-slate-300" />
-            <p className="font-semibold text-slate-600">No losses recorded</p>
-            <p className="text-sm mt-1">
-              Loss entries appear here when a Finance Manager approves a variance proposal as a
-              damage write-off.
+          <div className="border border-rose-100 rounded-xl p-5 shadow-sm bg-rose-50">
+            <p className="text-xs font-semibold text-rose-400 uppercase tracking-wide mb-1">
+              Total Value Lost
+            </p>
+            <p className="text-3xl font-bold text-rose-700">${fmt(totalValueLost)}</p>
+            <p className="text-xs text-rose-400 mt-1">
+              {totalWithValue} of {losses.length} entries have costed value
             </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Table */}
-        {!loading && !error && filtered.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <HScrollArea>
-              <table className="min-w-full divide-y divide-slate-100 text-xs">
-                <TableHead>
-                    <Th pinned>Transfer Ref</Th>
-                    <Th>Product</Th>
-                    <Th>SBU</Th>
-                    <Th>Transfer</Th>
-                    <Th align="right">Qty Lost</Th>
-                    <Th align="right">Unit Cost</Th>
-                    <Th align="right">Value Lost</Th>
-                    <Th>Date</Th>
-                    <Th>Notes</Th>
-                </TableHead>
-                <tbody className="divide-y divide-slate-100">
-                  {filtered.map((loss) => (
-                    <Tr key={loss.id}>
-                      {/* Loss reference */}
-                      <Td pinned className="font-mono text-rose-600 font-semibold whitespace-nowrap">
-                        {loss.reference_number}
-                      </Td>
+      {/* Search */}
+      {!loading && !error && losses.length > 0 && (
+        <div className="mb-4 relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by product, SKU, SBU, reference…"
+            className="w-full pl-9 pr-9 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
 
-                      {/* Product */}
-                      <td className="px-6 py-3.5 max-w-50">
-                        <p className="font-bold text-slate-800 leading-tight truncate" title={loss.products?.name ?? "Unknown product"}>
-                          {loss.products?.name ?? "Unknown product"}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                          {loss.products?.sku} · {loss.products?.unit_of_measure}
-                        </p>
-                      </td>
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-24 text-slate-400">
+          <Loader2 className="w-6 h-6 animate-spin mr-3" />
+          Loading loss account…
+        </div>
+      )}
 
-                      {/* SBU */}
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="text-slate-700">{loss.sbus?.name ?? loss.sbu_id}</span>
-                        </div>
-                      </td>
+      {/* Error */}
+      {!loading && error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
 
-                      {/* Transfer reference */}
-                      <td className="px-6 py-3.5 font-mono text-slate-500 whitespace-nowrap">
-                        {loss.transfer_requests?.reference_number ?? "—"}
-                      </td>
+      {/* Empty */}
+      {!loading && !error && losses.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+          <Package className="w-12 h-12 mb-4 text-slate-300" />
+          <p className="font-semibold text-slate-600">No losses recorded</p>
+          <p className="text-sm mt-1">
+            Loss entries appear here when a Finance Manager approves a variance proposal as a damage
+            write-off.
+          </p>
+        </div>
+      )}
 
-                      {/* Qty lost */}
-                      <td className="px-6 py-3.5 text-right font-bold text-rose-600">
-                        {loss.quantity_lost}
-                      </td>
+      {/* Table */}
+      {!loading && !error && filtered.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <HScrollArea>
+            <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <TableHead>
+                <Th pinned>Transfer Ref</Th>
+                <Th>Product</Th>
+                <Th>SBU</Th>
+                <Th>Transfer</Th>
+                <Th align="right">Qty Lost</Th>
+                <Th align="right">Unit Cost</Th>
+                <Th align="right">Value Lost</Th>
+                <Th>Date</Th>
+                <Th>Notes</Th>
+              </TableHead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((loss) => (
+                  <Tr key={loss.id}>
+                    {/* Loss reference */}
+                    <Td pinned className="font-mono text-rose-600 font-semibold whitespace-nowrap">
+                      {loss.reference_number}
+                    </Td>
 
-                      {/* Unit cost */}
-                      <td className="px-6 py-3.5 text-right text-slate-600">
-                        {loss.unit_cost_at_loss != null ? (
-                          `$${fmt(loss.unit_cost_at_loss, 4)}`
-                        ) : (
-                          <span className="text-slate-400">no cost</span>
-                        )}
-                      </td>
-
-                      {/* Value lost */}
-                      <td className="px-6 py-3.5 text-right">
-                        {loss.value_lost != null ? (
-                          <span className="font-bold text-rose-700">${fmt(loss.value_lost)}</span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      {/* Date */}
-                      <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap">
-                        {fmtDate(loss.decided_at)}
-                      </td>
-
-                      {/* Notes */}
-                      <td className="px-6 py-3.5 text-slate-500 max-w-45">
-                        {loss.reason_notes ? (
-                          <span className="block truncate" title={loss.reason_notes}>
-                            {loss.reason_notes}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
-                    </Tr>
-                  ))}
-                </tbody>
-
-                {/* Footer totals */}
-                {filtered.length > 1 && (
-                  <tfoot>
-                    <tr className="bg-slate-50 border-t border-slate-200 font-semibold text-slate-700">
-                      <td
-                        colSpan={4}
-                        className="px-6 py-3.5 text-[10px] uppercase tracking-widest text-slate-500"
+                    {/* Product */}
+                    <td className="px-6 py-3.5 max-w-50">
+                      <p
+                        className="font-bold text-slate-800 leading-tight truncate"
+                        title={loss.products?.name ?? "Unknown product"}
                       >
-                        {filtered.length} entries
-                      </td>
-                      <td className="px-6 py-3.5 text-right text-rose-600">
-                        {filtered.reduce((s, l) => s + l.quantity_lost, 0).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-3.5" />
-                      <td className="px-6 py-3.5 text-right text-rose-700">
-                        ${fmt(filtered.reduce((s, l) => s + (l.value_lost ?? 0), 0))}
-                      </td>
-                      <td colSpan={2} />
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </HScrollArea>
-          </div>
-        )}
+                        {loss.products?.name ?? "Unknown product"}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                        {loss.products?.sku} · {loss.products?.unit_of_measure}
+                      </p>
+                    </td>
 
-        {/* No results from search */}
-        {!loading && !error && losses.length > 0 && filtered.length === 0 && (
-          <div className="text-center py-12 text-slate-400 text-sm">
-            No losses match &quot;{search}&quot;
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
+                    {/* SBU */}
+                    <td className="px-6 py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="text-slate-700">{loss.sbus?.name ?? loss.sbu_id}</span>
+                      </div>
+                    </td>
+
+                    {/* Transfer reference */}
+                    <td className="px-6 py-3.5 font-mono text-slate-500 whitespace-nowrap">
+                      {loss.transfer_requests?.reference_number ?? "—"}
+                    </td>
+
+                    {/* Qty lost */}
+                    <td className="px-6 py-3.5 text-right font-bold text-rose-600">
+                      {loss.quantity_lost}
+                    </td>
+
+                    {/* Unit cost */}
+                    <td className="px-6 py-3.5 text-right text-slate-600">
+                      {loss.unit_cost_at_loss != null ? (
+                        `$${fmt(loss.unit_cost_at_loss, 4)}`
+                      ) : (
+                        <span className="text-slate-400">no cost</span>
+                      )}
+                    </td>
+
+                    {/* Value lost */}
+                    <td className="px-6 py-3.5 text-right">
+                      {loss.value_lost != null ? (
+                        <span className="font-bold text-rose-700">${fmt(loss.value_lost)}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+
+                    {/* Date */}
+                    <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap">
+                      {fmtDate(loss.decided_at)}
+                    </td>
+
+                    {/* Notes */}
+                    <td className="px-6 py-3.5 text-slate-500 max-w-45">
+                      {loss.reason_notes ? (
+                        <span className="block truncate" title={loss.reason_notes}>
+                          {loss.reason_notes}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                  </Tr>
+                ))}
+              </tbody>
+
+              {/* Footer totals */}
+              {filtered.length > 1 && (
+                <tfoot>
+                  <tr className="bg-slate-50 border-t border-slate-200 font-semibold text-slate-700">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-3.5 text-[10px] uppercase tracking-widest text-slate-500"
+                    >
+                      {filtered.length} entries
+                    </td>
+                    <td className="px-6 py-3.5 text-right text-rose-600">
+                      {filtered.reduce((s, l) => s + l.quantity_lost, 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3.5" />
+                    <td className="px-6 py-3.5 text-right text-rose-700">
+                      ${fmt(filtered.reduce((s, l) => s + (l.value_lost ?? 0), 0))}
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </HScrollArea>
+        </div>
+      )}
+
+      {/* No results from search */}
+      {!loading && !error && losses.length > 0 && filtered.length === 0 && (
+        <div className="text-center py-12 text-slate-400 text-sm">
+          No losses match &quot;{search}&quot;
+        </div>
+      )}
+    </div>
   );
 }

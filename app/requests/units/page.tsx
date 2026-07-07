@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import {
   Building2,
@@ -269,552 +268,550 @@ export default function BUUnitsPage() {
   );
 
   return (
-    <DashboardLayout>
-      <div className="flex flex-col gap-6 w-full font-sans">
-        {/* Header */}
-        <PageHeader
-          title="Units & Staff"
-          description="Manage your business unit's sub-units and assign staff members."
-        />
+    <div className="flex flex-col gap-6 w-full font-sans">
+      {/* Header */}
+      <PageHeader
+        title="Units & Staff"
+        description="Manage your business unit's sub-units and assign staff members."
+      />
 
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-slate-200">
-          <button
-            onClick={() => setTab("units")}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
-              tab === "units"
-                ? "border-[#005c55] text-[#005c55]"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            Units
-          </button>
-          <button
-            onClick={() => setTab("staff")}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
-              tab === "staff"
-                ? "border-[#005c55] text-[#005c55]"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Staff
-          </button>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-0 border-b border-slate-200">
+        <button
+          onClick={() => setTab("units")}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+            tab === "units"
+              ? "border-[#005c55] text-[#005c55]"
+              : "border-transparent text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          Units
+        </button>
+        <button
+          onClick={() => setTab("staff")}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+            tab === "staff"
+              ? "border-[#005c55] text-[#005c55]"
+              : "border-transparent text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Staff
+        </button>
+      </div>
 
-        {/* ── Units Tab ──────────────────────────────────────────────────── */}
-        {tab === "units" && (
-          <div className="flex flex-col gap-4">
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search units..."
-                  value={unitSearch}
-                  onChange={(e) => setUnitSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
-              <button
-                onClick={() => setShowUnitForm(!showUnitForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Unit
-              </button>
+      {/* ── Units Tab ──────────────────────────────────────────────────── */}
+      {tab === "units" && (
+        <div className="flex flex-col gap-4">
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search units..."
+                value={unitSearch}
+                onChange={(e) => setUnitSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+              />
             </div>
+            <button
+              onClick={() => setShowUnitForm(!showUnitForm)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Unit
+            </button>
+          </div>
 
-            {/* Create form */}
-            {showUnitForm && (
-              <form
-                onSubmit={handleCreateUnit}
-                className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4 shadow-sm"
-              >
-                <h3 className="text-sm font-bold text-[#1E293B]">New Unit</h3>
-                {unitFormError && (
-                  <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 text-xs">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    {unitFormError}
-                  </div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">Unit Name</label>
-                    <input
-                      required
-                      value={newUnitName}
-                      onChange={(e) => setNewUnitName(e.target.value)}
-                      placeholder="e.g. Sales Floor"
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">Code</label>
-                    <input
-                      required
-                      value={newUnitCode}
-                      onChange={(e) => setNewUnitCode(e.target.value.toUpperCase())}
-                      placeholder="e.g. SF"
-                      maxLength={10}
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55] font-mono"
-                    />
-                  </div>
+          {/* Create form */}
+          {showUnitForm && (
+            <form
+              onSubmit={handleCreateUnit}
+              className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4 shadow-sm"
+            >
+              <h3 className="text-sm font-bold text-[#1E293B]">New Unit</h3>
+              {unitFormError && (
+                <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 text-xs">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {unitFormError}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="submit"
-                    disabled={unitFormLoading}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-                  >
-                    {unitFormLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    Create Unit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUnitForm(false);
-                      setUnitFormError(null);
-                    }}
-                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600">Unit Name</label>
+                  <input
+                    required
+                    value={newUnitName}
+                    onChange={(e) => setNewUnitName(e.target.value)}
+                    placeholder="e.g. Sales Floor"
+                    className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
+                  />
                 </div>
-              </form>
-            )}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600">Code</label>
+                  <input
+                    required
+                    value={newUnitCode}
+                    onChange={(e) => setNewUnitCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. SF"
+                    maxLength={10}
+                    className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55] font-mono"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={unitFormLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {unitFormLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Create Unit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUnitForm(false);
+                    setUnitFormError(null);
+                  }}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
 
-            {/* Error */}
-            {unitsError && (
-              <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {unitsError}
-              </div>
-            )}
+          {/* Error */}
+          {unitsError && (
+            <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {unitsError}
+            </div>
+          )}
 
-            {/* List */}
-            {unitsLoading ? (
-              <div className="flex items-center gap-2 text-slate-500 text-sm py-8 justify-center">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Loading units...
-              </div>
-            ) : filteredUnits.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm">
-                {unitSearch
-                  ? "No units match your search."
-                  : "No units yet. Add your first unit above."}
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Code
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredUnits.map((unit) => (
-                      <tr key={unit.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-5 py-3.5">
-                          {editingUnit === unit.id ? (
-                            <input
-                              value={editUnitName}
-                              onChange={(e) => setEditUnitName(e.target.value)}
-                              className="px-2 py-1 text-sm border border-[#005c55] rounded-lg outline-none w-40"
-                              autoFocus
-                            />
-                          ) : (
-                            <span className="font-medium text-[#1E293B]">{unit.name}</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          {editingUnit === unit.id ? (
-                            <input
-                              value={editUnitCode}
-                              onChange={(e) => setEditUnitCode(e.target.value.toUpperCase())}
-                              className="px-2 py-1 text-sm border border-[#005c55] rounded-lg outline-none w-24 font-mono"
-                              maxLength={10}
-                            />
-                          ) : (
-                            <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
-                              {unit.code}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                              unit.is_active
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-slate-100 text-slate-500 border border-slate-200"
-                            }`}
-                          >
-                            <Activity className="w-3 h-3" />
-                            {unit.is_active ? "Active" : "Inactive"}
+          {/* List */}
+          {unitsLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 text-sm py-8 justify-center">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading units...
+            </div>
+          ) : filteredUnits.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">
+              {unitSearch
+                ? "No units match your search."
+                : "No units yet. Add your first unit above."}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Code
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredUnits.map((unit) => (
+                    <tr key={unit.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-5 py-3.5">
+                        {editingUnit === unit.id ? (
+                          <input
+                            value={editUnitName}
+                            onChange={(e) => setEditUnitName(e.target.value)}
+                            className="px-2 py-1 text-sm border border-[#005c55] rounded-lg outline-none w-40"
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="font-medium text-[#1E293B]">{unit.name}</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {editingUnit === unit.id ? (
+                          <input
+                            value={editUnitCode}
+                            onChange={(e) => setEditUnitCode(e.target.value.toUpperCase())}
+                            className="px-2 py-1 text-sm border border-[#005c55] rounded-lg outline-none w-24 font-mono"
+                            maxLength={10}
+                          />
+                        ) : (
+                          <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
+                            {unit.code}
                           </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          {editingUnit === unit.id ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleSaveUnitEdit(unit.id)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                title="Save"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingUnit(null)}
-                                className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-end gap-2">
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            unit.is_active
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}
+                        >
+                          <Activity className="w-3 h-3" />
+                          {unit.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        {editingUnit === unit.id ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleSaveUnitEdit(unit.id)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Save"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setEditingUnit(null)}
+                              className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingUnit(unit.id);
+                                setEditUnitName(unit.name);
+                                setEditUnitCode(unit.code);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleUnit(unit)}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                unit.is_active
+                                  ? "text-rose-400 hover:bg-rose-50"
+                                  : "text-emerald-500 hover:bg-emerald-50"
+                              }`}
+                              title={unit.is_active ? "Deactivate" : "Activate"}
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Staff Tab ──────────────────────────────────────────────────── */}
+      {tab === "staff" && (
+        <div className="flex flex-col gap-4">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="relative min-w-[200px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search staff..."
+                value={staffSearch}
+                onChange={(e) => setStaffSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+              />
+            </div>
+            <button
+              onClick={() => {
+                setShowStaffForm((v) => !v);
+                setStaffFormError(null);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              <UserPlus className="w-4 h-4" />
+              Add Staff
+            </button>
+          </div>
+
+          {/* Add Staff Form */}
+          {showStaffForm && (
+            <form
+              onSubmit={handleInviteStaff}
+              className="flex flex-col gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4"
+            >
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                New Staff Account
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600">Full Name</label>
+                  <input
+                    value={newStaffName}
+                    onChange={(e) => setNewStaffName(e.target.value)}
+                    placeholder="e.g. Jane Doe"
+                    className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600">
+                    Email <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    value={newStaffEmail}
+                    onChange={(e) => setNewStaffEmail(e.target.value)}
+                    placeholder="jane@example.com"
+                    className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      required
+                      type={showNewStaffPassword ? "text" : "password"}
+                      value={newStaffPassword}
+                      onChange={(e) => setNewStaffPassword(e.target.value)}
+                      placeholder="Min 8 chars, 1 number, 1 special"
+                      className="w-full pl-9 pr-10 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewStaffPassword((show) => !show)}
+                      aria-label={showNewStaffPassword ? "Hide password" : "Show password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                    >
+                      {showNewStaffPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600">Assign Unit</label>
+                  <select
+                    value={newStaffUnitId}
+                    onChange={(e) => setNewStaffUnitId(e.target.value)}
+                    className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55]"
+                  >
+                    <option value="">— Unassigned —</option>
+                    {units
+                      .filter((u) => u.is_active)
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.code})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+              {staffFormError && (
+                <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 text-sm">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {staffFormError}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={staffFormLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {staffFormLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                  Create Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStaffForm(false);
+                    setStaffFormError(null);
+                  }}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {staffError && (
+            <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {staffError}
+            </div>
+          )}
+
+          {staffLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 text-sm py-8 justify-center">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading staff...
+            </div>
+          ) : filteredStaff.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">
+              {staffSearch ? "No staff match your search." : "No staff found in your SBU."}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">
+                      Email
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Role
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Unit
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredStaff.map((person) => (
+                    <tr key={person.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-5 py-3.5">
+                        {editingStaffId === person.id ? (
+                          <input
+                            value={editStaffName}
+                            onChange={(e) => setEditStaffName(e.target.value)}
+                            className="px-2 py-1 text-sm border border-[#005c55] rounded-lg outline-none w-40"
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="font-medium text-[#1E293B]">
+                            {person.full_name ?? "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500 hidden sm:table-cell">
+                        {person.email}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs font-semibold px-2 py-1 rounded bg-slate-100 text-slate-600">
+                          {person.role === "BU_MANAGER" ? "BU Manager" : "Unit Staff"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {person.role === "BU_MANAGER" ? (
+                          <span className="text-xs text-slate-400 italic">—</span>
+                        ) : (
+                          <select
+                            value={person.unit_id ?? ""}
+                            onChange={(e) => handleAssignUnit(person.id, e.target.value || null)}
+                            className="px-2 py-1 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] max-w-[160px]"
+                          >
+                            <option value="">— Unassigned —</option>
+                            {units.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name} ({u.code})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            person.is_active
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}
+                        >
+                          <Activity className="w-3 h-3" />
+                          {person.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        {editingStaffId === person.id ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleSaveStaffName(person.id)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Save"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setEditingStaffId(null)}
+                              className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-2">
+                            {person.role !== "BU_MANAGER" && (
                               <button
                                 onClick={() => {
-                                  setEditingUnit(unit.id);
-                                  setEditUnitName(unit.name);
-                                  setEditUnitCode(unit.code);
+                                  setEditingStaffId(person.id);
+                                  setEditStaffName(person.full_name ?? "");
                                 }}
                                 className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Edit"
+                                title="Edit name"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
+                            )}
+                            {person.role !== "BU_MANAGER" && (
                               <button
-                                onClick={() => handleToggleUnit(unit)}
+                                onClick={() => handleToggleStaff(person.id, person.is_active)}
                                 className={`p-1.5 rounded-lg transition-colors ${
-                                  unit.is_active
+                                  person.is_active
                                     ? "text-rose-400 hover:bg-rose-50"
                                     : "text-emerald-500 hover:bg-emerald-50"
                                 }`}
-                                title={unit.is_active ? "Deactivate" : "Activate"}
+                                title={person.is_active ? "Deactivate" : "Activate"}
                               >
                                 <Power className="w-4 h-4" />
                               </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Staff Tab ──────────────────────────────────────────────────── */}
-        {tab === "staff" && (
-          <div className="flex flex-col gap-4">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="relative min-w-[200px] max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search staff..."
-                  value={staffSearch}
-                  onChange={(e) => setStaffSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  setShowStaffForm((v) => !v);
-                  setStaffFormError(null);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                <UserPlus className="w-4 h-4" />
-                Add Staff
-              </button>
-            </div>
-
-            {/* Add Staff Form */}
-            {showStaffForm && (
-              <form
-                onSubmit={handleInviteStaff}
-                className="flex flex-col gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4"
-              >
-                <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  New Staff Account
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">Full Name</label>
-                    <input
-                      value={newStaffName}
-                      onChange={(e) => setNewStaffName(e.target.value)}
-                      placeholder="e.g. Jane Doe"
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">
-                      Email <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      required
-                      type="email"
-                      value={newStaffEmail}
-                      onChange={(e) => setNewStaffEmail(e.target.value)}
-                      placeholder="jane@example.com"
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">
-                      Password <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                      <input
-                        required
-                        type={showNewStaffPassword ? "text" : "password"}
-                        value={newStaffPassword}
-                        onChange={(e) => setNewStaffPassword(e.target.value)}
-                        placeholder="Min 8 chars, 1 number, 1 special"
-                        className="w-full pl-9 pr-10 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[#005c55]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewStaffPassword((show) => !show)}
-                        aria-label={showNewStaffPassword ? "Hide password" : "Show password"}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
-                      >
-                        {showNewStaffPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
+                            )}
+                          </div>
                         )}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">Assign Unit</label>
-                    <select
-                      value={newStaffUnitId}
-                      onChange={(e) => setNewStaffUnitId(e.target.value)}
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55]"
-                    >
-                      <option value="">— Unassigned —</option>
-                      {units
-                        .filter((u) => u.is_active)
-                        .map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name} ({u.code})
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-                {staffFormError && (
-                  <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 text-sm">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    {staffFormError}
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="submit"
-                    disabled={staffFormLoading}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-                  >
-                    {staffFormLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <UserPlus className="w-4 h-4" />
-                    )}
-                    Create Account
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowStaffForm(false);
-                      setStaffFormError(null);
-                    }}
-                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {staffError && (
-              <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {staffError}
-              </div>
-            )}
-
-            {staffLoading ? (
-              <div className="flex items-center gap-2 text-slate-500 text-sm py-8 justify-center">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Loading staff...
-              </div>
-            ) : filteredStaff.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm">
-                {staffSearch ? "No staff match your search." : "No staff found in your SBU."}
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">
-                        Email
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Role
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Unit
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                        Actions
-                      </th>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredStaff.map((person) => (
-                      <tr key={person.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-5 py-3.5">
-                          {editingStaffId === person.id ? (
-                            <input
-                              value={editStaffName}
-                              onChange={(e) => setEditStaffName(e.target.value)}
-                              className="px-2 py-1 text-sm border border-[#005c55] rounded-lg outline-none w-40"
-                              autoFocus
-                            />
-                          ) : (
-                            <span className="font-medium text-[#1E293B]">
-                              {person.full_name ?? "—"}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-500 hidden sm:table-cell">
-                          {person.email}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-xs font-semibold px-2 py-1 rounded bg-slate-100 text-slate-600">
-                            {person.role === "BU_MANAGER" ? "BU Manager" : "Unit Staff"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          {person.role === "BU_MANAGER" ? (
-                            <span className="text-xs text-slate-400 italic">—</span>
-                          ) : (
-                            <select
-                              value={person.unit_id ?? ""}
-                              onChange={(e) => handleAssignUnit(person.id, e.target.value || null)}
-                              className="px-2 py-1 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] max-w-[160px]"
-                            >
-                              <option value="">— Unassigned —</option>
-                              {units.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.name} ({u.code})
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                              person.is_active
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-slate-100 text-slate-500 border border-slate-200"
-                            }`}
-                          >
-                            <Activity className="w-3 h-3" />
-                            {person.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          {editingStaffId === person.id ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleSaveStaffName(person.id)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                title="Save"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingStaffId(null)}
-                                className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-end gap-2">
-                              {person.role !== "BU_MANAGER" && (
-                                <button
-                                  onClick={() => {
-                                    setEditingStaffId(person.id);
-                                    setEditStaffName(person.full_name ?? "");
-                                  }}
-                                  className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-100 rounded-lg transition-colors"
-                                  title="Edit name"
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                              )}
-                              {person.role !== "BU_MANAGER" && (
-                                <button
-                                  onClick={() => handleToggleStaff(person.id, person.is_active)}
-                                  className={`p-1.5 rounded-lg transition-colors ${
-                                    person.is_active
-                                      ? "text-rose-400 hover:bg-rose-50"
-                                      : "text-emerald-500 hover:bg-emerald-50"
-                                  }`}
-                                  title={person.is_active ? "Deactivate" : "Activate"}
-                                >
-                                  <Power className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

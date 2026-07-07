@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
@@ -154,275 +153,273 @@ export default function SbuStockPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="px-6 py-6 space-y-6 w-full">
-        {/* Header */}
-        <PageHeader
-          title={isPrivileged ? "SBU Stock" : "My Stock"}
-          description={
-            isPrivileged
-              ? "Browse stock held by any SBU. Use the selector below to switch between units."
-              : "Items currently held by your business unit. Only goods issued to your SBU and not yet returned are shown here."
-          }
-        />
+    <div className="px-6 py-6 space-y-6 w-full">
+      {/* Header */}
+      <PageHeader
+        title={isPrivileged ? "SBU Stock" : "My Stock"}
+        description={
+          isPrivileged
+            ? "Browse stock held by any SBU. Use the selector below to switch between units."
+            : "Items currently held by your business unit. Only goods issued to your SBU and not yet returned are shown here."
+        }
+      />
 
-        {/* SBU selector — privileged roles only */}
-        {isPrivileged && (
-          <div className="flex items-center gap-3">
-            <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
-            <select
-              value={selectedSbuId}
-              onChange={(e) => {
-                setSelectedSbuId(e.target.value);
-              }}
-              className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              {sbus.length === 0 && !sbuError && <option value="">Loading SBUs…</option>}
-              {sbuError && <option value="">Failed to load SBUs</option>}
-              {sbus.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.code})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by product name or SKU…"
-              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
-            />
-          </div>
-          <button
-            onClick={() => load()}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 transition disabled:opacity-50"
+      {/* SBU selector — privileged roles only */}
+      {isPrivileged && (
+        <div className="flex items-center gap-3">
+          <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+          <select
+            value={selectedSbuId}
+            onChange={(e) => {
+              setSelectedSbuId(e.target.value);
+            }}
+            className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
-          <button
-            onClick={toggleCurrency}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 transition"
-          >
-            {currency === "ZMW" ? "Switch to USD" : "Switch to ZMW"}
-          </button>
-          {isBuManager && (
-            <button
-              onClick={() => setShowCreate((v) => !v)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg transition shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Add New Product
-            </button>
-          )}
+            {sbus.length === 0 && !sbuError && <option value="">Loading SBUs…</option>}
+            {sbuError && <option value="">Failed to load SBUs</option>}
+            {sbus.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.code})
+              </option>
+            ))}
+          </select>
         </div>
+      )}
 
-        {/* Create product form — BU Manager only */}
-        {isBuManager && showCreate && (
-          <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm">
-            <h3 className="text-sm font-extrabold text-[#1E293B] mb-4 flex items-center gap-2">
-              <Package className="w-4 h-4 text-[#005c55]" />
-              Add New Product to Your SBU
-            </h3>
-            <form onSubmit={handleCreateProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Product Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  required
-                  placeholder="e.g. Broken Pekoe 1 Tea"
-                  value={cpName}
-                  onChange={(e) => setCpName(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  SKU <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  required
-                  placeholder="e.g. BP1-KG"
-                  value={cpSku}
-                  onChange={(e) => setCpSku(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-                <p className="text-[10px] text-slate-400">
-                  Auto-prefixed with your SBU code (e.g. LBMB-BP1-KG)
-                </p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Unit of Measure
-                </label>
-                <input
-                  placeholder="e.g. kg / bags"
-                  value={cpUom}
-                  onChange={(e) => setCpUom(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by product name or SKU…"
+            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
+          />
+        </div>
+        <button
+          onClick={() => load()}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 transition disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+        <button
+          onClick={toggleCurrency}
+          className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 transition"
+        >
+          {currency === "ZMW" ? "Switch to USD" : "Switch to ZMW"}
+        </button>
+        {isBuManager && (
+          <button
+            onClick={() => setShowCreate((v) => !v)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg transition shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Product
+          </button>
+        )}
+      </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Low Stock Threshold
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="e.g. 50"
-                  value={cpThreshold}
-                  onChange={(e) => setCpThreshold(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
+      {/* Create product form — BU Manager only */}
+      {isBuManager && showCreate && (
+        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm">
+          <h3 className="text-sm font-extrabold text-[#1E293B] mb-4 flex items-center gap-2">
+            <Package className="w-4 h-4 text-[#005c55]" />
+            Add New Product to Your SBU
+          </h3>
+          <form onSubmit={handleCreateProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1 md:col-span-2">
+              <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                Product Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                required
+                placeholder="e.g. Broken Pekoe 1 Tea"
+                value={cpName}
+                onChange={(e) => setCpName(e.target.value)}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                SKU <span className="text-rose-500">*</span>
+              </label>
+              <input
+                required
+                placeholder="e.g. BP1-KG"
+                value={cpSku}
+                onChange={(e) => setCpSku(e.target.value)}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+              />
+              <p className="text-[10px] text-slate-400">
+                Auto-prefixed with your SBU code (e.g. LBMB-BP1-KG)
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                Unit of Measure
+              </label>
+              <input
+                placeholder="e.g. kg / bags"
+                value={cpUom}
+                onChange={(e) => setCpUom(e.target.value)}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+              />
+            </div>
 
-              {cpError && (
-                <p className="text-rose-600 text-xs font-semibold md:col-span-3">{cpError}</p>
-              )}
-              <div className="md:col-span-3 flex justify-end gap-2 border-t border-slate-100 pt-4 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowCreate(false)}
-                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition"
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                Low Stock Threshold
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="e.g. 50"
+                value={cpThreshold}
+                onChange={(e) => setCpThreshold(e.target.value)}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
+              />
+            </div>
+
+            {cpError && (
+              <p className="text-rose-600 text-xs font-semibold md:col-span-3">{cpError}</p>
+            )}
+            <div className="md:col-span-3 flex justify-end gap-2 border-t border-slate-100 pt-4 mt-1">
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={cpSubmitting}
+                className="px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm disabled:opacity-60"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                {cpSubmitting ? "Saving…" : "Add Product"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-700 px-4 py-2.5 rounded-lg text-xs">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Summary card */}
+      {!loading && filtered.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Total SKUs
+            </p>
+            <p className="text-2xl font-extrabold text-slate-800 mt-1">{filtered.length}</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Units
+            </p>
+            <p className="text-2xl font-extrabold text-slate-800 mt-1">
+              {filtered.reduce((s, i) => s + i.quantity, 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 col-span-2 sm:col-span-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Estimated Value
+            </p>
+            <p className="text-2xl font-extrabold text-slate-800 mt-1">{fmt(totalValue)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
+            <Package className="w-10 h-10 opacity-30" />
+            <p className="text-sm font-medium">
+              {search ? "No items match your search." : "No stock held by this SBU yet."}
+            </p>
+            {!search && (
+              <p className="text-xs text-slate-400 max-w-xs text-center">
+                Stock appears here once the warehouse issues goods to your unit via an approved
+                transfer request.
+              </p>
+            )}
+          </div>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
+              <tr>
+                <th className="px-4 py-3 text-left">Product</th>
+                <th className="px-4 py-3 text-left">SKU</th>
+                <th className="px-4 py-3 text-left">UoM</th>
+                {isPrivileged && <th className="px-4 py-3 text-left">SBU</th>}
+                <th className="px-4 py-3 text-right">Qty Held</th>
+                <th className="px-4 py-3 text-right">Unit Cost</th>
+                <th className="px-4 py-3 text-right">Total Value</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map((item) => (
+                <tr
+                  key={`${item.sbu_id}-${item.product_id}`}
+                  className="hover:bg-slate-50 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={cpSubmitting}
-                  className="px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm disabled:opacity-60"
-                >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  {cpSubmitting ? "Saving…" : "Add Product"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-700 px-4 py-2.5 rounded-lg text-xs">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            {error}
-          </div>
-        )}
-
-        {/* Summary card */}
-        {!loading && filtered.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-white border border-slate-200 rounded-xl p-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Total SKUs
-              </p>
-              <p className="text-2xl font-extrabold text-slate-800 mt-1">{filtered.length}</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Total Units
-              </p>
-              <p className="text-2xl font-extrabold text-slate-800 mt-1">
-                {filtered.reduce((s, i) => s + i.quantity, 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-4 col-span-2 sm:col-span-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Estimated Value
-              </p>
-              <p className="text-2xl font-extrabold text-slate-800 mt-1">{fmt(totalValue)}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Table */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
-              <Package className="w-10 h-10 opacity-30" />
-              <p className="text-sm font-medium">
-                {search ? "No items match your search." : "No stock held by this SBU yet."}
-              </p>
-              {!search && (
-                <p className="text-xs text-slate-400 max-w-xs text-center">
-                  Stock appears here once the warehouse issues goods to your unit via an approved
-                  transfer request.
-                </p>
-              )}
-            </div>
-          ) : (
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="px-4 py-3 text-left">Product</th>
-                  <th className="px-4 py-3 text-left">SKU</th>
-                  <th className="px-4 py-3 text-left">UoM</th>
-                  {isPrivileged && <th className="px-4 py-3 text-left">SBU</th>}
-                  <th className="px-4 py-3 text-right">Qty Held</th>
-                  <th className="px-4 py-3 text-right">Unit Cost</th>
-                  <th className="px-4 py-3 text-right">Total Value</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((item) => (
-                  <tr
-                    key={`${item.sbu_id}-${item.product_id}`}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      {item.product_name}
-                      {!item.is_active && (
-                        <span className="ml-2 text-[9px] font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded uppercase">
-                          Inactive
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 font-mono">{item.sku}</td>
-                    <td className="px-4 py-3 text-slate-500">{item.unit_of_measure}</td>
-                    {isPrivileged && (
-                      <td className="px-4 py-3 text-slate-500">
-                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                          {item.sbu_code}
-                        </span>
-                      </td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    {item.product_name}
+                    {!item.is_active && (
+                      <span className="ml-2 text-[9px] font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded uppercase">
+                        Inactive
+                      </span>
                     )}
-                    <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                      <span
-                        className={
-                          item.quantity <= 5
-                            ? "text-rose-600"
-                            : item.quantity <= 20
-                              ? "text-amber-600"
-                              : "text-emerald-700"
-                        }
-                      >
-                        {item.quantity.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 font-mono">{item.sku}</td>
+                  <td className="px-4 py-3 text-slate-500">{item.unit_of_measure}</td>
+                  {isPrivileged && (
+                    <td className="px-4 py-3 text-slate-500">
+                      <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                        {item.sbu_code}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-600">
-                      {item.unit_cost != null ? fmt(item.unit_cost) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                      {item.unit_cost != null ? fmt(item.unit_cost * item.quantity) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                  )}
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                    <span
+                      className={
+                        item.quantity <= 5
+                          ? "text-rose-600"
+                          : item.quantity <= 20
+                            ? "text-amber-600"
+                            : "text-emerald-700"
+                      }
+                    >
+                      {item.quantity.toLocaleString()}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right text-slate-600">
+                    {item.unit_cost != null ? fmt(item.unit_cost) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                    {item.unit_cost != null ? fmt(item.unit_cost * item.quantity) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

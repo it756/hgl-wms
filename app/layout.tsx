@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Inter  } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import AuthGuard from "@/components/AuthGuard";
+import AppShell from "@/components/AppShell";
 
 const publicSans = Inter({
   variable: "--font-public-sans",
@@ -23,7 +24,7 @@ export default function RootLayout({
     <html lang="en" className={`${publicSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <AuthGuard />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

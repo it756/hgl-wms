@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
@@ -167,7 +166,7 @@ export default function AuditLogPage() {
   );
 
   return (
-    <DashboardLayout>
+    <>
       <div className="flex flex-col gap-6 text-[#1E293B]">
         {/* Header Section */}
         <PageHeader
@@ -310,18 +309,25 @@ export default function AuditLogPage() {
             <HScrollArea className="text-[#1E293B]">
               <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
                 <TableHead>
-                    <Th pinned className="w-[18%]">Timestamp</Th>
-                    <Th className="w-[15%]">Entity context</Th>
-                    <Th className="w-[12%]">Target Node ID</Th>
-                    <Th className="w-[15%]">Action Vector</Th>
-                    <Th className="w-[15%]">Operator UID</Th>
-                    <Th className="w-[20%]">Trace Payload Context</Th>
-                    <Th align="right" className="w-[5%]">Trace</Th>
+                  <Th pinned className="w-[18%]">
+                    Timestamp
+                  </Th>
+                  <Th className="w-[15%]">Entity context</Th>
+                  <Th className="w-[12%]">Target Node ID</Th>
+                  <Th className="w-[15%]">Action Vector</Th>
+                  <Th className="w-[15%]">Operator UID</Th>
+                  <Th className="w-[20%]">Trace Payload Context</Th>
+                  <Th align="right" className="w-[5%]">
+                    Trace
+                  </Th>
                 </TableHead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredLogs.map((log) => (
                     <Tr key={log.id}>
-                      <Td pinned className="whitespace-nowrap flex items-center gap-1.5 text-slate-500 font-mono font-bold">
+                      <Td
+                        pinned
+                        className="whitespace-nowrap flex items-center gap-1.5 text-slate-500 font-mono font-bold"
+                      >
                         <Clock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                         {new Date(log.created_at).toLocaleString("en-KE", {
                           dateStyle: "short",
@@ -448,6 +454,6 @@ export default function AuditLogPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }
