@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { createNotification } from "../../../lib/services/notificationService";
+import { writeAuditLog } from "../../../lib/services/auditService";
 import { buildReturnNotificationMessage } from "../../../lib/notifications/messages";
+
+interface AtomicReturnResult {
+  id: string;
+  reference_number: string;
+  status: string;
+}
 
 function generateReturnReference(): string {
   const year = new Date().getFullYear();
@@ -56,24 +63,74 @@ export async function POST(req: Request) {
 
   const reference_number = generateReturnReference();
 
-  const { data, error: rpcError } = await supabaseAdmin.rpc("create_return_request_atomic", {
-    p_actor_id: user.id,
-    p_reference_number: reference_number,
-    p_original_transfer_request_id: original_transfer_request_id ?? null,
-    p_reason: reason.trim(),
-    p_notes: notes?.trim() ?? null,
-    p_items: items,
-  });
-
-  if (rpcError) {
-    return NextResponse.json(
-      { error: rpcError.message },
-      { status: statusForRpcError(rpcError.message) },
-    );
+  const sbuId = (user.user_metadata as any)?.sbu_id ?? null;
+  if (!sbuId) {
+    return NextResponse.json({ error: "User has no SBU assigned" }, { status: 400 });
   }
 
-  const created = data as AtomicReturnResult;
+  if (original_transfer_request_id) {
+    const { data: transfer, error: transferError } = await supabaseAdmin
+      .from("transfer_requests")
+      .select("id, sbu_id, status")
+      .eq("id", original_transfer_request_id)
+      .single();
+
+    if (transferError || !transfer) {
+      return NextResponse.json({ error: "Transfer request not found" }, { status: 404 });
+    }
+
+    const linkedTransfer = transfer as { sbu_id?: string | null; status?: string };
+    if (linkedTransfer.sbu_id !== sbuId) {
+      return NextResponse.json(
+        { error: "Transfer does not belong to actor SBU" },
+        { status: 403 },
+      );
+    }
+
+    if (linkedTransfer.status !== "COMPLETED" && linkedTransfer.status !== "COMPLETED_WITH_VARIANCE") {
+      return NextResponse.json(
+        { error: "Returns can only be raised against completed transfers" },
+        { status: 409 },
+      );
+    }
+  }
+
+  const { data: rrData, error: rrError } = await supabaseAdmin
+    .from("return_requests")
+    .insert([
+      {
+        reference_number,
+        original_transfer_request_id: original_transfer_request_id ?? null,
+        sbu_id: sbuId,
+        raised_by: user.id,
+        status: "PENDING_APPROVAL",
+        reason: reason.trim(),
+        notes: notes?.trim() ?? null,
+      },
+    ])
+    .select()
+    .single();
+
+  if (rrError) {
+    return NextResponse.json({ error: rrError.message }, { status: 500 });
+  }
+
+  const created = rrData as AtomicReturnResult;
   const returnId = created.id;
+
+  const lineInsertRows = (items as Array<{ product_id: string; quantity_to_return: number }>).map(
+    (item) => ({
+      return_request_id: returnId,
+      product_id: item.product_id,
+      quantity_to_return: item.quantity_to_return,
+    }),
+  );
+
+  const { error: lineError } = await supabaseAdmin.from("return_line_items").insert(lineInsertRows);
+
+  if (lineError) {
+    return NextResponse.json({ error: lineError.message }, { status: 500 });
+  }
 
   // Notify BU Manager for their SBU
   const message = await buildReturnNotificationMessage({

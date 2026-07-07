@@ -115,7 +115,7 @@ async function resolveRecipients(opts: {
     // role-holders for the correct SBU only.
     const sbuId = await inferSbuId(opts.related_entity_id);
 
-    let { data: profiles } = sbuId
+    const { data: profiles } = sbuId
       ? await supabaseAdmin
           .from("profiles")
           .select("id, whatsapp_number")

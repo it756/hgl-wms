@@ -58,50 +58,82 @@ export async function POST(req: Request) {
     const refSeed = Math.floor(Math.random() * 90000 + 10000);
     const reference_number = `TRF-${year}-${refSeed}`;
 
-    const { data, error: rpcError } = await supabaseAdmin.rpc("create_transfer_request_atomic", {
-      p_actor_id: user.id,
-      p_reference_number: reference_number,
-      p_requesting_unit_id: requesting_unit_id,
-      p_required_date: required_date ?? null,
-      p_notes: notes ?? null,
-      p_estimated_value: estimated_value ?? null,
-      p_lines: lines,
-    });
-
-    if (rpcError) {
-      return NextResponse.json(
-        { error: messageForRpcError(rpcError.message) },
-        { status: statusForRpcError(rpcError.message) },
-      );
+    const sbuId = (user.user_metadata as any)?.sbu_id ?? null;
+    if (!sbuId) {
+      return NextResponse.json({ error: "User has no SBU assigned" }, { status: 400 });
     }
 
+    const productIds = [...new Set(lines.map((line: any) => line.product_id))];
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from("products")
+      .select("id, name, stock_quantity")
+      .in("id", productIds);
+
+    if (productsError) {
+      return NextResponse.json({ error: productsError.message }, { status: 500 });
+    }
+
+    const productMap = new Map((products ?? []).map((product: any) => [product.id, product]));
+    for (const line of lines as Array<{ product_id: string; requested_quantity: number }>) {
+      const product = productMap.get(line.product_id);
+      if (!product) {
+        return NextResponse.json(
+          { error: `Product not found: ${line.product_id}` },
+          { status: 404 },
+        );
+      }
+
+      if (Number(product.stock_quantity) < Number(line.requested_quantity)) {
+        return NextResponse.json(
+          { error: `Insufficient stock for ${product.name}` },
+          { status: 422 },
+        );
+      }
+    }
+
+    const transferStatus = isUnitStaff ? "PENDING_BU_APPROVAL" : "PENDING_APPROVAL";
     const { data: trData, error: trError } = await supabaseAdmin
       .from("transfer_requests")
       .insert([
         {
           reference_number,
-          sbu_id,
+          sbu_id: sbuId,
           requesting_unit_id,
           raised_by: user.id,
-          status: initialStatus,
-          required_date,
-          notes,
-          estimated_value: estimatedValue || null,
-          requires_finance_approval: requiresFinanceApproval,
+          status: transferStatus,
+          required_date: required_date ?? null,
+          notes: notes ?? null,
+          estimated_value: estimated_value ?? null,
+          requires_finance_approval: true,
         },
       ])
       .select()
       .single();
 
-    if (rpcError) {
-      return NextResponse.json(
-        { error: messageForRpcError(rpcError.message) },
-        { status: statusForRpcError(rpcError.message) },
-      );
+    if (trError) {
+      return NextResponse.json({ error: trError.message }, { status: 500 });
     }
 
-    const created = data as AtomicTransferResult;
+    const created = trData as AtomicTransferResult;
     const transferId = created.id;
+
+    const lineInsertRows = (lines as Array<{ product_id: string; requested_quantity: number }>).map(
+      (line) => ({
+        transfer_request_id: transferId,
+        product_id: line.product_id,
+        requested_quantity: line.requested_quantity,
+      }),
+    );
+
+    const { error: lineError } = await supabaseAdmin
+      .from("transfer_line_items")
+      .insert(lineInsertRows);
+
+    if (lineError) {
+      return NextResponse.json({ error: lineError.message }, { status: 500 });
+    }
+
+    const requiresFinanceApproval = true;
 
     if (isUnitStaff) {
       // Notify BU_MANAGER(s) in the same SBU that a new request awaits their approval

@@ -3,6 +3,15 @@ import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supa
 import { createNotification } from "../../../../../../lib/services/notificationService";
 import { buildProductActionMessage } from "../../../../../../lib/notifications/messages";
 
+interface ExpireBatchResult {
+  expiry_ledger_id: string;
+  reference_number: string;
+  quantity_expired: number;
+  new_stock_quantity: number;
+  product_name: string;
+  product_sku: string;
+}
+
 function generateExpiryReference(): string {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 90000 + 10000);
@@ -73,17 +82,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const result = data as ExpireBatchResult;
   const ledgerId = result.expiry_ledger_id;
+  const productName = result.product_name;
+  const productSku = result.product_sku;
 
   await Promise.all([
     createNotification({
       user_role: "ADMIN",
       type: "stock_expired",
       message: await buildProductActionMessage({
-        headline: `Expiry write-off ${reference_number} recorded for ${(product as any).name}`,
+        headline: `Expiry write-off ${reference_number} recorded for ${productName}`,
         actorId: user.id,
         actorLabel: "Recorded by",
-        productName: (product as any).name,
-        sku: (product as any).sku,
+        productName,
+        sku: productSku,
         quantity: qty,
         reason: expiry_date ? `Expiry date: ${expiry_date}` : null,
         notes,
@@ -97,8 +108,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         headline: `Expiry write-off ${reference_number} recorded — value loss captured`,
         actorId: user.id,
         actorLabel: "Recorded by",
-        productName: (product as any).name,
-        sku: (product as any).sku,
+        productName,
+        sku: productSku,
         quantity: qty,
         reason: expiry_date ? `Expiry date: ${expiry_date}` : null,
         notes,
