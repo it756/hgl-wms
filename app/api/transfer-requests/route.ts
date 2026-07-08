@@ -63,6 +63,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User has no SBU assigned" }, { status: 400 });
     }
 
+    const { data: unit, error: unitError } = await supabaseAdmin
+      .from("sbu_units")
+      .select("sbu_id, is_active")
+      .eq("id", requesting_unit_id)
+      .single();
+
+    if (unitError || !unit) {
+      return NextResponse.json({ error: "Requesting unit not found." }, { status: 422 });
+    }
+    if (unit.sbu_id !== sbuId) {
+      return NextResponse.json(
+        { error: "Requesting unit does not belong to your SBU." },
+        { status: 422 },
+      );
+    }
+    if (!unit.is_active) {
+      return NextResponse.json({ error: "Requesting unit is inactive." }, { status: 422 });
+    }
+
     const productIds = [...new Set(lines.map((line: any) => line.product_id))];
     const { data: products, error: productsError } = await supabaseAdmin
       .from("products")

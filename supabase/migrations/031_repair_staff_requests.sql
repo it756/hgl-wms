@@ -6,7 +6,6 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.staff_requests (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  requested_by_unit_id  uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   requested_by_sbu_id   uuid REFERENCES public.sbus(id)     ON DELETE SET NULL,
   requested_user_info   jsonb NOT NULL,
   requested_roles       text[] NOT NULL,
@@ -55,9 +54,6 @@ CREATE POLICY "BU Managers can create staff requests"
     )
     AND created_by = auth.uid()
   );
-          WHERE p.id = auth.uid() AND p.role = 'BU_MANAGER'
-        )
-      );
   END IF;
 END $$;
 
