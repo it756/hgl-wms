@@ -34,6 +34,17 @@ const DEFAULT_PASSWORD = "Demo@1234!";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function daysAhead(n: number): string {
+  return new Date(Date.now() + n * 86_400_000).toISOString().split("T")[0];
+}
+
+function licenseTypeForRole(role: string): string | null {
+  if (role === "ADMIN") return null;
+  if (role === "FINANCE_MANAGER") return "FINANCE_APPROVAL";
+  if (role === "WAREHOUSE_MANAGER") return "WAREHOUSE_OPERATIONS";
+  return "GENERAL_OPERATIONS";
+}
+
 async function createUser(
   email: string,
   fullName: string,
@@ -56,6 +67,10 @@ async function createUser(
     sbu_id: sbuId,
     unit_id: unitId,
     is_active: true,
+    licensed: role !== "ADMIN",
+    license_type: licenseTypeForRole(role),
+    license_issued_at: new Date().toISOString(),
+    license_expires_at: role === "ADMIN" ? null : daysAhead(365),
   });
 
   console.log(`    + created  ${email}  (${role})`);

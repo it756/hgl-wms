@@ -4,9 +4,9 @@ on:
   pull_request:
     branches:
       - dev
-      - staging
       - QA
-      - prod
+      - staging
+      - main
     types:
       - opened
       - synchronize
@@ -31,26 +31,23 @@ jobs:
 
           case "${BASE_BRANCH}" in
             dev)
-              if [ "${HEAD_BRANCH}" = "staging" ] || [ "${HEAD_BRANCH}" = "QA" ] || [ "${HEAD_BRANCH}" = "prod" ]; then
-                echo "Protected promotion branches cannot be merged back into dev."
+              echo "PRs from any source branch can target dev."
+              ;;
+            QA)
+              if [ "${HEAD_BRANCH}" != "dev" ]; then
+                echo "Only dev can be merged into QA."
                 exit 1
               fi
               ;;
             staging)
-              if [ "${HEAD_BRANCH}" != "dev" ]; then
-                echo "Only dev can be merged into staging."
-                exit 1
-              fi
-              ;;
-            QA)
-              if [ "${HEAD_BRANCH}" != "staging" ]; then
-                echo "Only staging can be merged into QA."
-                exit 1
-              fi
-              ;;
-            prod)
               if [ "${HEAD_BRANCH}" != "QA" ]; then
-                echo "Only QA can be merged into prod."
+                echo "Only QA can be merged into staging."
+                exit 1
+              fi
+              ;;
+            main)
+              if [ "${HEAD_BRANCH}" != "staging" ] && [[ ! "${HEAD_BRANCH}" =~ ^hotfix/ ]]; then
+                echo "Only staging or hotfix/* branches can be merged into main."
                 exit 1
               fi
               ;;

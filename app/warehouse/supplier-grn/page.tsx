@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
+import IconButton from "@/components/IconButton";
+import HScrollArea from "@/components/HScrollArea";
+import { TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Building,
@@ -454,44 +457,31 @@ export default function SupplierGRNPage() {
   const rejectedCount = grns.filter((g) => g.status === "REJECTED").length;
 
   return (
-    <DashboardLayout>
-      <div className="flex flex-col gap-6 w-full text-slate-800">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-              <span>Inbound Logistics</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-primary">
-                {view === "list"
-                  ? "Supplier GRN Queue"
-                  : editingGrnId
-                    ? "Edit Supplier GRN"
-                    : "New Supplier GRN"}
-              </span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-[#1E293B] font-sans md:text-3xl">
-              {view === "list"
-                ? "Supplier GRN Queue"
-                : editingGrnId
-                  ? "Edit Supplier GRN"
-                  : "Record Supplier GRN"}
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              {view === "list"
-                ? "All inbound supplier receipts submitted for Finance approval."
-                : editingGrnId
-                  ? "Update the details of this pending GRN before Finance reviews it."
-                  : "Record a new supplier delivery and queue for Finance approval."}
-            </p>
-          </div>
+    <div className="flex flex-col gap-6 w-full text-slate-800">
+      {/* Header */}
+      <PageHeader
+        title={
+          view === "list"
+            ? "Supplier GRN Queue"
+            : editingGrnId
+              ? "Edit Supplier GRN"
+              : "Record Supplier GRN"
+        }
+        description={
+          view === "list"
+            ? "All inbound supplier receipts submitted for Finance approval."
+            : editingGrnId
+              ? "Update the details of this pending GRN before Finance reviews it."
+              : "Record a new supplier delivery and queue for Finance approval."
+        }
+        actions={
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleCurrency}
                 disabled={rateFetching}
                 title={currency === "ZMW" ? "Convert display to USD" : "Switch back to ZMW"}
-                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-60"
               >
                 {rateFetching ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -540,215 +530,520 @@ export default function SupplierGRNPage() {
               </a>
             )}
           </div>
-        </div>
+        }
+      />
 
-        {/* KPI Row — always visible */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
-            <div className="w-12 h-12 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-primary">
-              <Truck className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                Total GRNs
-              </p>
-              <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
-                {loadingList ? "—" : grns.length}
-              </h3>
-              <p className="text-[10px] text-teal-700 font-black flex items-center gap-1 mt-1 uppercase">
-                <TrendingUp className="w-3 h-3" /> All time
-              </p>
-            </div>
+      {/* KPI Row — always visible */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
+          <div className="w-12 h-12 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-primary">
+            <Truck className="w-6 h-6" />
           </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
-            <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                Awaiting Approval
-              </p>
-              <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
-                {loadingList ? "—" : awaitingCount}
-              </h3>
-              <p className="text-[10px] text-amber-700 font-bold flex items-center gap-1 mt-1 uppercase">
-                <Hourglass className="w-3 h-3" /> Pending signoff
-              </p>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
-            <div className="w-12 h-12 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-emerald-600">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                Approved
-              </p>
-              <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
-                {loadingList ? "—" : approvedCount}
-              </h3>
-              <p className="text-[10px] text-emerald-600 font-black flex items-center gap-1 mt-1 uppercase">
-                🎯 Stock updated
-              </p>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
-            <div className="w-12 h-12 rounded-lg bg-[#E6F4F1] border border-teal-100 flex items-center justify-center text-primary">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                Rejected
-              </p>
-              <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
-                {loadingList ? "—" : rejectedCount}
-              </h3>
-              <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1 mt-1 uppercase">
-                <XCircle className="w-3 h-3" /> Returned
-              </p>
-            </div>
+          <div>
+            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+              Total GRNs
+            </p>
+            <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
+              {loadingList ? "—" : grns.length}
+            </h3>
+            <p className="text-[10px] text-teal-700 font-black flex items-center gap-1 mt-1 uppercase">
+              <TrendingUp className="w-3 h-3" /> All time
+            </p>
           </div>
         </div>
-
-        {/* Global Notifications */}
-        {success && (
-          <div className="bg-[#E6F4F1] border border-teal-200 text-teal-850 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />
-            <span>{success}</span>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
+          <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+            <Clock className="w-6 h-6" />
           </div>
-        )}
+          <div>
+            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+              Awaiting Approval
+            </p>
+            <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
+              {loadingList ? "—" : awaitingCount}
+            </h3>
+            <p className="text-[10px] text-amber-700 font-bold flex items-center gap-1 mt-1 uppercase">
+              <Hourglass className="w-3 h-3" /> Pending signoff
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
+          <div className="w-12 h-12 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-emerald-600">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+              Approved
+            </p>
+            <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
+              {loadingList ? "—" : approvedCount}
+            </h3>
+            <p className="text-[10px] text-emerald-600 font-black flex items-center gap-1 mt-1 uppercase">
+              🎯 Stock updated
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-primary transition">
+          <div className="w-12 h-12 rounded-lg bg-[#E6F4F1] border border-teal-100 flex items-center justify-center text-primary">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+              Rejected
+            </p>
+            <h3 className="font-extrabold text-[#1E293B] text-lg font-mono leading-none">
+              {loadingList ? "—" : rejectedCount}
+            </h3>
+            <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1 mt-1 uppercase">
+              <XCircle className="w-3 h-3" /> Returned
+            </p>
+          </div>
+        </div>
+      </div>
 
-        {/* Post-creation document upload panel */}
-        {submittedGrn && view === "form" && (
-          <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 bg-[#eff4ff] flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-primary" />
-                Attach Supplier Documents
-                <span className="font-mono text-primary">{submittedGrn.referenceNumber}</span>
-              </h2>
+      {/* Global Notifications */}
+      {success && (
+        <div className="bg-[#E6F4F1] border border-teal-200 text-teal-850 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
+          <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />
+          <span>{success}</span>
+        </div>
+      )}
+
+      {/* Post-creation document upload panel */}
+      {submittedGrn && view === "form" && (
+        <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 bg-[#eff4ff] flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-primary" />
+              Attach Supplier Documents
+              <span className="font-mono text-primary">{submittedGrn.referenceNumber}</span>
+            </h2>
+            <button
+              onClick={() => {
+                setSubmittedGrn(null);
+                setSuccess(null);
+                setView("list");
+              }}
+              className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 border border-slate-200 rounded-lg transition"
+            >
+              Done
+            </button>
+          </div>
+          <div className="p-6">
+            <p className="text-xs text-slate-500 mb-4">
+              Optionally attach the supplier invoice, delivery note, packing list, or any supporting
+              documents for this GRN.
+            </p>
+            <DocumentUpload
+              transactionType="supplier_grn"
+              transactionId={submittedGrn.grnId}
+              canDelete={true}
+              token={
+                typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : ""
+              }
+            />
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      {rateError && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          <span>{rateError}</span>
+        </div>
+      )}
+
+      {/* ── LIST VIEW ── */}
+      {view === "list" && (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+              All Supplier GRNs
+            </h3>
+            <button
+              onClick={loadGrns}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh
+            </button>
+          </div>
+          {loadingList ? (
+            <div className="flex items-center justify-center py-16">
+              <span className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary" />
+            </div>
+          ) : grns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
+              <Truck className="w-10 h-10 opacity-30" />
+              <p className="text-sm font-semibold">No supplier GRNs recorded yet.</p>
               <button
-                onClick={() => {
-                  setSubmittedGrn(null);
-                  setSuccess(null);
-                  setView("list");
-                }}
-                className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 border border-slate-200 rounded-lg transition"
+                onClick={() => setView("form")}
+                className="mt-1 px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition"
               >
-                Done
+                Record First GRN
               </button>
             </div>
-            <div className="p-6">
-              <p className="text-xs text-slate-500 mb-4">
-                Optionally attach the supplier invoice, delivery note, packing list, or any
-                supporting documents for this GRN.
+          ) : (
+            <HScrollArea>
+              <table className="min-w-full divide-y divide-slate-100 text-xs">
+                <TableHead>
+                  <Th pinned>Reference</Th>
+                  <Th>Supplier</Th>
+                  <Th>Date Received</Th>
+                  <Th>Items</Th>
+                  <Th align="right">Invoice Value</Th>
+                  <Th>Status</Th>
+                  <Th align="right">Actions</Th>
+                </TableHead>
+                <tbody className="divide-y divide-slate-100">
+                  {grns.map((g) => (
+                    <Tr key={g.id}>
+                      <Td pinned className="font-mono font-extrabold text-primary">
+                        {g.reference_number}
+                      </Td>
+                      <td
+                        className="px-6 py-3.5 font-semibold text-slate-700 max-w-[180px] truncate"
+                        title={g.supplier_name}
+                      >
+                        {g.supplier_name}
+                      </td>
+                      <td className="px-6 py-3.5 text-slate-500">
+                        {new Date(g.date_received).toLocaleDateString("en-US", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="px-6 py-3.5 text-slate-500">
+                        {g.supplier_grn_line_items?.length ?? 0} line
+                        {(g.supplier_grn_line_items?.length ?? 0) !== 1 ? "s" : ""}
+                      </td>
+                      <td className="px-6 py-3.5 font-mono font-bold text-slate-800 text-right">
+                        {fmt(g.invoice_amount)}
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusBadge(g.status)}`}
+                        >
+                          {statusLabel(g.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        {g.status === "AWAITING_FINANCE_APPROVAL" && (
+                          <IconButton
+                            icon={<Edit2 className="w-3.5 h-3.5" />}
+                            label="Edit GRN"
+                            disabled={editLoading}
+                            onClick={() => startEdit(g.id)}
+                          />
+                        )}
+                      </td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </table>
+            </HScrollArea>
+          )}
+        </div>
+      )}
+
+      {/* ── FORM VIEW ── */}
+      {view === "form" && (
+        <>
+          {/* Financial Review Notice */}
+          <div className="bg-orange-50 border border-orange-200 text-[#904D00] rounded-xl p-4 flex gap-3.5 items-start">
+            <div className="p-1.5 bg-orange-100 rounded-lg shrink-0">
+              <Info className="w-5 h-5 text-orange-700" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-[12px] uppercase tracking-wide">
+                Financial Review Required
+              </h4>
+              <p className="text-[11px] font-medium leading-relaxed mt-1 opacity-90">
+                This GRN will be reviewed by the Finance Manager before stock levels are updated.
+                Ensure all invoice amounts and unit costs match the attached documentation.
               </p>
-              <DocumentUpload
-                transactionType="supplier_grn"
-                transactionId={submittedGrn.grnId}
-                canDelete={true}
-                token={
-                  typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : ""
-                }
-              />
             </div>
           </div>
-        )}
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-        {rateError && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-            <span>{rateError}</span>
-          </div>
-        )}
 
-        {/* ── LIST VIEW ── */}
-        {view === "list" && (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
-                All Supplier GRNs
-              </h3>
-              <button
-                onClick={loadGrns}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary transition"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Refresh
-              </button>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            {/* General Information Card */}
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-6 flex flex-col gap-5">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                  General Information
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Supplier Name */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Supplier Name
+                  </label>
+                  <input
+                    required
+                    value={supplier}
+                    onChange={(e) => setSupplier(e.target.value)}
+                    placeholder="e.g. Stark Industrial Ltd"
+                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Invoice Reference */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Invoice Reference
+                  </label>
+                  <input
+                    value={invoiceRef}
+                    onChange={(e) => setInvoiceRef(e.target.value)}
+                    placeholder="e.g. INV-2026-0042"
+                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Invoice Amount — auto-calculated from line items */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Invoice Amount (ZMW)
+                  </label>
+                  <div className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs text-slate-700 font-bold flex items-center justify-between">
+                    <span>
+                      {totalVal.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                      Auto
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Calculated from product line totals
+                  </p>
+                </div>
+
+                {/* Date Received */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Date Received
+                  </label>
+                  <div className="relative">
+                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="date"
+                      required
+                      value={dateReceived}
+                      onChange={(e) => setDateReceived(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* SBU Attribution — loaded from DB */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    SBU Attribution
+                  </label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <select
+                      value={sbuId}
+                      onChange={(e) => setSbuId(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:border-primary focus:outline-none appearance-none"
+                    >
+                      <option value="">— Select SBU (optional) —</option>
+                      {sbus.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
             </div>
-            {loadingList ? (
-              <div className="flex items-center justify-center py-16">
-                <span className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary" />
+
+            {/* Line Items */}
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-6 flex flex-col gap-4 overflow-x-auto">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3 min-w-160">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                  Line Items
+                </h3>
+                <div className="flex items-center gap-2">
+                  <label className="px-3 py-1.5 border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    {importing ? "Importing…" : "Import Packing List"}
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="hidden"
+                      disabled={importing}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handlePackingListUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addLine}
+                    className="px-3 py-1.5 border border-primary text-primary hover:bg-primary/5 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Row
+                  </button>
+                </div>
               </div>
-            ) : grns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
-                <Truck className="w-10 h-10 opacity-30" />
-                <p className="text-sm font-semibold">No supplier GRNs recorded yet.</p>
-                <button
-                  onClick={() => setView("form")}
-                  className="mt-1 px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition"
-                >
-                  Record First GRN
-                </button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+
+              {unmatchedRows.length > 0 && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg p-3 text-[11px] font-medium">
+                  <p className="font-bold uppercase tracking-wider text-[10px] mb-1">
+                    {unmatchedRows.length} row{unmatchedRows.length === 1 ? "" : "s"} skipped —
+                    unknown SKU
+                  </p>
+                  <ul className="list-disc list-inside max-h-32 overflow-y-auto">
+                    {unmatchedRows.map((r, i) => (
+                      <li key={i}>
+                        <span className="font-mono">{r.sku || "(no SKU)"}</span>
+                        {r.product_name ? ` — ${r.product_name}` : ""}
+                        {r.quantity_expected ? ` × ${r.quantity_expected}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="overflow-visible">
+                <table className="w-full min-w-160 text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                      <th className="px-6 py-3">Reference</th>
-                      <th className="px-4 py-3">Supplier</th>
-                      <th className="px-4 py-3">Date Received</th>
-                      <th className="px-4 py-3">Items</th>
-                      <th className="px-4 py-3 text-right">Invoice Value</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                    <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                      <th className="py-3 px-3">Product Description</th>
+                      <th className="py-3 px-3 w-24">UoM</th>
+                      <th className="py-3 px-3 w-24 text-center">Qty Expected</th>
+                      <th className="py-3 px-3 w-24 text-center">Qty Received</th>
+                      <th className="py-3 px-3 w-32">Unit Cost (ZMW)</th>
+                      <th className="py-3 px-3 w-36">Expiry Date</th>
+                      <th className="py-3 px-3 w-28 text-right">Total ({currency})</th>
+                      <th className="py-3 px-3 w-12"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {grns.map((g) => (
-                      <tr key={g.id} className="hover:bg-slate-50/50 transition">
-                        <td className="px-6 py-3.5 font-mono font-extrabold text-primary">
-                          {g.reference_number}
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {lines.map((line, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/20 relative">
+                        <td className="py-3 px-3">
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 text-slate-350 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              required
+                              value={productSearch[idx]}
+                              onChange={(e) => searchProducts(idx, e.target.value)}
+                              placeholder="Search product..."
+                              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:border-primary focus:outline-none placeholder:text-slate-350"
+                            />
+                          </div>
+                          {productOptions[idx]?.length > 0 && (
+                            <ul className="absolute left-0 right-0 z-100 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg text-xs max-h-48 overflow-y-auto divide-y divide-slate-50">
+                              {productOptions[idx].map((p) => (
+                                <li
+                                  key={p.id}
+                                  onClick={() => selectProduct(idx, p)}
+                                  className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer font-semibold text-slate-700 flex justify-between items-center"
+                                >
+                                  <span>{p.name}</span>
+                                  <span className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                                    {p.sku}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-700">
-                          {g.supplier_name}
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-500">
-                          {new Date(g.date_received).toLocaleDateString("en-US", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-500">
-                          {g.supplier_grn_line_items?.length ?? 0} line
-                          {(g.supplier_grn_line_items?.length ?? 0) !== 1 ? "s" : ""}
-                        </td>
-                        <td className="px-4 py-3.5 font-mono font-bold text-slate-800 text-right">
-                          {fmt(g.invoice_amount)}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusBadge(g.status)}`}
+                        <td className="py-3 px-3 font-semibold text-slate-500">
+                          <select
+                            value={line.unit_of_measure}
+                            onChange={(e) => {
+                              const u = [...lines];
+                              u[idx].unit_of_measure = e.target.value;
+                              setLines(u);
+                            }}
+                            className="w-full border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 bg-white"
                           >
-                            {statusLabel(g.status)}
-                          </span>
+                            <option>EA</option>
+                            <option>Rolls</option>
+                            <option>Units</option>
+                            <option>Meters</option>
+                            <option>Boxes</option>
+                          </select>
                         </td>
-                        <td className="px-4 py-3.5 text-right">
-                          {g.status === "AWAITING_FINANCE_APPROVAL" && (
+                        <td className="py-3 px-3">
+                          <input
+                            type="number"
+                            min="0"
+                            value={line.quantity_expected || ""}
+                            onChange={(e) => {
+                              const u = [...lines];
+                              u[idx].quantity_expected = Number(e.target.value);
+                              setLines(u);
+                            }}
+                            className="w-full border border-slate-200 rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700"
+                          />
+                        </td>
+                        <td className="py-3 px-3">
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={line.quantity_received || ""}
+                            onChange={(e) => updateQuantity(idx, Number(e.target.value))}
+                            className={`w-full border rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700 ${
+                              line.quantity_expected &&
+                              line.quantity_received !== line.quantity_expected
+                                ? "border-amber-400 bg-amber-50"
+                                : "border-slate-200"
+                            }`}
+                          />
+                        </td>
+                        <td className="py-3 px-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            required
+                            value={line.unit_cost}
+                            onChange={(e) => updateUnitCost(idx, Number(e.target.value))}
+                            className="w-full border border-slate-200 rounded-lg p-1.5 font-bold font-mono text-xs text-slate-755"
+                          />
+                        </td>
+                        <td className="py-3 px-3">
+                          <input
+                            type="date"
+                            value={line.expiry_date}
+                            onChange={(e) => {
+                              const u = [...lines];
+                              u[idx].expiry_date = e.target.value;
+                              setLines(u);
+                            }}
+                            className="w-full border border-slate-200 rounded-lg p-1.5 font-medium text-xs text-slate-700"
+                          />
+                        </td>
+                        <td className="py-3 px-3 text-right font-extrabold font-mono text-slate-800 text-sm">
+                          {fmt(line.total_cost)}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {lines.length > 1 && (
                             <button
-                              onClick={() => startEdit(g.id)}
-                              disabled={editLoading}
-                              title="Edit GRN"
-                              className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition disabled:opacity-50"
+                              type="button"
+                              onClick={() => removeLine(idx)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50/50 rounded-lg transition"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </td>
@@ -757,364 +1052,58 @@ export default function SupplierGRNPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* ── FORM VIEW ── */}
-        {view === "form" && (
-          <>
-            {/* Financial Review Notice */}
-            <div className="bg-orange-50 border border-orange-200 text-[#904D00] rounded-xl p-4 flex gap-3.5 items-start">
-              <div className="p-1.5 bg-orange-100 rounded-lg shrink-0">
-                <Info className="w-5 h-5 text-orange-700" />
+              {/* Totals footer */}
+              <div className="flex flex-col md:flex-row md:justify-between items-end gap-4 border-t border-slate-100 pt-5 mt-2">
+                <span className="text-slate-400 text-[10px] font-semibold max-w-sm">
+                  Ensure physical item inspection is fully completed before submitting.
+                </span>
+                <div className="w-full max-w-xs flex flex-col gap-2.5 font-semibold text-xs text-slate-500">
+                  <div className="flex justify-between items-center">
+                    <span>Subtotal:</span>
+                    <span className="font-bold text-slate-800 font-mono">{fmt(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Tax (0.0%):</span>
+                    <span className="font-bold text-slate-800 font-mono">{fmt(tax)}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-200/80 pt-3 text-base">
+                    <span className="font-extrabold text-slate-800">Total GRN Value:</span>
+                    <span className="font-black text-primary font-mono text-lg">
+                      {fmt(totalVal)}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h4 className="font-extrabold text-[12px] uppercase tracking-wide">
-                  Financial Review Required
-                </h4>
-                <p className="text-[11px] font-medium leading-relaxed mt-1 opacity-90">
-                  This GRN will be reviewed by the Finance Manager before stock levels are updated.
-                  Ensure all invoice amounts and unit costs match the attached documentation.
-                </p>
+
+              {/* Bottom Actions */}
+              <div className="flex justify-between items-center bg-slate-50 border-t border-slate-100 -mx-6 -mb-6 p-4 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setView("list")}
+                  className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-5 py-2 bg-primary hover:bg-primary/90 rounded-lg text-white text-xs font-bold cursor-pointer transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  {loading
+                    ? editingGrnId
+                      ? "Updating..."
+                      : "Submitting..."
+                    : editingGrnId
+                      ? "Update Supplier GRN"
+                      : "Submit Supplier GRN"}
+                </button>
               </div>
             </div>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              {/* General Information Card */}
-              <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-6 flex flex-col gap-5">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
-                    General Information
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Supplier Name */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Supplier Name
-                    </label>
-                    <input
-                      required
-                      value={supplier}
-                      onChange={(e) => setSupplier(e.target.value)}
-                      placeholder="e.g. Stark Industrial Ltd"
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Invoice Reference */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Invoice Reference
-                    </label>
-                    <input
-                      value={invoiceRef}
-                      onChange={(e) => setInvoiceRef(e.target.value)}
-                      placeholder="e.g. INV-2026-0042"
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Invoice Amount — auto-calculated from line items */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Invoice Amount (ZMW)
-                    </label>
-                    <div className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs text-slate-700 font-bold flex items-center justify-between">
-                      <span>
-                        {totalVal.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                        Auto
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-medium">
-                      Calculated from product line totals
-                    </p>
-                  </div>
-
-                  {/* Date Received */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Date Received
-                    </label>
-                    <div className="relative">
-                      <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <input
-                        type="date"
-                        required
-                        value={dateReceived}
-                        onChange={(e) => setDateReceived(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* SBU Attribution — loaded from DB */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      SBU Attribution
-                    </label>
-                    <div className="relative">
-                      <Building className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <select
-                        value={sbuId}
-                        onChange={(e) => setSbuId(e.target.value)}
-                        className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:border-primary focus:outline-none appearance-none"
-                      >
-                        <option value="">— Select SBU (optional) —</option>
-                        {sbus.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Line Items */}
-              <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-6 flex flex-col gap-4 overflow-x-auto">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-3 min-w-160">
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
-                    Line Items
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <label className="px-3 py-1.5 border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
-                      <FileSpreadsheet className="w-3.5 h-3.5" />
-                      {importing ? "Importing…" : "Import Packing List"}
-                      <input
-                        type="file"
-                        accept=".csv,text/csv"
-                        className="hidden"
-                        disabled={importing}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handlePackingListUpload(f);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={addLine}
-                      className="px-3 py-1.5 border border-primary text-primary hover:bg-primary/5 rounded-lg text-xs font-bold transition flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Row
-                    </button>
-                  </div>
-                </div>
-
-                {unmatchedRows.length > 0 && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg p-3 text-[11px] font-medium">
-                    <p className="font-bold uppercase tracking-wider text-[10px] mb-1">
-                      {unmatchedRows.length} row{unmatchedRows.length === 1 ? "" : "s"} skipped —
-                      unknown SKU
-                    </p>
-                    <ul className="list-disc list-inside max-h-32 overflow-y-auto">
-                      {unmatchedRows.map((r, i) => (
-                        <li key={i}>
-                          <span className="font-mono">{r.sku || "(no SKU)"}</span>
-                          {r.product_name ? ` — ${r.product_name}` : ""}
-                          {r.quantity_expected ? ` × ${r.quantity_expected}` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="overflow-visible">
-                  <table className="w-full min-w-160 text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                        <th className="py-3 px-3">Product Description</th>
-                        <th className="py-3 px-3 w-24">UoM</th>
-                        <th className="py-3 px-3 w-24 text-center">Qty Expected</th>
-                        <th className="py-3 px-3 w-24 text-center">Qty Received</th>
-                        <th className="py-3 px-3 w-32">Unit Cost (ZMW)</th>
-                        <th className="py-3 px-3 w-36">Expiry Date</th>
-                        <th className="py-3 px-3 w-28 text-right">Total ({currency})</th>
-                        <th className="py-3 px-3 w-12"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs">
-                      {lines.map((line, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/20 relative">
-                          <td className="py-3 px-3">
-                            <div className="relative">
-                              <Search className="w-3.5 h-3.5 text-slate-350 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                              <input
-                                required
-                                value={productSearch[idx]}
-                                onChange={(e) => searchProducts(idx, e.target.value)}
-                                placeholder="Search product..."
-                                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg font-medium text-xs focus:ring-1 focus:ring-primary focus:border-primary focus:outline-none placeholder:text-slate-350"
-                              />
-                            </div>
-                            {productOptions[idx]?.length > 0 && (
-                              <ul className="absolute left-0 right-0 z-100 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg text-xs max-h-48 overflow-y-auto divide-y divide-slate-50">
-                                {productOptions[idx].map((p) => (
-                                  <li
-                                    key={p.id}
-                                    onClick={() => selectProduct(idx, p)}
-                                    className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer font-semibold text-slate-700 flex justify-between items-center"
-                                  >
-                                    <span>{p.name}</span>
-                                    <span className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                                      {p.sku}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 font-semibold text-slate-500">
-                            <select
-                              value={line.unit_of_measure}
-                              onChange={(e) => {
-                                const u = [...lines];
-                                u[idx].unit_of_measure = e.target.value;
-                                setLines(u);
-                              }}
-                              className="w-full border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 bg-white"
-                            >
-                              <option>EA</option>
-                              <option>Rolls</option>
-                              <option>Units</option>
-                              <option>Meters</option>
-                              <option>Boxes</option>
-                            </select>
-                          </td>
-                          <td className="py-3 px-3">
-                            <input
-                              type="number"
-                              min="0"
-                              value={line.quantity_expected || ""}
-                              onChange={(e) => {
-                                const u = [...lines];
-                                u[idx].quantity_expected = Number(e.target.value);
-                                setLines(u);
-                              }}
-                              className="w-full border border-slate-200 rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700"
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <input
-                              type="number"
-                              min="0"
-                              required
-                              value={line.quantity_received || ""}
-                              onChange={(e) => updateQuantity(idx, Number(e.target.value))}
-                              className={`w-full border rounded-lg p-1.5 font-bold font-mono text-center text-xs text-slate-700 ${
-                                line.quantity_expected &&
-                                line.quantity_received !== line.quantity_expected
-                                  ? "border-amber-400 bg-amber-50"
-                                  : "border-slate-200"
-                              }`}
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              required
-                              value={line.unit_cost}
-                              onChange={(e) => updateUnitCost(idx, Number(e.target.value))}
-                              className="w-full border border-slate-200 rounded-lg p-1.5 font-bold font-mono text-xs text-slate-755"
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <input
-                              type="date"
-                              value={line.expiry_date}
-                              onChange={(e) => {
-                                const u = [...lines];
-                                u[idx].expiry_date = e.target.value;
-                                setLines(u);
-                              }}
-                              className="w-full border border-slate-200 rounded-lg p-1.5 font-medium text-xs text-slate-700"
-                            />
-                          </td>
-                          <td className="py-3 px-3 text-right font-extrabold font-mono text-slate-800 text-sm">
-                            {fmt(line.total_cost)}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {lines.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeLine(idx)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50/50 rounded-lg transition"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Totals footer */}
-                <div className="flex flex-col md:flex-row md:justify-between items-end gap-4 border-t border-slate-100 pt-5 mt-2">
-                  <span className="text-slate-400 text-[10px] font-semibold max-w-sm">
-                    Ensure physical item inspection is fully completed before submitting.
-                  </span>
-                  <div className="w-full max-w-xs flex flex-col gap-2.5 font-semibold text-xs text-slate-500">
-                    <div className="flex justify-between items-center">
-                      <span>Subtotal:</span>
-                      <span className="font-bold text-slate-800 font-mono">{fmt(subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Tax (0.0%):</span>
-                      <span className="font-bold text-slate-800 font-mono">{fmt(tax)}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-t border-slate-200/80 pt-3 text-base">
-                      <span className="font-extrabold text-slate-800">Total GRN Value:</span>
-                      <span className="font-black text-primary font-mono text-lg">
-                        {fmt(totalVal)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Actions */}
-                <div className="flex justify-between items-center bg-slate-50 border-t border-slate-100 -mx-6 -mb-6 p-4 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setView("list")}
-                    className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-5 py-2 bg-primary hover:bg-primary/90 rounded-lg text-white text-xs font-bold cursor-pointer transition flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    {loading
-                      ? editingGrnId
-                        ? "Updating..."
-                        : "Submitting..."
-                      : editingGrnId
-                        ? "Update Supplier GRN"
-                        : "Submit Supplier GRN"}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </>
-        )}
-      </div>
-    </DashboardLayout>
+          </form>
+        </>
+      )}
+    </div>
   );
 }

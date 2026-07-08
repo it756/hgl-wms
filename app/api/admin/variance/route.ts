@@ -7,8 +7,9 @@ import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseSe
  * with GRN line detail and product information.
  * Access: ADMIN | WAREHOUSE_MANAGER
  *
- * NOTE: Variance resolution (disposition) is now handled by BU Managers via
- *       POST /api/bu/variance/[id]/disposition
+ * NOTE: Variance resolution is handled exclusively by the Finance Manager via
+ *       the auto-raised variance proposal flow (PATCH /api/admin/variance/proposals/[id]).
+ *       This endpoint is a read-only audit view — no disposition actions happen here.
  */
 export async function GET(req: Request) {
   const user = await getUserFromAuthHeader(req);

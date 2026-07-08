@@ -3,10 +3,22 @@ data "github_repository" "repo" {
 }
 
 locals {
-  required_status_checks = [
-    "CI quality check",
+  required_status_checks_common = [
+    "Frontend CI gate",
+    "API and service quality",
+    "Supabase migration contract",
+    "Backend dependency security",
     "promotion source guard",
   ]
+
+  required_status_checks_qa = concat(local.required_status_checks_common, [
+    "QA smoke pack",
+    "Gitleaks secret scan",
+    "Semgrep SAST",
+    "Dependency vulnerability scan",
+    "Bridgecrew Checkov IaC scan",
+    "Aqua Trivy filesystem scan",
+  ])
 }
 
 resource "github_branch_protection" "protected" {
@@ -23,13 +35,13 @@ resource "github_branch_protection" "protected" {
 
   required_status_checks {
     strict   = true
-    contexts = local.required_status_checks
+    contexts = each.value == "QA" ? local.required_status_checks_qa : local.required_status_checks_common
   }
 
   required_pull_request_reviews {
     dismiss_stale_reviews           = true
     require_code_owner_reviews      = false
-    required_approving_review_count = each.value == "prod" || each.value == "QA" ? 2 : 1
+    required_approving_review_count = each.value == "main" || each.value == "QA" ? 2 : 1
   }
 }
 
