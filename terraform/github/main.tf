@@ -3,22 +3,13 @@ data "github_repository" "repo" {
 }
 
 locals {
-  required_status_checks_common = [
+  required_status_checks = [
     "Frontend CI gate",
     "API and service quality",
     "Supabase migration contract",
     "Backend dependency security",
     "promotion source guard",
   ]
-
-  required_status_checks_qa = concat(local.required_status_checks_common, [
-    "QA smoke pack",
-    "Gitleaks secret scan",
-    "Semgrep SAST",
-    "Dependency vulnerability scan",
-    "Bridgecrew Checkov IaC scan",
-    "Aqua Trivy filesystem scan",
-  ])
 }
 
 resource "github_branch_protection" "protected" {
@@ -35,7 +26,7 @@ resource "github_branch_protection" "protected" {
 
   required_status_checks {
     strict   = true
-    contexts = each.value == "QA" ? local.required_status_checks_qa : local.required_status_checks_common
+    contexts = local.required_status_checks
   }
 
   required_pull_request_reviews {

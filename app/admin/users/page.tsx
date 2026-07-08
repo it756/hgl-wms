@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import PageHeader from "@/components/PageHeader";
-import IconButton from "@/components/IconButton";
-import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import DashboardLayout from "@/components/DashboardLayout";
 import type { UserRole } from "../../../lib/models/user";
 import {
   Users,
@@ -267,13 +264,22 @@ export default function UsersPage() {
   const endIndex = Math.min(filtered.length, page * pageSize);
 
   return (
-    <>
+    <DashboardLayout>
       <div className="flex flex-col gap-6 w-full font-sans">
         {/* Header Block */}
-        <PageHeader
-          title="Corporate Users"
-          description="Provision accounts, adjust operational permissions, and associate users with SBUs."
-          actions={
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+              <span>Admin</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-[#005c55]">User Management</span>
+            </div>
+            <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">Corporate Users</h1>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+              Provision accounts, adjust operational permissions, and associate users with SBUs.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start md:self-auto">
             <button
               onClick={() => {
                 setShowRequestForm(!showRequestForm);
@@ -285,8 +291,8 @@ export default function UsersPage() {
               <UserPlus className="w-4 h-4" />
               Request New User
             </button>
-          }
-        />
+          </div>
+        </div>
 
         {/* Global Error Banner */}
         {error && (
@@ -534,34 +540,43 @@ export default function UsersPage() {
                   </button>
                 </div>
               </div>
-              <HScrollArea className="text-[#1E293B]">
-                <table className="min-w-full divide-y divide-slate-100 text-xs">
-                  <TableHead>
-                    <Th pinned className="w-[28%]">
-                      Team Member Info
-                    </Th>
-                    <Th className="w-[20%]">Email Address</Th>
-                    <Th className="w-[16%]">Operational Role</Th>
-                    <Th className="w-[10%]">SBU Node</Th>
-                    <Th className="w-[10%]">Licence</Th>
-                    <Th className="w-[8%]">State</Th>
-                    <Th align="right" className="w-[8%]">
-                      Operations
-                    </Th>
-                  </TableHead>
-                  <tbody className="divide-y divide-slate-100">
+              <div className="overflow-x-auto text-[#1E293B]">
+                <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[30%]">
+                        Team Member Info
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
+                        Email Address
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[20%]">
+                        Operational Role Role
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        SBU Node
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        Licence
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        State
+                      </th>
+                      <th className="px-6 py-4 text-right font-bold text-slate-400 uppercase tracking-widest text-[9px] w-[10%]">
+                        Operations
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
                     {paginated.map((u) => (
-                      <Tr key={u.id}>
-                        <Td pinned>
-                          <div className="flex items-center gap-2.5 min-w-0">
+                      <tr key={u.id} className="hover:bg-slate-50/40 transition-colors">
+                        <td className="px-6 py-3.5">
+                          <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-[#005c55] font-mono shrink-0">
                               {(u.full_name ?? u.email).substring(0, 2).toUpperCase()}
                             </div>
-                            <div className="min-w-0">
-                              <span
-                                className="font-extrabold text-slate-800 text-sm block truncate"
-                                title={u.full_name ?? "Unprovisioned Name"}
-                              >
+                            <div>
+                              <span className="font-extrabold text-slate-800 text-sm block">
                                 {u.full_name ?? "Unprovisioned Name"}
                               </span>
                               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">
@@ -569,11 +584,9 @@ export default function UsersPage() {
                               </span>
                             </div>
                           </div>
-                        </Td>
+                        </td>
                         <td className="px-6 py-3.5 text-slate-500 font-semibold font-mono">
-                          <span className="block max-w-55 truncate" title={u.email}>
-                            {u.email}
-                          </span>
+                          {u.email}
                         </td>
                         <td className="px-6 py-3.5">
                           <div className="relative inline-block">
@@ -612,7 +625,7 @@ export default function UsersPage() {
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${u.licensed ? "bg-emerald-600" : "bg-amber-500"}`}
                             ></span>
-                            {u.licensed ? (u.license_type ?? "Licensed") : "Unlicensed"}
+                            {u.licensed ? u.license_type ?? "Licensed" : "Unlicensed"}
                           </span>
                         </td>
                         <td className="px-6 py-3.5">
@@ -630,19 +643,20 @@ export default function UsersPage() {
                           </span>
                         </td>
                         <td className="px-6 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <IconButton
-                              icon={<Pencil className="w-3.5 h-3.5" />}
-                              label="Edit user"
+                          <div className="flex items-center justify-end gap-2">
+                            <button
                               onClick={() => openEditModal(u)}
-                            />
+                              className="px-2 py-1 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[11px]"
+                            >
+                              <Pencil className="w-3 h-3" /> Edit
+                            </button>
                             {u.is_active ? (
-                              <IconButton
-                                icon={<Power className="w-3.5 h-3.5" />}
-                                label="Deactivate user"
-                                variant="danger"
+                              <button
                                 onClick={() => handleDeactivate(u.id)}
-                              />
+                                className="px-2 py-1 border border-rose-100 hover:bg-rose-50 text-rose-600 font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[11px]"
+                              >
+                                <Power className="w-3 h-3" /> Deactivate
+                              </button>
                             ) : (
                               <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">
                                 Suspended
@@ -650,11 +664,11 @@ export default function UsersPage() {
                             )}
                           </div>
                         </td>
-                      </Tr>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
-              </HScrollArea>
+              </div>
             </div>
           )}
         </div>
@@ -880,6 +894,6 @@ export default function UsersPage() {
           </div>
         </div>
       )}
-    </>
+    </DashboardLayout>
   );
 }

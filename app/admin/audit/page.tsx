@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import PageHeader from "@/components/PageHeader";
-import IconButton from "@/components/IconButton";
-import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   Calendar,
   User,
@@ -166,13 +163,21 @@ export default function AuditLogPage() {
   );
 
   return (
-    <>
+    <DashboardLayout>
       <div className="flex flex-col gap-6 text-[#1E293B]">
         {/* Header Section */}
-        <PageHeader
-          title="System Audit Trail"
-          description="Monitor real-time system changes, database entities state logs, warehouse operation events, and user activities."
-        />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider">
+            <span>Administration</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-primary font-extrabold">System Audit Logs</span>
+          </div>
+          <h1 className="text-2xl font-extrabold text-[#1E293B] md:text-3xl">System Audit Trail</h1>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            Monitor real-time system changes, database entities state logs, warehouse operation
+            events, and user activities.
+          </p>
+        </div>
 
         {/* Audit Analytics KPI Stats */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -306,34 +311,29 @@ export default function AuditLogPage() {
               </p>
             </div>
           ) : (
-            <HScrollArea className="text-[#1E293B]">
+            <div className="overflow-x-auto text-[#1E293B]">
               <table className="min-w-full divide-y divide-slate-100 text-xs font-medium">
-                <TableHead>
-                  <Th pinned className="w-[18%]">
-                    Timestamp
-                  </Th>
-                  <Th className="w-[15%]">Entity context</Th>
-                  <Th className="w-[12%]">Target Node ID</Th>
-                  <Th className="w-[15%]">Action Vector</Th>
-                  <Th className="w-[15%]">Operator UID</Th>
-                  <Th className="w-[20%]">Trace Payload Context</Th>
-                  <Th align="right" className="w-[5%]">
-                    Trace
-                  </Th>
-                </TableHead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <thead>
+                  <tr className="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-widest text-[9px]">
+                    <th className="px-6 py-4 text-left w-[18%]">Timestamp</th>
+                    <th className="px-6 py-4 text-left w-[15%]">Entity context</th>
+                    <th className="px-6 py-4 text-left w-[12%]">Target Node ID</th>
+                    <th className="px-6 py-4 text-left w-[15%]">Action Vector</th>
+                    <th className="px-6 py-4 text-left w-[15%]">Operator UID</th>
+                    <th className="px-6 py-4 text-left w-[20%]">Trace Payload Context</th>
+                    <th className="px-6 py-4 text-right w-[5%]">Trace</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 text-slate-700">
                   {filteredLogs.map((log) => (
-                    <Tr key={log.id}>
-                      <Td
-                        pinned
-                        className="whitespace-nowrap flex items-center gap-1.5 text-slate-500 font-mono font-bold"
-                      >
+                    <tr key={log.id} className="hover:bg-slate-50/40 transition-colors">
+                      <td className="px-6 py-3.5 whitespace-nowrap text-slate-500 font-mono font-bold flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                         {new Date(log.created_at).toLocaleString("en-KE", {
                           dateStyle: "short",
                           timeStyle: "medium",
                         })}
-                      </Td>
+                      </td>
                       <td className="px-6 py-3.5 font-bold uppercase text-slate-600 tracking-wide text-[10px]">
                         <span className="bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 font-mono">
                           {log.entity_type}
@@ -363,17 +363,19 @@ export default function AuditLogPage() {
                         {log.details ? JSON.stringify(log.details) : "—"}
                       </td>
                       <td className="px-6 py-3.5 text-right whitespace-nowrap">
-                        <IconButton
-                          icon={<Eye className="w-3.5 h-3.5" />}
-                          label="View trace payload"
+                        <button
                           onClick={() => setSelectedLog(log)}
-                        />
+                          className="p-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-lg cursor-pointer transition-all inline-flex items-center justify-center gap-1 text-[10px] font-bold"
+                          title="View Trace Payload"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
                       </td>
-                    </Tr>
+                    </tr>
                   ))}
                 </tbody>
               </table>
-            </HScrollArea>
+            </div>
           )}
         </div>
       </div>
@@ -454,6 +456,6 @@ export default function AuditLogPage() {
           </div>
         </div>
       )}
-    </>
+    </DashboardLayout>
   );
 }

@@ -22,7 +22,7 @@ const sections = [
 
 export default function AdminDashboardPage() {
   return (
-    <div className="max-w-3xl mx-auto">
+    <main className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-6">Admin Dashboard</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {sections.map((s) => (
@@ -36,6 +36,6 @@ export default function AdminDashboardPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </main>
   );
 }

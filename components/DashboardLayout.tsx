@@ -358,26 +358,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-5">
-        <div className="flex items-center gap-2.5">
-          <Warehouse className="text-teal-600 w-8 h-8" />
-          <span className="font-extrabold text-2xl tracking-tight text-[#1E293B] uppercase">
-            Harvest WMS
-          </span>
-        </div>
-        <div className="relative h-9 w-9">
-          <div className="absolute inset-0 rounded-full border-2 border-slate-200"></div>
-          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin"></div>
-        </div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Loading your workspace…
-        </p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-surface overflow-x-hidden">
+    <div className="min-h-screen flex bg-surface">
       {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 w-[260px] bg-[#1E293B] text-slate-100 flex flex-col z-30 hidden lg:flex">
         {/* Brand identity */}
@@ -389,7 +377,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="no-scrollbar flex-1 py-6 flex flex-col gap-1 overflow-y-auto">
+        <nav className="flex-1 py-6 flex flex-col gap-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -412,7 +400,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </aside>
 
       {/* Main content wrapper */}
-      <div className="flex-1 min-w-0 flex flex-col lg:pl-[260px] relative">
+      <div className="flex-1 flex flex-col lg:pl-[260px] relative">
         {/* TopAppBar */}
         <header className="sticky top-0 z-40 w-full h-16 px-6 bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center shadow-sm">
           <div className="flex items-center gap-4">
@@ -422,7 +410,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h2 className="font-bold text-lg md:text-base text-on-surface">
+            <h2 className="font-bold text-lg md:text-xl text-on-surface">
               Good Day, {userName.split(" ")[0]}
             </h2>
             <div className="h-6 w-px bg-outline-variant hidden sm:block"></div>
@@ -437,7 +425,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center gap-1.5 relative">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative cursor-pointer"
+                className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -446,7 +434,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
               <button
                 onClick={openSupportDialog}
-                className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors hidden sm:block cursor-pointer"
+                className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors hidden sm:block"
                 aria-label="Open support request dialog"
                 type="button"
               >
@@ -521,15 +509,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               className="relative flex items-center gap-3 border-l border-outline-variant pl-4 py-1"
               ref={avatarRef}
             >
-              {/* <div className="text-right hidden md:block">
-                <p className="font-semibold text-sm text-on-surface leading-none">{userName.split(" ")[0]}</p>
+              <div className="text-right hidden md:block">
+                <p className="font-semibold text-sm text-on-surface leading-none">{userName}</p>
                 <p className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2.5 py-0.5 rounded-full mt-1 inline-block border border-slate-200">
                   {userRole}
                 </p>
-              </div> */}
+              </div>
               <button
                 onClick={() => setAvatarMenuOpen((v) => !v)}
-                className="w-10 h-10 rounded-full bg-primary-container cursor-pointer text-on-primary flex items-center justify-center font-bold border-2 border-primary font-mono text-sm shadow-sm select-none hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold border-2 border-primary font-mono text-sm shadow-sm select-none hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
                 aria-label="Open profile menu"
               >
                 {userName
@@ -542,7 +530,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
               {/* Avatar popover */}
               {avatarMenuOpen && (
-                <div className="absolute right-0 top-12 w-64 bg-white border border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
+                <div className="absolute right-0 top-14 w-64 bg-white border border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
                   {/* Header */}
                   <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
                     <p className="font-bold text-sm text-[#1E293B] truncate">{userName}</p>
@@ -577,7 +565,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Actual Dynamic Workspace */}
-        <main className="flex-1 min-w-0 p-5 md:p-8 max-w-[1400px] w-full mx-auto">{children}</main>
+        <main className="flex-1 p-5 md:p-8 max-w-[1400px] w-full mx-auto">{children}</main>
       </div>
 
       {supportOpen && (
@@ -679,7 +667,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <nav className="no-scrollbar flex-1 flex flex-col gap-1 overflow-y-auto">
+            <nav className="flex-1 flex flex-col gap-1 overflow-y-auto">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
