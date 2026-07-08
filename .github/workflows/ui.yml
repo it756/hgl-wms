@@ -25,6 +25,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
 
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
