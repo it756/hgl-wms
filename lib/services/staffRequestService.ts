@@ -124,8 +124,11 @@ async function sendStaffRequestReviewEmail(input: {
       </table>
     </div>`;
 
+  const to = STAFF_REQUEST_REVIEW_EMAIL.trim();
+  if (!to) return;
+
   await sendEmail(
-    STAFF_REQUEST_REVIEW_EMAIL,
+    to,
     `New BU staff request: ${requestedUser.full_name} (${requestedUser.email})`.replace(/[\r\n]+/g, " "),
     html,
   );
