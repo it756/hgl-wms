@@ -53,7 +53,9 @@ ALTER TABLE public.product_price_history ENABLE ROW LEVEL SECURITY;
 -- Finance, Warehouse and Admin can read; only service_role (via the RPC) may write.
 CREATE POLICY "price_history_read" ON public.product_price_history
   FOR SELECT TO authenticated
-  USING (true);
+  USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'WAREHOUSE_MANAGER', 'FINANCE_MANAGER')
+  );
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- FUNCTION: increment_stock_after_grn (replaced)
