@@ -112,7 +112,7 @@ async function createSupplierGrnFallback(
     throw lineInsertError;
   }
 
-  await supabaseAdmin.from("audit_logs").insert([
+  const { error: auditError } = await supabaseAdmin.from("audit_logs").insert([
     {
       entity_type: "supplier_grn",
       entity_id: grn.id,
@@ -127,6 +127,10 @@ async function createSupplierGrnFallback(
       },
     },
   ]);
+
+  if (auditError) {
+    console.error("[supplier-grns] audit log insert failed (fallback create)", auditError);
+  }
 
   return {
     id: grn.id,
