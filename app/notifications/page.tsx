@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Bell, CheckCheck, AlertTriangle, Info, Package, ArrowLeftRight } from "lucide-react";
 import type { Notification } from "@/lib/models/shared";
 
@@ -92,86 +91,84 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <DashboardLayout>
-      <div className="p-6 max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Bell className="w-6 h-6 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold text-on-surface">Notifications</h1>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-              </p>
-            </div>
+    <div className="p-6 max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Bell className="w-6 h-6 text-primary" />
+          <div>
+            <h1 className="text-xl font-bold text-on-surface">Notifications</h1>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+            </p>
           </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              disabled={markingAll}
-              className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
-            >
-              <CheckCheck className="w-4 h-4" />
-              Mark all as read
-            </button>
-          )}
         </div>
-
-        {/* List */}
-        {loading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-16 bg-surface-container-low rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-20 text-on-surface-variant">
-            <Bell className="w-10 h-10 opacity-30" />
-            <p className="text-sm">No notifications</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {notifications.map((n) => {
-              const style = getTypeStyle(n.type);
-              return (
-                <div
-                  key={n.id}
-                  className={`flex gap-4 p-4 rounded-xl border transition-colors ${
-                    n.is_read
-                      ? "bg-surface-container-lowest border-outline-variant opacity-60"
-                      : "bg-white border-outline-variant shadow-sm"
-                  }`}
-                >
-                  <div className="mt-0.5">{style.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${style.badge}`}
-                      >
-                        {n.type}
-                      </span>
-                      <span className="text-[11px] text-on-surface-variant font-mono ml-auto shrink-0">
-                        {formatDate(n.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-on-surface leading-snug whitespace-pre-line">
-                      {n.message}
-                    </p>
-                  </div>
-                  {!n.is_read && (
-                    <button
-                      onClick={() => markRead(n.id)}
-                      className="self-start mt-0.5 text-[11px] text-primary font-semibold hover:underline shrink-0"
-                    >
-                      Mark read
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        {unreadCount > 0 && (
+          <button
+            onClick={markAllRead}
+            disabled={markingAll}
+            className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
+          >
+            <CheckCheck className="w-4 h-4" />
+            Mark all as read
+          </button>
         )}
       </div>
-    </DashboardLayout>
+
+      {/* List */}
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-16 bg-surface-container-low rounded-xl animate-pulse" />
+          ))}
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-20 text-on-surface-variant">
+          <Bell className="w-10 h-10 opacity-30" />
+          <p className="text-sm">No notifications</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {notifications.map((n) => {
+            const style = getTypeStyle(n.type);
+            return (
+              <div
+                key={n.id}
+                className={`flex gap-4 p-4 rounded-xl border transition-colors ${
+                  n.is_read
+                    ? "bg-surface-container-lowest border-outline-variant opacity-60"
+                    : "bg-white border-outline-variant shadow-sm"
+                }`}
+              >
+                <div className="mt-0.5">{style.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${style.badge}`}
+                    >
+                      {n.type}
+                    </span>
+                    <span className="text-[11px] text-on-surface-variant font-mono ml-auto shrink-0">
+                      {formatDate(n.created_at)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-on-surface leading-snug whitespace-pre-line">
+                    {n.message}
+                  </p>
+                </div>
+                {!n.is_read && (
+                  <button
+                    onClick={() => markRead(n.id)}
+                    className="self-start mt-0.5 text-[11px] text-primary font-semibold hover:underline shrink-0"
+                  >
+                    Mark read
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
