@@ -50,11 +50,25 @@ async function sendStaffRequestReviewEmail(input: {
 }): Promise<void> {
   const { staffRequest, requesterId, sbuId } = input;
 
-  const [{ data: requesterProfile }, { data: authUser }, { data: sbu }] = await Promise.all([
+  const [
+    { data: requesterProfile, error: requesterProfileError },
+    { data: authUser, error: authUserError },
+    { data: sbu, error: sbuError },
+  ] = await Promise.all([
     supabaseAdmin.from("profiles").select("full_name, role, sbu_id").eq("id", requesterId).single(),
     supabaseAdmin.auth.admin.getUserById(requesterId),
     supabaseAdmin.from("sbus").select("name, code").eq("id", sbuId).single(),
   ]);
+
+  if (requesterProfileError) {
+    console.warn("[staffRequestService] failed to load requester profile for email", requesterProfileError);
+  }
+  if (authUserError) {
+    console.warn("[staffRequestService] failed to load requester auth user for email", authUserError);
+  }
+  if (sbuError) {
+    console.warn("[staffRequestService] failed to load SBU for email", sbuError);
+  }
 
   const requestedUser = staffRequest.requested_user_info;
   const requestedUserRows = Object.entries(requestedUser)
