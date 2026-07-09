@@ -14,6 +14,17 @@ interface AtomicSupplierGrnResult {
   has_packing_variance: boolean;
 }
 
+type SupplierGrnItemInput = SupplierGRNCreateInput["items"][number];
+
+interface SupplierGrnFallbackInput {
+  supplier_name: string;
+  supplier_invoice_reference?: string | null;
+  invoice_amount?: number | null;
+  date_received?: string | null;
+  sbu_id?: string | null;
+  items: SupplierGrnItemInput[];
+}
+
 function generateSupplierGRNReference(): string {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 90000 + 10000);
@@ -25,6 +36,103 @@ function statusForRpcError(message: string): number {
   if (message.includes("forbidden")) return 403;
   if (message.includes("required") || message.includes("at least one")) return 400;
   return 500;
+}
+
+function isMissingCreateSupplierGrnRpc(message: string): boolean {
+  return (
+    message.includes("create_supplier_grn_atomic") &&
+    (message.includes("schema cache") || message.includes("Could not find the function"))
+  );
+}
+
+function hasPackingVariance(items: SupplierGrnItemInput[]): boolean {
+  return items.some(
+    (item) =>
+      item.quantity_expected !== undefined &&
+      item.quantity_expected !== item.quantity_received,
+  );
+}
+
+function buildLineItems(
+  grnId: string,
+  items: SupplierGrnItemInput[],
+  includeExpiryDate: boolean,
+) {
+  return items.map((item) => ({
+    supplier_grn_id: grnId,
+    product_id: item.product_id,
+    quantity_received: item.quantity_received,
+    unit_cost: item.unit_cost ?? null,
+    ...(includeExpiryDate ? { expiry_date: item.expiry_date ?? null } : {}),
+  }));
+}
+
+async function createSupplierGrnFallback(
+  input: SupplierGrnFallbackInput,
+  actorId: string,
+  referenceNumber: string,
+): Promise<AtomicSupplierGrnResult> {
+  const { data: createdGrn, error: grnError } = await supabaseAdmin
+    .from("supplier_grns")
+    .insert([
+      {
+        reference_number: referenceNumber,
+        supplier_name: input.supplier_name.trim(),
+        supplier_invoice_reference: input.supplier_invoice_reference ?? null,
+        invoice_amount: input.invoice_amount ?? null,
+        received_by: actorId,
+        date_received: input.date_received ?? new Date().toISOString().slice(0, 10),
+        status: "AWAITING_FINANCE_APPROVAL",
+        sbu_id: input.sbu_id ?? null,
+      },
+    ])
+    .select("id, reference_number")
+    .single();
+
+  if (grnError) throw grnError;
+
+  const grn = createdGrn as { id: string; reference_number: string };
+  const lineItemsWithExpiry = buildLineItems(grn.id, input.items, true);
+  let lineInsertError = (await supabaseAdmin.from("supplier_grn_line_items").insert(lineItemsWithExpiry))
+    .error;
+
+  if (
+    lineInsertError &&
+    lineInsertError.message?.includes("expiry_date") &&
+    lineInsertError.message?.includes("schema cache")
+  ) {
+    const retry = await supabaseAdmin
+      .from("supplier_grn_line_items")
+      .insert(buildLineItems(grn.id, input.items, false));
+    lineInsertError = retry.error;
+  }
+
+  if (lineInsertError) {
+    await supabaseAdmin.from("supplier_grns").delete().eq("id", grn.id);
+    throw lineInsertError;
+  }
+
+  await supabaseAdmin.from("audit_logs").insert([
+    {
+      entity_type: "supplier_grn",
+      entity_id: grn.id,
+      action: "create",
+      performed_by: actorId,
+      new_value: {
+        reference_number: referenceNumber,
+        status: "AWAITING_FINANCE_APPROVAL",
+        supplier_name: input.supplier_name,
+        has_packing_variance: hasPackingVariance(input.items),
+        fallback: "direct_insert_missing_rpc",
+      },
+    },
+  ]);
+
+  return {
+    id: grn.id,
+    reference_number: grn.reference_number,
+    has_packing_variance: hasPackingVariance(input.items),
+  };
 }
 
 /**
@@ -71,14 +179,29 @@ export async function POST(req: Request) {
     p_items: items,
   });
 
-  if (rpcError) {
+  let created: AtomicSupplierGrnResult;
+  if (rpcError && isMissingCreateSupplierGrnRpc(rpcError.message)) {
+    created = await createSupplierGrnFallback(
+      {
+        supplier_name,
+        supplier_invoice_reference,
+        invoice_amount,
+        date_received,
+        sbu_id,
+        items,
+      },
+      user.id,
+      reference_number,
+    );
+  } else if (rpcError) {
     return NextResponse.json(
       { error: rpcError.message },
       { status: statusForRpcError(rpcError.message) },
     );
+  } else {
+    created = data as AtomicSupplierGrnResult;
   }
 
-  const created = data as AtomicSupplierGrnResult;
   const grnId = created.id;
 
   const baseMessage = await buildSupplierGrnNotificationMessage({

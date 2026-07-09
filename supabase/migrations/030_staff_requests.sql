@@ -47,44 +47,74 @@ COMMENT ON COLUMN public.staff_requests.requested_roles IS
 ALTER TABLE public.staff_requests ENABLE ROW LEVEL SECURITY;
 
 -- BU Managers can insert requests scoped to their own SBU
-CREATE POLICY "BU Managers can create staff requests"
-  ON public.staff_requests FOR INSERT TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid()
-        AND p.role = 'BU_MANAGER'
-        AND p.sbu_id = requested_by_sbu_id
-    )
-    AND created_by = auth.uid()
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'staff_requests'
+      AND policyname = 'BU Managers can create staff requests'
+  ) THEN
+    CREATE POLICY "BU Managers can create staff requests"
+      ON public.staff_requests FOR INSERT TO authenticated
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.id = auth.uid()
+            AND p.role = 'BU_MANAGER'
+            AND p.sbu_id = requested_by_sbu_id
+        )
+        AND created_by = auth.uid()
+      );
+  END IF;
+END $$;
 
 -- BU Managers can read their own SBU's requests
-CREATE POLICY "BU Managers can view their SBU staff requests"
-  ON public.staff_requests FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid()
-        AND p.role = 'BU_MANAGER'
-        AND p.sbu_id = requested_by_sbu_id
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'staff_requests'
+      AND policyname = 'BU Managers can view their SBU staff requests'
+  ) THEN
+    CREATE POLICY "BU Managers can view their SBU staff requests"
+      ON public.staff_requests FOR SELECT TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.id = auth.uid()
+            AND p.role = 'BU_MANAGER'
+            AND p.sbu_id = requested_by_sbu_id
+        )
+      );
+  END IF;
+END $$;
 
 -- Admins have full access
-CREATE POLICY "Admins can manage all staff requests"
-  ON public.staff_requests FOR ALL TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role = 'ADMIN'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role = 'ADMIN'
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'staff_requests'
+      AND policyname = 'Admins can manage all staff requests'
+  ) THEN
+    CREATE POLICY "Admins can manage all staff requests"
+      ON public.staff_requests FOR ALL TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.id = auth.uid() AND p.role = 'ADMIN'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.id = auth.uid() AND p.role = 'ADMIN'
+        )
+      );
+  END IF;
+END $$;
 
 COMMIT;
