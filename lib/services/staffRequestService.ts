@@ -164,7 +164,7 @@ export async function createStaffRequest(
       sbuId: sbu_id,
     });
   } catch (emailErr) {
-    console.error("[staffRequestService] David review email failed", emailErr);
+    console.error("[staffRequestService] review email failed", emailErr);
   }
 
   // Notify admins of new pending request
