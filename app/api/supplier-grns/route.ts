@@ -185,9 +185,14 @@ export async function POST(req: Request) {
 
   let created: AtomicSupplierGrnResult;
   if (rpcError && isMissingCreateSupplierGrnRpc(rpcError.message)) {
+    const trimmedSupplierName = supplier_name.trim();
+    if (!trimmedSupplierName) {
+      return NextResponse.json({ error: "supplier_name is required" }, { status: 400 });
+    }
+
     created = await createSupplierGrnFallback(
       {
-        supplier_name,
+        supplier_name: trimmedSupplierName,
         supplier_invoice_reference,
         invoice_amount,
         date_received,
