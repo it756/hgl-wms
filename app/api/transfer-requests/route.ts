@@ -3,32 +3,31 @@ import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServe
 import { createNotification } from "../../../lib/services/notificationService";
 import { buildTransferNotificationMessage } from "../../../lib/notifications/messages";
 
-interface AtomicTransferResult {
-  id: string;
-  reference_number: string;
-  status: string;
-  requires_finance_approval: boolean;
-}
+const DEFAULT_FINANCE_THRESHOLD = 1000;
 
-function statusForRpcError(message: string): number {
-  if (message.includes("insufficient stock")) return 422;
-  if (message.includes("not found")) return 404;
-  if (message.includes("forbidden")) return 403;
-  if (
-    message.includes("required") ||
-    message.includes("inactive") ||
-    message.includes("does not belong")
-  ) {
-    return 422;
+/**
+ * Transfers valued at or above the threshold require Finance approval.
+ * The SBU-specific threshold (Admin → SBUs) wins over the global setting
+ * (Admin → Settings); if neither is configured, a conservative default applies.
+ */
+async function resolveFinanceThreshold(sbuId: string): Promise<number> {
+  const { data: sbu } = await supabaseAdmin
+    .from("sbus")
+    .select("finance_approval_threshold")
+    .eq("id", sbuId)
+    .maybeSingle();
+  const sbuThreshold = Number(sbu?.finance_approval_threshold);
+  if (sbu?.finance_approval_threshold != null && Number.isFinite(sbuThreshold)) {
+    return sbuThreshold;
   }
-  return 500;
-}
 
-function messageForRpcError(message: string): string {
-  if (message.includes("insufficient stock")) {
-    return message.replace("insufficient stock", "Insufficient stock");
-  }
-  return message;
+  const { data: setting } = await supabaseAdmin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "finance_approval_threshold")
+    .maybeSingle();
+  const globalThreshold = Number(setting?.value);
+  return Number.isFinite(globalThreshold) ? globalThreshold : DEFAULT_FINANCE_THRESHOLD;
 }
 
 export async function POST(req: Request) {
@@ -44,7 +43,7 @@ export async function POST(req: Request) {
     const isUnitStaff = role === "UNIT_STAFF";
 
     const body = await req.json();
-    const { required_date, notes, lines, requesting_unit_id, estimated_value } = body;
+    const { required_date, notes, lines, requesting_unit_id } = body;
 
     if (!Array.isArray(lines) || lines.length === 0)
       return NextResponse.json({ error: "No line items" }, { status: 400 });
@@ -52,107 +51,134 @@ export async function POST(req: Request) {
     if (!requesting_unit_id)
       return NextResponse.json({ error: "requesting_unit_id is required." }, { status: 422 });
 
+    // Resolve the user's real sbu_id from their profile (never trust client-sent value)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("sbu_id")
+      .eq("id", user.id)
+      .single();
+    if (profileError || !profile?.sbu_id)
+      return NextResponse.json(
+        { error: "Your account has no SBU assigned. Contact an administrator." },
+        { status: 422 },
+      );
+    const sbu_id = profile.sbu_id;
+
+    // Verify the requesting unit belongs to the user's SBU
+    const { data: unitCheck, error: unitCheckError } = await supabaseAdmin
+      .from("sbu_units")
+      .select("sbu_id, is_active")
+      .eq("id", requesting_unit_id)
+      .single();
+    if (unitCheckError || !unitCheck)
+      return NextResponse.json({ error: "Requesting unit not found." }, { status: 422 });
+    if (unitCheck.sbu_id !== sbu_id)
+      return NextResponse.json(
+        { error: "Requesting unit does not belong to your SBU." },
+        { status: 422 },
+      );
+    if (!unitCheck.is_active)
+      return NextResponse.json({ error: "Requesting unit is inactive." }, { status: 422 });
+
+    // Validate stock availability for each requested line item
+    const productIds: string[] = lines.map((l: any) => l.product_id);
+    const { data: products, error: stockError } = await supabaseAdmin
+      .from("products")
+      .select("id, name, stock_quantity, unit_cost")
+      .in("id", productIds);
+    if (stockError) throw stockError;
+
+    const stockMap = new Map<string, { name: string; stock_quantity: number; unit_cost: number }>(
+      (products ?? []).map((p: any) => [
+        p.id,
+        { name: p.name, stock_quantity: p.stock_quantity, unit_cost: Number(p.unit_cost) || 0 },
+      ]),
+    );
+
+    for (const line of lines) {
+      const product = stockMap.get(line.product_id);
+      if (!product) {
+        return NextResponse.json(
+          { error: `Product ${line.product_id} not found.` },
+          { status: 422 },
+        );
+      }
+      if (line.requested_quantity <= 0) {
+        return NextResponse.json(
+          { error: `Requested quantity for "${product.name}" must be greater than zero.` },
+          { status: 422 },
+        );
+      }
+      if (line.requested_quantity > product.stock_quantity) {
+        return NextResponse.json(
+          {
+            error: `Insufficient stock for "${product.name}": requested ${line.requested_quantity}, available ${product.stock_quantity}.`,
+          },
+          { status: 422 },
+        );
+      }
+    }
+
+    // Compute the transfer value server-side from catalogue unit costs so the
+    // finance-approval decision cannot be influenced by a client-sent figure.
+    const estimatedValue = lines.reduce(
+      (sum: number, l: any) =>
+        sum + l.requested_quantity * (stockMap.get(l.product_id)?.unit_cost ?? 0),
+      0,
+    );
+
     // generate a simple reference (TRF-YYYY-NNNNN)
     const now = new Date();
     const year = now.getFullYear();
     const refSeed = Math.floor(Math.random() * 90000 + 10000);
     const reference_number = `TRF-${year}-${refSeed}`;
 
-    const sbuId = (user.user_metadata as any)?.sbu_id ?? null;
-    if (!sbuId) {
-      return NextResponse.json({ error: "User has no SBU assigned" }, { status: 400 });
+    // Determine initial status and finance approval flag based on role and threshold
+    let initialStatus: string;
+    let requiresFinanceApproval: boolean;
+
+    if (isUnitStaff) {
+      // Unit staff requests always require BU approval first, then Finance approval
+      initialStatus = "PENDING_BU_APPROVAL";
+      requiresFinanceApproval = true;
+    } else {
+      // BU_MANAGER: Finance approval only at/above the configured threshold;
+      // below it the transfer goes straight to the warehouse queue as PENDING
+      const threshold = await resolveFinanceThreshold(sbu_id);
+      requiresFinanceApproval = estimatedValue >= threshold;
+      initialStatus = requiresFinanceApproval ? "PENDING_APPROVAL" : "PENDING";
     }
 
-    const { data: unit, error: unitError } = await supabaseAdmin
-      .from("sbu_units")
-      .select("sbu_id, is_active")
-      .eq("id", requesting_unit_id)
-      .single();
-
-    if (unitError || !unit) {
-      return NextResponse.json({ error: "Requesting unit not found." }, { status: 422 });
-    }
-    if (unit.sbu_id !== sbuId) {
-      return NextResponse.json(
-        { error: "Requesting unit does not belong to your SBU." },
-        { status: 422 },
-      );
-    }
-    if (!unit.is_active) {
-      return NextResponse.json({ error: "Requesting unit is inactive." }, { status: 422 });
-    }
-
-    const productIds = [...new Set(lines.map((line: any) => line.product_id))];
-    const { data: products, error: productsError } = await supabaseAdmin
-      .from("products")
-      .select("id, name, stock_quantity")
-      .in("id", productIds);
-
-    if (productsError) {
-      return NextResponse.json({ error: productsError.message }, { status: 500 });
-    }
-
-    const productMap = new Map((products ?? []).map((product: any) => [product.id, product]));
-    for (const line of lines as Array<{ product_id: string; requested_quantity: number }>) {
-      const product = productMap.get(line.product_id);
-      if (!product) {
-        return NextResponse.json(
-          { error: `Product not found: ${line.product_id}` },
-          { status: 404 },
-        );
-      }
-
-      if (Number(product.stock_quantity) < Number(line.requested_quantity)) {
-        return NextResponse.json(
-          { error: `Insufficient stock for ${product.name}` },
-          { status: 422 },
-        );
-      }
-    }
-
-    const transferStatus = isUnitStaff ? "PENDING_BU_APPROVAL" : "PENDING_APPROVAL";
     const { data: trData, error: trError } = await supabaseAdmin
       .from("transfer_requests")
       .insert([
         {
           reference_number,
-          sbu_id: sbuId,
+          sbu_id,
           requesting_unit_id,
           raised_by: user.id,
-          status: transferStatus,
-          required_date: required_date ?? null,
-          notes: notes ?? null,
-          estimated_value: estimated_value ?? null,
-          requires_finance_approval: true,
+          status: initialStatus,
+          required_date,
+          notes,
+          estimated_value: estimatedValue || null,
+          requires_finance_approval: requiresFinanceApproval,
         },
       ])
       .select()
       .single();
 
-    if (trError) {
-      return NextResponse.json({ error: trError.message }, { status: 500 });
-    }
+    if (trError) throw trError;
 
-    const created = trData as AtomicTransferResult;
-    const transferId = created.id;
+    const transferId = (trData as any).id;
 
-    const lineInsertRows = (lines as Array<{ product_id: string; requested_quantity: number }>).map(
-      (line) => ({
-        transfer_request_id: transferId,
-        product_id: line.product_id,
-        requested_quantity: line.requested_quantity,
-      }),
-    );
-
-    const { error: lineError } = await supabaseAdmin
-      .from("transfer_line_items")
-      .insert(lineInsertRows);
-
-    if (lineError) {
-      return NextResponse.json({ error: lineError.message }, { status: 500 });
-    }
-
-    const requiresFinanceApproval = true;
+    // insert line items
+    const lineInserts = lines.map((l: any) => ({
+      transfer_request_id: transferId,
+      product_id: l.product_id,
+      requested_quantity: l.requested_quantity,
+    }));
+    const { error: liError } = await supabaseAdmin.from("transfer_line_items").insert(lineInserts);
+    if (liError) throw liError;
 
     if (isUnitStaff) {
       // Notify BU_MANAGER(s) in the same SBU that a new request awaits their approval
@@ -187,10 +213,7 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json(
-      { id: transferId, reference_number: created.reference_number },
-      { status: 201 },
-    );
+    return NextResponse.json({ id: transferId, reference_number }, { status: 201 });
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });

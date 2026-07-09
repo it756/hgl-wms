@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 
 const DISABLED_MESSAGE =
-  "This endpoint is disabled. Submit staff creation requests via /api/bu/staff-requests.";
+  "This endpoint is disabled. Submit staff management requests via /api/bu/staff-requests.";
 
-async function disabled(req: Request) {
+async function returnDisabledResponse(req: Request) {
+  // Keep auth guard so disabled endpoints retain the same 401 behavior for unauthenticated callers.
   const user = await getUserFromAuthHeader(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -13,13 +14,13 @@ async function disabled(req: Request) {
 
 // BU staff management is intentionally disabled. Use /api/bu/staff-requests.
 export async function GET(req: Request) {
-  return disabled(req);
+  return returnDisabledResponse(req);
 }
 
 export async function PATCH(req: Request) {
-  return disabled(req);
+  return returnDisabledResponse(req);
 }
 
 export async function POST(req: Request) {
-  return disabled(req);
+  return returnDisabledResponse(req);
 }
