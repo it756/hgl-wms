@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../lib/supabaseServer";
 import { sendEmail } from "../../../lib/email";
 import { createNotification } from "../../../lib/services/notificationService";
+import { buildTransferNotificationMessage } from "../../../lib/notifications/messages";
 
 export async function POST(req: Request) {
   try {
@@ -49,25 +50,32 @@ export async function POST(req: Request) {
     const issuanceId = (rpcData as any) || null;
 
     // notify BU Manager, Unit Staff and Finance Manager for the SBU (best-effort)
+    const goodsIssuedMessage = await buildTransferNotificationMessage({
+      transferId: transfer_request_id,
+      headline: "Goods have been issued from the warehouse",
+      actorId: user.id,
+      actorLabel: "Issued by",
+      notes: logistics_notes,
+    });
     await Promise.all([
       createNotification({
         related_entity_id: transfer_request_id,
         type: "goods_issued",
-        message: "Goods have been issued",
+        message: goodsIssuedMessage,
         user_role: "BU_MANAGER",
         dispatchChannels: true,
       }),
       createNotification({
         related_entity_id: transfer_request_id,
         type: "goods_issued",
-        message: "Goods have been issued",
+        message: goodsIssuedMessage,
         user_role: "UNIT_STAFF",
         dispatchChannels: true,
       }),
       createNotification({
         related_entity_id: transfer_request_id,
         type: "goods_issued",
-        message: "Goods have been issued from the warehouse",
+        message: goodsIssuedMessage,
         user_role: "FINANCE_MANAGER",
         dispatchChannels: true,
       }),

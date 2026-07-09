@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../../../lib/supabaseServer";
 import { createNotification } from "../../../../../../lib/services/notificationService";
+import { buildProductActionMessage } from "../../../../../../lib/notifications/messages";
 
 /**
  * POST /api/admin/products/[id]/damage-writeoff
@@ -64,18 +65,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .single();
 
   // Notify Admin + Finance Manager
+  const message = await buildProductActionMessage({
+    headline: `Damage write-off recorded for ${(prod as any)?.name ?? productId}`,
+    reference: (prod as any)?.sku ?? undefined,
+    actorId: user.id,
+    actorLabel: "Written off by",
+    productName: (prod as any)?.name,
+    sku: (prod as any)?.sku,
+    quantity: qty,
+    reason,
+    notes,
+  });
   await Promise.all([
     createNotification({
       related_entity_id: ledgerId as string,
       type: "damage_writeoff",
-      message: `Damage write-off: ${qty} units of ${(prod as any)?.name ?? productId} (${(prod as any)?.sku ?? ""}) — ${reason}`,
+      message,
       user_role: "ADMIN",
       dispatchChannels: true,
     }),
     createNotification({
       related_entity_id: ledgerId as string,
       type: "damage_writeoff",
-      message: `Damage write-off recorded: ${qty} units of ${(prod as any)?.name ?? productId}`,
+      message,
       user_role: "FINANCE_MANAGER",
       dispatchChannels: true,
     }),

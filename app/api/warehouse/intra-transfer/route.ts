@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 import { createNotification } from "../../../../lib/services/notificationService";
+import { buildIntraTransferNotificationMessage } from "../../../../lib/notifications/messages";
 
 function generateIntraTransferReference(): string {
   const year = new Date().getFullYear();
@@ -91,17 +92,18 @@ export async function POST(req: Request) {
 
   // Notify Finance Manager to review the pending transfer
   try {
-    const { data: prod } = await supabaseAdmin
-      .from("products")
-      .select("name, sku")
-      .eq("id", product_id)
-      .single();
-    const productLabel = prod ? `${(prod as any).name} (${(prod as any).sku})` : "product";
+    const message = await buildIntraTransferNotificationMessage({
+      transferId,
+      headline: `Intra-warehouse transfer ${reference_number} requires your approval`,
+      actorId: user.id,
+      actorLabel: "Raised by",
+      notes,
+    });
 
     await createNotification({
       user_role: "FINANCE_MANAGER",
       type: "intra_transfer_pending_approval",
-      message: `Intra-warehouse transfer ${reference_number}: ${qty} of ${productLabel} requires your approval`,
+      message,
       related_entity_id: transferId,
       dispatchChannels: true,
     });

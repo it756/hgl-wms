@@ -5,6 +5,8 @@
  * Used by both the live dispatcher (dispatchToChannels) and the test script.
  */
 
+import { humanizeLabel } from "./messages";
+
 export interface EmailTemplateData {
   type: string;
   role: string;
@@ -41,8 +43,8 @@ function renderMessage(message: string): string {
 }
 
 export function buildNotificationEmail(data: EmailTemplateData): string {
-  const type = escapeHtml(data.type);
-  const role = escapeHtml(data.role || "Role notification");
+  const type = escapeHtml(humanizeLabel(data.type));
+  const role = escapeHtml(humanizeLabel(data.role) || "Role notification");
   const message = renderMessage(data.message);
 
   return `

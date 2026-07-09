@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 import { createNotification } from "../../../../lib/services/notificationService";
 import { writeAuditLog } from "../../../../lib/services/auditService";
+import { buildProductActionMessage } from "../../../../lib/notifications/messages";
 
 /** GET /api/admin/products — all roles can read; write requires ADMIN/WH_MANAGER */
 export async function GET(req: Request) {
@@ -249,8 +250,6 @@ export async function POST(req: Request) {
 
   // For SBU-scoped roles: audit log + notify Warehouse Manager
   if (role === "BU_MANAGER" || role === "FINANCE_MANAGER") {
-    const actorName = (user.user_metadata as any)?.full_name ?? user.email ?? "Unknown user";
-
     if (resolvedQty > 0) {
       await writeAuditLog({
         entity_type: "product",
@@ -265,7 +264,14 @@ export async function POST(req: Request) {
       user_role: "WAREHOUSE_MANAGER",
       type: "new_product_created",
       subject: "New product added to catalogue",
-      message: `${actorName} added "${name}" (SKU: ${finalSku}) with an initial stock of ${resolvedQty} units for ${resolvedSbuName}.`,
+      message: await buildProductActionMessage({
+        headline: `New product added to the catalogue for ${resolvedSbuName}`,
+        actorId: user.id,
+        actorLabel: "Added by",
+        productName: name,
+        sku: finalSku,
+        quantity: resolvedQty,
+      }),
       related_entity_id: data.id,
       dispatchChannels: true,
     });
