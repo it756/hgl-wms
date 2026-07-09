@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 
 const DISABLED_MESSAGE =
-  "This endpoint is disabled. Submit staff creation requests via /api/bu/staff-requests.";
+  "This endpoint is disabled. Submit staff management requests via /api/bu/staff-requests.";
 
 async function disabled(req: Request) {
   const user = await getUserFromAuthHeader(req);
