@@ -115,7 +115,7 @@ async function resolveRecipients(opts: {
     // role-holders for the correct SBU only.
     const sbuId = await inferSbuId(opts.related_entity_id);
 
-    const { data: profiles } = sbuId
+    let { data: profiles } = sbuId
       ? await supabaseAdmin
           .from("profiles")
           .select("id, whatsapp_number")
@@ -127,16 +127,24 @@ async function resolveRecipients(opts: {
           .select("id, whatsapp_number")
           .eq("role", opts.user_role)
           .eq("is_active", true);
-    const profileRows = Array.isArray(profiles)
-      ? (profiles as NotificationRecipientProfile[])
-      : profiles
-        ? [profiles as NotificationRecipientProfile]
-        : [];
 
-    if (profileRows.length === 0) return [];
+    // If we scoped to an SBU but found no role-holders there, fall back to a
+    // global broadcast for *global* roles (e.g. Finance) so critical notifications
+    // are not silently dropped. Avoid broadcasting SBU-scoped roles (e.g. BU_MANAGER)
+    // across SBUs, which would leak context.
+    const allowGlobalFallback = new Set(["FINANCE_MANAGER", "WAREHOUSE_MANAGER", "ADMIN"]);
+    if ((!profiles || profiles.length === 0) && sbuId && allowGlobalFallback.has(opts.user_role)) {
+      const { data: globalProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, whatsapp_number")
+        .eq("role", opts.user_role)
+        .eq("is_active", true);
+      profiles = globalProfiles as any;
+    }
+    if (!profiles || profiles.length === 0) return [];
 
     const out = await Promise.all(
-      profileRows.map(async (p) => {
+      (profiles as NotificationRecipientProfile[]).map(async (p) => {
         let email: string | null = null;
         try {
           const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);

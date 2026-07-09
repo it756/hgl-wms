@@ -78,6 +78,23 @@ The jobs use GitHub Environments:
 
 `main` is the production branch. The production approval gate still uses the GitHub Environment named `prod`.
 
+### QA Security Gates
+
+`.github/workflows/qa-security.yml` runs on pull requests into `QA` and pushes to
+`QA`. QA runs deeper validation than `dev`, including a focused smoke pack,
+Gitleaks secret scanning, Semgrep SAST, production dependency vulnerability
+scanning, Bridgecrew Checkov IaC scanning, and Aqua Trivy filesystem scanning.
+Terraform branch protection marks these QA security jobs as required checks on
+the `QA` branch only.
+
+### Emergency Hotfixes
+
+Normal production promotion is `staging` -> `main`. Emergency fixes can use a
+`hotfix/*` branch directly into `main`, but they still require a pull request,
+required status checks, and production review. After a hotfix lands in `main`,
+back-merge or cherry-pick the fix into lower branches so `dev`, `QA`, and
+`staging` do not drift from production.
+
 ## Required Secrets
 
 The CI workflow can run with placeholder values for tests, but real environments should define:

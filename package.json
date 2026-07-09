@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:backend": "vitest run tests/integration tests/unit/auditService.test.ts tests/unit/licensePolicy.test.ts tests/unit/notificationMessages.test.ts tests/unit/notificationService.test.ts tests/unit/rbac.test.ts",
+    "test:qa:smoke": "vitest run tests/unit/core-task-01-auth-routing.test.ts tests/integration/core-task-02-transfer-lifecycle.test.ts tests/integration/core-task-03-warehouse-issuance.test.ts tests/integration/core-task-04-grn-submission.test.ts tests/integration/core-task-05-return-request-flow.test.ts tests/integration/core-task-06-notifications.test.ts",
     "test:e2e:smoke": "playwright test --project=chromium",
     "openapi:types": "openapi-typescript docs/openapi/openapi.json -o lib/api/openapi-types.ts",
     "openapi:check": "openapi-typescript docs/openapi/openapi.json -o lib/api/openapi-types.ts --check",
