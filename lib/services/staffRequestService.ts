@@ -1,6 +1,9 @@
 import { supabaseAdmin } from "../supabaseServer";
 import { writeAuditLog } from "./auditService";
 import { createNotification } from "./notificationService";
+import { sendEmail } from "../email";
+
+const STAFF_REQUEST_REVIEW_EMAIL = "david.okuku@harvestgl.net";
 
 export interface StaffRequestUserInfo {
   full_name: string;
@@ -29,6 +32,106 @@ export interface StaffRequestCreateInput {
   requested_roles: string[];
   sbu_id: string;
   notes?: string;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function sendStaffRequestReviewEmail(input: {
+  staffRequest: StaffRequest;
+  requesterId: string;
+  sbuId: string;
+}): Promise<void> {
+  const { staffRequest, requesterId, sbuId } = input;
+
+  const [
+    { data: requesterProfile, error: requesterProfileError },
+    { data: authUser, error: authUserError },
+    { data: sbu, error: sbuError },
+  ] = await Promise.all([
+    supabaseAdmin.from("profiles").select("full_name, role, sbu_id").eq("id", requesterId).single(),
+    supabaseAdmin.auth.admin.getUserById(requesterId),
+    supabaseAdmin.from("sbus").select("name, code").eq("id", sbuId).single(),
+  ]);
+
+  if (requesterProfileError) {
+    console.warn("[staffRequestService] failed to load requester profile for email", requesterProfileError);
+  }
+  if (authUserError) {
+    console.warn("[staffRequestService] failed to load requester auth user for email", authUserError);
+  }
+  if (sbuError) {
+    console.warn("[staffRequestService] failed to load SBU for email", sbuError);
+  }
+
+  const requestedUser = staffRequest.requested_user_info;
+  const requestedUserRows = Object.entries(requestedUser)
+    .map(
+      ([key, value]) => `
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">${escapeHtml(key)}</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(value)}</td>
+        </tr>`,
+    )
+    .join("");
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.45;">
+      <h2 style="margin:0 0 12px;">New BU Staff Creation Request</h2>
+      <p>A BU manager submitted a request to create a user account.</p>
+
+      <h3 style="margin:18px 0 8px;">Request Details</h3>
+      <table style="border-collapse:collapse;font-size:14px;">
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">Request ID</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(staffRequest.id)}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">Submitted At</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(staffRequest.created_at)}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">Requester</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml((requesterProfile as any)?.full_name ?? authUser?.user?.email ?? requesterId)}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">Requester Email</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(authUser?.user?.email ?? "")}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">SBU</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml((sbu as any)?.name ?? sbuId)} ${escapeHtml((sbu as any)?.code ? `(${(sbu as any).code})` : "")}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">Requested Roles</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(staffRequest.requested_roles.join(", "))}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">Notes</td>
+          <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(staffRequest.notes ?? "")}</td>
+        </tr>
+      </table>
+
+      <h3 style="margin:18px 0 8px;">Requested User</h3>
+      <table style="border-collapse:collapse;font-size:14px;">
+        ${requestedUserRows}
+      </table>
+    </div>`;
+
+  const to = STAFF_REQUEST_REVIEW_EMAIL.trim();
+  if (!to) return;
+
+  await sendEmail(
+    to,
+    `New BU staff request: ${requestedUser.full_name} (${requestedUser.email})`.replace(/[\r\n]+/g, " "),
+    html,
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -70,6 +173,16 @@ export async function createStaffRequest(
     .single();
 
   if (error) throw error;
+
+  try {
+    await sendStaffRequestReviewEmail({
+      staffRequest: staffRequest as StaffRequest,
+      requesterId: createdBy,
+      sbuId: sbu_id,
+    });
+  } catch (emailErr) {
+    console.error("[staffRequestService] review email failed", emailErr);
+  }
 
   // Notify admins of new pending request
   try {

@@ -26,16 +26,6 @@ interface SBUUnit {
   is_active: boolean;
 }
 
-interface StaffRow {
-  id: string;
-  full_name: string | null;
-  email: string;
-  role: string;
-  unit_id: string | null;
-  is_active: boolean;
-  sbu_units: { id: string; name: string; code: string } | null;
-}
-
 type Tab = "units" | "staff";
 
 export default function BUUnitsPage() {
@@ -57,21 +47,14 @@ export default function BUUnitsPage() {
   const [editUnitName, setEditUnitName] = useState("");
   const [editUnitCode, setEditUnitCode] = useState("");
 
-  // ── Staff state ──────────────────────────────────────────────────────────────
-  const [staff, setStaff] = useState<StaffRow[]>([]);
-  const [staffLoading, setStaffLoading] = useState(false);
-  const [staffError, setStaffError] = useState<string | null>(null);
-  const [staffSearch, setStaffSearch] = useState("");
-
+  // ── Staff request state ─────────────────────────────────────────────────────
   const [showStaffForm, setShowStaffForm] = useState(false);
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffEmail, setNewStaffEmail] = useState("");
   const [newStaffUnitId, setNewStaffUnitId] = useState("");
   const [staffFormError, setStaffFormError] = useState<string | null>(null);
   const [staffFormLoading, setStaffFormLoading] = useState(false);
-
-  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
-  const [editStaffName, setEditStaffName] = useState("");
+  const [staffRequestSuccess, setStaffRequestSuccess] = useState<string | null>(null);
 
   const token = () => localStorage.getItem("access_token") ?? "";
 
@@ -92,32 +75,9 @@ export default function BUUnitsPage() {
     }
   }
 
-  async function loadStaff() {
-    setStaffLoading(true);
-    setStaffError(null);
-    try {
-      const res = await fetch("/api/bu/staff", {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setStaff(data);
-    } catch (e: any) {
-      setStaffError(e.message);
-    } finally {
-      setStaffLoading(false);
-    }
-  }
-
   useEffect(() => {
     loadUnits();
   }, []);
-
-  useEffect(() => {
-    if (tab === "staff" && staff.length === 0 && !staffLoading) {
-      loadStaff();
-    }
-  }, [tab]);
 
   // ── Unit actions ─────────────────────────────────────────────────────────────
   async function handleCreateUnit(e: React.FormEvent) {
@@ -174,41 +134,11 @@ export default function BUUnitsPage() {
     }
   }
 
-  // ── Staff actions ─────────────────────────────────────────────────────────────
-  async function handleAssignUnit(userId: string, unitId: string | null) {
-    try {
-      const res = await fetch("/api/bu/staff", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ user_id: userId, unit_id: unitId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      await loadStaff();
-    } catch (e: any) {
-      setStaffError(e.message);
-    }
-  }
-
-  async function handleToggleStaff(userId: string, currentActive: boolean) {
-    try {
-      const res = await fetch("/api/bu/staff", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ user_id: userId, is_active: !currentActive }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      await loadStaff();
-    } catch (e: any) {
-      setStaffError(e.message);
-    }
-  }
-
   async function handleInviteStaff(e: React.FormEvent) {
     e.preventDefault();
     setStaffFormLoading(true);
     setStaffFormError(null);
+    setStaffRequestSuccess(null);
     try {
       const selectedUnit = units.find((unit) => unit.id === newStaffUnitId);
       const res = await fetch("/api/bu/staff-requests", {
@@ -216,7 +146,7 @@ export default function BUUnitsPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({
           requested_user_info: {
-            full_name: newStaffName.trim() || undefined,
+            full_name: newStaffName.trim(),
             email: newStaffEmail.trim(),
             proposed_role: "UNIT_STAFF",
           },
@@ -230,6 +160,7 @@ export default function BUUnitsPage() {
       setNewStaffName("");
       setNewStaffEmail("");
       setNewStaffUnitId("");
+      setStaffRequestSuccess("Staff creation request submitted for admin review.");
     } catch (e: any) {
       setStaffFormError(e.message);
     } finally {
@@ -237,32 +168,10 @@ export default function BUUnitsPage() {
     }
   }
 
-  async function handleSaveStaffName(userId: string) {
-    try {
-      const res = await fetch("/api/bu/staff", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ user_id: userId, full_name: editStaffName }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setEditingStaffId(null);
-      await loadStaff();
-    } catch (e: any) {
-      setStaffError(e.message);
-    }
-  }
-
   const filteredUnits = units.filter(
     (u) =>
       u.name.toLowerCase().includes(unitSearch.toLowerCase()) ||
       u.code.toLowerCase().includes(unitSearch.toLowerCase()),
-  );
-
-  const filteredStaff = staff.filter(
-    (s) =>
-      (s.full_name?.toLowerCase() ?? "").includes(staffSearch.toLowerCase()) ||
-      s.email.toLowerCase().includes(staffSearch.toLowerCase()),
   );
 
   return (
@@ -280,7 +189,7 @@ export default function BUUnitsPage() {
               Units &amp; Staff
             </h1>
             <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Manage your business unit's sub-units and assign staff members.
+              Manage your business unit's sub-units and request staff account creation.
             </p>
           </div>
         </div>
@@ -307,7 +216,7 @@ export default function BUUnitsPage() {
             }`}
           >
             <Users className="w-4 h-4" />
-            Staff
+            Staff Requests
           </button>
         </div>
 
@@ -532,25 +441,18 @@ export default function BUUnitsPage() {
           </div>
         )}
 
-        {/* ── Staff Tab ──────────────────────────────────────────────────── */}
+        {/* ── Staff Request Tab ──────────────────────────────────────────── */}
         {tab === "staff" && (
           <div className="flex flex-col gap-4">
-            {/* Toolbar */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="relative min-w-[200px] max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search staff..."
-                  value={staffSearch}
-                  onChange={(e) => setStaffSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55]"
-                />
-              </div>
+              <p className="text-sm text-slate-500">
+                Submit a request for admin review. BU managers cannot view, edit, or create staff directly.
+              </p>
               <button
                 onClick={() => {
                   setShowStaffForm((v) => !v);
                   setStaffFormError(null);
+                  setStaffRequestSuccess(null);
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-[#005c55] hover:bg-[#004740] text-white text-sm font-semibold rounded-lg transition-colors"
               >
@@ -559,7 +461,13 @@ export default function BUUnitsPage() {
               </button>
             </div>
 
-            {/* Add Staff Form */}
+            {staffRequestSuccess && (
+              <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm">
+                <Check className="w-4 h-4 flex-shrink-0" />
+                {staffRequestSuccess}
+              </div>
+            )}
+
             {showStaffForm && (
               <form
                 onSubmit={handleInviteStaff}
@@ -570,8 +478,11 @@ export default function BUUnitsPage() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">Full Name</label>
+                    <label className="text-xs font-semibold text-slate-600">
+                      Full Name <span className="text-rose-500">*</span>
+                    </label>
                     <input
+                      required
                       value={newStaffName}
                       onChange={(e) => setNewStaffName(e.target.value)}
                       placeholder="e.g. Jane Doe"
@@ -640,157 +551,6 @@ export default function BUUnitsPage() {
                   </button>
                 </div>
               </form>
-            )}
-
-            {staffError && (
-              <div className="flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {staffError}
-              </div>
-            )}
-
-            {staffLoading ? (
-              <div className="flex items-center gap-2 text-slate-500 text-sm py-8 justify-center">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Loading staff...
-              </div>
-            ) : filteredStaff.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm">
-                {staffSearch ? "No staff match your search." : "No staff found in your SBU."}
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">
-                        Email
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Role
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Unit
-                      </th>
-                      <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredStaff.map((person) => (
-                      <tr key={person.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-5 py-3.5">
-                          {editingStaffId === person.id ? (
-                            <input
-                              value={editStaffName}
-                              onChange={(e) => setEditStaffName(e.target.value)}
-                              className="px-2 py-1 text-sm border border-[#005c55] rounded-lg outline-none w-40"
-                              autoFocus
-                            />
-                          ) : (
-                            <span className="font-medium text-[#1E293B]">
-                              {person.full_name ?? "—"}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-500 hidden sm:table-cell">
-                          {person.email}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-xs font-semibold px-2 py-1 rounded bg-slate-100 text-slate-600">
-                            {person.role === "BU_MANAGER" ? "BU Manager" : "Unit Staff"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          {person.role === "BU_MANAGER" ? (
-                            <span className="text-xs text-slate-400 italic">—</span>
-                          ) : (
-                            <select
-                              value={person.unit_id ?? ""}
-                              onChange={(e) => handleAssignUnit(person.id, e.target.value || null)}
-                              className="px-2 py-1 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#005c55] max-w-[160px]"
-                            >
-                              <option value="">— Unassigned —</option>
-                              {units.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.name} ({u.code})
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                              person.is_active
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-slate-100 text-slate-500 border border-slate-200"
-                            }`}
-                          >
-                            <Activity className="w-3 h-3" />
-                            {person.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          {editingStaffId === person.id ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleSaveStaffName(person.id)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                title="Save"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingStaffId(null)}
-                                className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-end gap-2">
-                              {person.role !== "BU_MANAGER" && (
-                                <button
-                                  onClick={() => {
-                                    setEditingStaffId(person.id);
-                                    setEditStaffName(person.full_name ?? "");
-                                  }}
-                                  className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-100 rounded-lg transition-colors"
-                                  title="Edit name"
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                              )}
-                              {person.role !== "BU_MANAGER" && (
-                                <button
-                                  onClick={() => handleToggleStaff(person.id, person.is_active)}
-                                  className={`p-1.5 rounded-lg transition-colors ${
-                                    person.is_active
-                                      ? "text-rose-400 hover:bg-rose-50"
-                                      : "text-emerald-500 hover:bg-emerald-50"
-                                  }`}
-                                  title={person.is_active ? "Deactivate" : "Activate"}
-                                >
-                                  <Power className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             )}
           </div>
         )}
