@@ -126,7 +126,7 @@ async function sendStaffRequestReviewEmail(input: {
 
   await sendEmail(
     STAFF_REQUEST_REVIEW_EMAIL,
-    `New BU staff request: ${requestedUser.full_name} (${requestedUser.email})`,
+    `New BU staff request: ${requestedUser.full_name} (${requestedUser.email})`.replace(/[\r\n]+/g, " "),
     html,
   );
 }
