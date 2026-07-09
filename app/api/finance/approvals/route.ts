@@ -108,11 +108,13 @@ async function updateLinkedPurchaseRequestStatus(
   if (!anyReceived) return;
 
   const newStatus = fullyReceived ? "RECEIVED" : "PARTIALLY_RECEIVED";
-  await supabaseAdmin
+  const { error: prUpdateError } = await supabaseAdmin
     .from("purchase_requests")
     .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq("id", prId)
     .in("status", ["EXPECTED_ORDER", "PARTIALLY_RECEIVED"]);
+
+  if (prUpdateError) throw prUpdateError;
 }
 
 /**
