@@ -86,7 +86,7 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: "Rejected",
 };
 
-// â”€â”€â”€ Review card helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Review card helper ─────────────────────────────────────────────
 function ReviewCard({
   title,
   action,
