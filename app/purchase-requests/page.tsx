@@ -502,7 +502,7 @@ function PurchaseRequestsContent() {
 
         {/* Table */}
         {loading ? (
-          <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requestsâ€¦</div>
+          <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests…</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-slate-400 text-sm">
             No purchase requests found.{" "}
