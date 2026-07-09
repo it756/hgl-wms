@@ -1,7 +1,7 @@
 language: en-US
 
 reviews:
-  profile: assertive
+  profile: chill
   request_changes_workflow: false
   high_level_summary: true
   poem: false
@@ -26,16 +26,38 @@ knowledge_base:
   opt_out: false
 
 tone_instructions: >
-  Keep review comments concise and high signal. Focus on correctness,
-  security, data integrity, missing tests, maintainability, and production
-  risk. Avoid style-only nitpicks unless they hide a bug or operational risk.
+  Keep review comments terse, calm, and high signal. Prioritize P0/P1
+  correctness, security, data integrity, scope discipline, and spec adherence.
+  Defer formatting, import ordering, and style-only feedback to Biome, ESLint,
+  Prettier, and CI unless a style issue hides a real bug or operational risk.
 
 early_access: false
 
 review_instructions: >
-  This is a warehouse management system. Pay special attention to auth/RBAC,
-  SBU and unit scoping, Supabase service-role usage, public environment
-  variables, stock mutation, finance approval transitions, audit logging,
-  notification fanout, and retry/concurrency risks. Flag API routes that trust
-  client-supplied role/SBU/unit data without server-side verification. Flag
-  direct stock mutations that bypass transaction-safe database functions.
+  Review all PRs in the promotion chain: any source branch into dev, dev into
+  QA, QA into staging, and staging into main. Use the PR description, summary,
+  linked issue, spec.md, plan.md, tasks.md, specs/main/*, and relevant docs as
+  the normalized spec. Flag deviations from the stated acceptance criteria or
+  implementation plan.
+
+  Focus findings on correctness P0/P1 issues: logic bugs, broken state
+  transitions, null/undefined edge cases, race conditions, missing error
+  handling, and missing tests for changed acceptance criteria. For this WMS,
+  pay close attention to stock mutation, finance approval transitions, audit
+  logging, notification fanout, idempotency, and retry/concurrency risks.
+
+  Treat security as high priority. Flag auth/RBAC gaps, tenant/SBU/unit data
+  leakage, RLS or Supabase service-role misuse, secrets or public environment
+  variable mistakes, unvalidated input at API/import/export boundaries, and any
+  route that trusts client-supplied role/SBU/unit data without server-side
+  verification.
+
+  Enforce scope discipline. Flag accidental broad refactors, unrelated file
+  churn, dead code, dependency additions or upgrades that are not justified by
+  the PR, and dependency name/slopsquatting risks in package.json changes.
+
+  Be path-aware. Apply heavier scrutiny to app/api/**, lib/**,
+  supabase/migrations/**, docs/openapi/**, auth/RBAC code, ingest/import/export
+  flows, permission changes, environment/secret handling, and any database or
+  migration change. Do not spend review budget on style-only comments unless
+  they indicate a correctness, security, or maintainability problem.
