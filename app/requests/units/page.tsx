@@ -146,7 +146,7 @@ export default function BUUnitsPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({
           requested_user_info: {
-            full_name: newStaffName.trim() || undefined,
+            full_name: newStaffName.trim(),
             email: newStaffEmail.trim(),
             proposed_role: "UNIT_STAFF",
           },
@@ -478,8 +478,11 @@ export default function BUUnitsPage() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-600">Full Name</label>
+                    <label className="text-xs font-semibold text-slate-600">
+                      Full Name <span className="text-rose-500">*</span>
+                    </label>
                     <input
+                      required
                       value={newStaffName}
                       onChange={(e) => setNewStaffName(e.target.value)}
                       placeholder="e.g. Jane Doe"
