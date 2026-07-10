@@ -3,6 +3,17 @@ import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseSe
 
 const WHATSAPP_RE = /^\+[1-9]\d{7,14}$/;
 
+interface ProfileRecord {
+  full_name: string | null;
+  role: string;
+  sbu_id: string | null;
+  whatsapp_number: string | null;
+  licensed: boolean;
+  license_type: string | null;
+  license_issued_at: string | null;
+  license_expires_at: string | null;
+}
+
 /** GET /api/auth/profile — fetch the authenticated user's own profile */
 export async function GET(req: Request) {
   const user = await getUserFromAuthHeader(req);
@@ -10,29 +21,36 @@ export async function GET(req: Request) {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("full_name, role, sbu_id, whatsapp_number")
+    .select(
+      "full_name, role, sbu_id, whatsapp_number, licensed, license_type, license_issued_at, license_expires_at",
+    )
     .eq("id", user.id)
     .single();
 
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
 
+  const profileRecord = profile as ProfileRecord;
   let sbuName: string | null = null;
-  if ((profile as any).sbu_id) {
+  if (profileRecord.sbu_id) {
     const { data: sbu } = await supabaseAdmin
       .from("sbus")
       .select("name")
-      .eq("id", (profile as any).sbu_id)
+      .eq("id", profileRecord.sbu_id)
       .maybeSingle();
-    sbuName = (sbu as any)?.name ?? null;
+    sbuName = sbu?.name ?? null;
   }
 
   return NextResponse.json({
     id: user.id,
     email: user.email ?? null,
-    full_name: (profile as any).full_name ?? null,
-    role: (profile as any).role,
+    full_name: profileRecord.full_name ?? null,
+    role: profileRecord.role,
     sbu_name: sbuName,
-    whatsapp_number: (profile as any).whatsapp_number ?? null,
+    whatsapp_number: profileRecord.whatsapp_number ?? null,
+    licensed: profileRecord.licensed,
+    license_type: profileRecord.license_type,
+    license_issued_at: profileRecord.license_issued_at,
+    license_expires_at: profileRecord.license_expires_at,
   });
 }
 

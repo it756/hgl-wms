@@ -38,10 +38,15 @@ describe("auditService", () => {
 
   it("writeAuditLog swallows DB errors without throwing", async () => {
     // writeAuditLog only console.errors, does NOT re-throw
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const c = makeChain({ data: null, error: { message: "db down" } });
     mockFrom.mockReturnValue(c);
-    const { writeAuditLog } = await import("../../lib/services/auditService");
-    await expect(writeAuditLog({ entity_type: "test", action: "noop" })).resolves.toBeUndefined();
+    try {
+      const { writeAuditLog } = await import("../../lib/services/auditService");
+      await expect(writeAuditLog({ entity_type: "test", action: "noop" })).resolves.toBeUndefined();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it("queryAuditLogs returns rows on success", async () => {

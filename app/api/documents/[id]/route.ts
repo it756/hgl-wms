@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 
-const BUCKET = "wms-documents";
+const BUCKET = "hgl-wms";
 
 // Statuses in which a document may still be deleted by the uploader.
 // Once a transaction moves past these stages it is considered finalised.

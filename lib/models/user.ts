@@ -13,6 +13,10 @@ export interface User {
   sbu_id: string | null;
   unit_id: string | null;
   is_active: boolean;
+  licensed: boolean;
+  license_type: string | null;
+  license_issued_at: string | null;
+  license_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }

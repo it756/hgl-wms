@@ -68,7 +68,9 @@ export async function GET(req: Request) {
       transfer_request_id: transfer?.id ?? null,
       products: row.products ?? null,
       sbus: transfer?.sbus ?? null,
-      transfer_requests: transfer ? { id: transfer.id, reference_number: transfer.reference_number } : null,
+      transfer_requests: transfer
+        ? { id: transfer.id, reference_number: transfer.reference_number }
+        : null,
     };
   });
 
