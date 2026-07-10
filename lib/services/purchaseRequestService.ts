@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "../supabaseServer";
 import type {
   PurchaseRequest,
+  PurchaseRequestLineItem,
   PurchaseRequestStatus,
   PurchaseRequestCreateInput,
   PurchaseRequestUpdateInput,
@@ -417,7 +418,7 @@ const PRINTABLE_STATUSES: PurchaseRequestStatus[] = [
 export async function printPurchaseRequest(
   id: string,
   printedBy: string,
-): Promise<PurchaseRequest & { purchase_request_line_items: unknown[] }> {
+): Promise<PurchaseRequest & { purchase_request_line_items: PurchaseRequestLineItem[] }> {
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("purchase_requests")
     .select(
@@ -431,7 +432,7 @@ export async function printPurchaseRequest(
 
   if (fetchError || !existing) throw new Error("Purchase request not found");
 
-  const pr = existing as PurchaseRequest & { purchase_request_line_items: unknown[] };
+  const pr = existing as PurchaseRequest & { purchase_request_line_items: PurchaseRequestLineItem[] };
   if (!(PRINTABLE_STATUSES as string[]).includes(pr.status)) {
     throw new Error(
       `Purchase request cannot be printed in status: ${pr.status}. ` +
@@ -458,6 +459,6 @@ export async function printPurchaseRequest(
 
   // Return enriched PR (with line items) for use in the print template
   return { ...pr, printed_at: printedAt } as PurchaseRequest & {
-    purchase_request_line_items: unknown[];
+    purchase_request_line_items: PurchaseRequestLineItem[];
   };
 }
