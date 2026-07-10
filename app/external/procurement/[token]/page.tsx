@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import { CheckCircle, XCircle, RefreshCw, FileText, AlertTriangle } from "lucide-react";
 
 interface LineItem {
@@ -259,53 +260,52 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
         {/* Line Items */}
         <div className="bg-white rounded-xl border border-slate-200 px-6 py-5">
           <h2 className="font-semibold text-slate-700 mb-3">Requested Items</h2>
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-              <tr>
-                <th className="px-3 py-2 text-left">Item</th>
-                <th className="px-3 py-2 text-center">Qty</th>
-                <th className="px-3 py-2 text-right">Unit Cost</th>
-                <th className="px-3 py-2 text-right">Line Total</th>
-              </tr>
-            </thead>
+          <Table>
+            <TableHead>
+              <Th className="px-3 py-2">Item</Th>
+              <Th align="center" className="px-3 py-2">Qty</Th>
+              <Th align="right" className="px-3 py-2">Unit Cost</Th>
+              <Th align="right" className="px-3 py-2">Line Total</Th>
+            </TableHead>
             <tbody className="divide-y divide-slate-100">
               {pr.purchase_request_line_items.map((l) => (
-                <tr key={l.id}>
-                  <td className="px-3 py-2.5">
+                <Tr key={l.id}>
+                  <Td className="px-3 py-2.5">
                     <span className="font-medium text-slate-700">{l.product_name}</span>
                     {l.sku && <span className="ml-1.5 text-xs text-slate-400">({l.sku})</span>}
                     {l.notes && <p className="text-xs text-slate-400 mt-0.5">{l.notes}</p>}
-                  </td>
-                  <td className="px-3 py-2.5 text-center text-slate-600">
+                  </Td>
+                  <Td align="center" className="px-3 py-2.5 text-slate-600">
                     {l.quantity_requested} {l.unit_of_measure}
-                  </td>
-                  <td className="px-3 py-2.5 text-right text-slate-600">
+                  </Td>
+                  <Td align="right" className="px-3 py-2.5 text-slate-600">
                     {l.unit_cost != null ? `${currency} ${l.unit_cost.toLocaleString()}` : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
+                  </Td>
+                  <Td align="right" className="px-3 py-2.5 font-medium text-slate-700">
                     {l.unit_cost != null
                       ? `${currency} ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
                       : "—"}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
             </tbody>
             {pr.estimated_total != null && (
               <tfoot>
-                <tr className="bg-slate-50">
-                  <td
+                <Tr className="bg-slate-50 hover:bg-slate-50">
+                  <Td
                     colSpan={3}
-                    className="px-3 py-2 text-right text-sm font-medium text-slate-600"
+                    align="right"
+                    className="px-3 py-2 text-sm font-medium text-slate-600"
                   >
                     Estimated Total
-                  </td>
-                  <td className="px-3 py-2 text-right font-bold text-slate-800">
+                  </Td>
+                  <Td align="right" className="px-3 py-2 font-bold text-slate-800">
                     {currency} {pr.estimated_total.toLocaleString()}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               </tfoot>
             )}
-          </table>
+          </Table>
         </div>
 
         {/* Action Panel */}
