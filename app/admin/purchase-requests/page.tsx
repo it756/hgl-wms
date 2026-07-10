@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import { CheckCircle, XCircle, ChevronDown, ChevronUp, FileText } from "lucide-react";
 
 interface PurchaseRequest {
@@ -190,39 +191,37 @@ export default function AdminPurchaseRequestsPage() {
                       <p className="text-xs font-medium text-slate-500 uppercase mb-2">
                         Requested Items
                       </p>
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                          <tr>
-                            <th className="px-3 py-2 text-left">Item</th>
-                            <th className="px-3 py-2 text-center">Qty</th>
-                            <th className="px-3 py-2 text-right">Unit Cost</th>
-                            <th className="px-3 py-2 text-right">Line Total</th>
-                          </tr>
-                        </thead>
+                      <Table>
+                        <TableHead>
+                          <Th className="px-3 py-2">Item</Th>
+                          <Th align="center" className="px-3 py-2">Qty</Th>
+                          <Th align="right" className="px-3 py-2">Unit Cost</Th>
+                          <Th align="right" className="px-3 py-2">Line Total</Th>
+                        </TableHead>
                         <tbody className="divide-y divide-slate-100">
                           {r.purchase_request_line_items.map((l) => (
-                            <tr key={l.id}>
-                              <td className="px-3 py-2">
+                            <Tr key={l.id}>
+                              <Td className="px-3 py-2">
                                 {l.product_name}
                                 {l.sku && (
                                   <span className="ml-1 text-slate-400 text-xs">({l.sku})</span>
                                 )}
-                              </td>
-                              <td className="px-3 py-2 text-center">
+                              </Td>
+                              <Td align="center" className="px-3 py-2">
                                 {l.quantity_requested} {l.unit_of_measure}
-                              </td>
-                              <td className="px-3 py-2 text-right">
+                              </Td>
+                              <Td align="right" className="px-3 py-2">
                                 {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
-                              </td>
-                              <td className="px-3 py-2 text-right font-medium">
+                              </Td>
+                              <Td align="right" className="px-3 py-2 font-medium">
                                 {l.unit_cost != null
                                   ? `ZMW ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
                                   : "—"}
-                              </td>
-                            </tr>
+                              </Td>
+                            </Tr>
                           ))}
                         </tbody>
-                      </table>
+                      </Table>
                     </div>
 
                     {r.notes && (

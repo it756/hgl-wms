@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import {
   Plus,
   Search,
@@ -271,40 +272,38 @@ function PRDetailDialog({
                   Requested Items ({pr.purchase_request_line_items.length})
                 </p>
                 <div className="rounded-lg border border-slate-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Item</th>
-                        <th className="px-3 py-2 text-center">Qty</th>
-                        <th className="px-3 py-2 text-right">Unit Cost</th>
-                        <th className="px-3 py-2 text-right">Total</th>
-                      </tr>
-                    </thead>
+                  <Table>
+                    <TableHead>
+                      <Th className="px-3 py-2">Item</Th>
+                      <Th align="center" className="px-3 py-2">Qty</Th>
+                      <Th align="right" className="px-3 py-2">Unit Cost</Th>
+                      <Th align="right" className="px-3 py-2">Total</Th>
+                    </TableHead>
                     <tbody className="divide-y divide-slate-100">
                       {pr.purchase_request_line_items.map((l) => (
-                        <tr key={l.id}>
-                          <td className="px-3 py-2.5">
+                        <Tr key={l.id}>
+                          <Td className="px-3 py-2.5">
                             <p className="font-medium text-slate-800">{l.product_name}</p>
                             {l.sku && <p className="text-xs text-slate-400">SKU: {l.sku}</p>}
                             {l.notes && (
                               <p className="text-xs italic text-slate-400 mt-0.5">{l.notes}</p>
                             )}
-                          </td>
-                          <td className="px-3 py-2.5 text-center text-slate-600">
+                          </Td>
+                          <Td align="center" className="px-3 py-2.5 text-slate-600">
                             {l.quantity_requested} {l.unit_of_measure}
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-slate-600">
+                          </Td>
+                          <Td align="right" className="px-3 py-2.5 text-slate-600">
                             {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "â€”"}
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-medium text-slate-800">
+                          </Td>
+                          <Td align="right" className="px-3 py-2.5 font-medium text-slate-800">
                             {l.unit_cost != null
                               ? `ZMW ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
                               : "â€”"}
-                          </td>
-                        </tr>
+                          </Td>
+                        </Tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               </div>
             </>
@@ -512,47 +511,45 @@ function PurchaseRequestsContent() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3 text-left">Reference</th>
-                  <th className="px-4 py-3 text-left">SBU</th>
-                  <th className="px-4 py-3 text-left">Supplier</th>
-                  <th className="px-4 py-3 text-left">Items</th>
-                  <th className="px-4 py-3 text-right">Est. Total</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Created</th>
-                  <th className="px-4 py-3 text-center">Actions</th>
-                </tr>
-              </thead>
+            <Table>
+              <TableHead>
+                <Th className="px-4 py-3">Reference</Th>
+                <Th className="px-4 py-3">SBU</Th>
+                <Th className="px-4 py-3">Supplier</Th>
+                <Th className="px-4 py-3">Items</Th>
+                <Th align="right" className="px-4 py-3">Est. Total</Th>
+                <Th className="px-4 py-3">Status</Th>
+                <Th className="px-4 py-3">Created</Th>
+                <Th align="center" className="px-4 py-3">Actions</Th>
+              </TableHead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-medium text-slate-700">
+                  <Tr key={r.id}>
+                    <Td className="px-4 py-3 font-mono font-medium text-slate-700">
                       {r.reference_number}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{r.sbus?.name ?? "â€”"}</td>
-                    <td className="px-4 py-3 text-slate-600">{r.supplier_name ?? "â€”"}</td>
-                    <td className="px-4 py-3 text-slate-500">
+                    </Td>
+                    <Td className="px-4 py-3 text-slate-600">{r.sbus?.name ?? "â€”"}</Td>
+                    <Td className="px-4 py-3 text-slate-600">{r.supplier_name ?? "â€”"}</Td>
+                    <Td className="px-4 py-3 text-slate-500">
                       {r.purchase_request_line_items?.length ?? 0} item
                       {(r.purchase_request_line_items?.length ?? 0) !== 1 ? "s" : ""}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-700">
+                    </Td>
+                    <Td align="right" className="px-4 py-3 text-slate-700">
                       {r.estimated_total != null
                         ? `ZMW ${r.estimated_total.toLocaleString()}`
                         : "â€”"}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Td>
+                    <Td className="px-4 py-3">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-slate-100 text-slate-500"}`}
                       >
                         {STATUS_LABELS[r.status] ?? r.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    </Td>
+                    <Td className="px-4 py-3 text-slate-500">
                       {new Date(r.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Td>
+                    <Td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openDialog(r.id)}
@@ -574,11 +571,11 @@ function PurchaseRequestsContent() {
                           </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
         )}
       </div>

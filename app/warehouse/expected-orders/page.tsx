@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import { Truck, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ExpectedOrder {
@@ -124,33 +125,31 @@ export default function WarehouseExpectedOrdersPage() {
 
                 {expanded === order.id && (
                   <div className="border-t border-slate-100 px-5 py-4 space-y-4">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Item</th>
-                          <th className="px-3 py-2 text-center">Expected Qty</th>
-                          <th className="px-3 py-2 text-right">Unit Cost</th>
-                        </tr>
-                      </thead>
+                    <Table>
+                      <TableHead>
+                        <Th className="px-3 py-2">Item</Th>
+                        <Th align="center" className="px-3 py-2">Expected Qty</Th>
+                        <Th align="right" className="px-3 py-2">Unit Cost</Th>
+                      </TableHead>
                       <tbody className="divide-y divide-slate-100">
                         {order.purchase_request_line_items.map((l) => (
-                          <tr key={l.id}>
-                            <td className="px-3 py-2">
+                          <Tr key={l.id}>
+                            <Td className="px-3 py-2">
                               {l.product_name}
                               {l.sku && (
                                 <span className="ml-1 text-slate-400 text-xs">({l.sku})</span>
                               )}
-                            </td>
-                            <td className="px-3 py-2 text-center">
+                            </Td>
+                            <Td align="center" className="px-3 py-2">
                               {l.quantity_requested} {l.unit_of_measure}
-                            </td>
-                            <td className="px-3 py-2 text-right">
+                            </Td>
+                            <Td align="right" className="px-3 py-2">
                               {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
-                            </td>
-                          </tr>
+                            </Td>
+                          </Tr>
                         ))}
                       </tbody>
-                    </table>
+                    </Table>
 
                     {order.notes && (
                       <p className="text-sm text-slate-600">
