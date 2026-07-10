@@ -1,4 +1,4 @@
--- Migration: 029_unit_stock_view.sql
+-- Migration: 036_unit_stock_view.sql
 -- Purpose: Adds a unit_stock view that shows net stock held per sbu_unit,
 --          derived from transfer requests issued to each unit.
 --
