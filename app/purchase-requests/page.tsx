@@ -123,7 +123,7 @@ function ReviewCard({
         {icon}
         <span>
           {action.replace(/_/g, " ")}
-          {actionedAt && ` Â· ${new Date(actionedAt).toLocaleString()}`}
+          {actionedAt && ` · ${new Date(actionedAt).toLocaleString()}`}
         </span>
       </div>
       {notes && <p className="pl-6 opacity-80">Notes: {notes}</p>}
@@ -221,11 +221,11 @@ function PRDetailDialog({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-0.5">SBU</p>
-                  <p className="text-slate-800">{pr.sbus?.name ?? "â€”"}</p>
+                  <p className="text-slate-800">{pr.sbus?.name ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-0.5">Supplier</p>
-                  <p className="text-slate-800">{pr.supplier_name ?? "â€”"}</p>
+                  <p className="text-slate-800">{pr.supplier_name ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-0.5">
@@ -234,7 +234,7 @@ function PRDetailDialog({
                   <p className="text-slate-800 font-semibold">
                     {pr.estimated_total != null
                       ? `ZMW ${pr.estimated_total.toLocaleString()}`
-                      : "â€”"}
+                      : "—"}
                   </p>
                 </div>
               </div>
@@ -293,12 +293,12 @@ function PRDetailDialog({
                             {l.quantity_requested} {l.unit_of_measure}
                           </Td>
                           <Td align="right" className="px-3 py-2.5 text-slate-600">
-                            {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "â€”"}
+                            {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
                           </Td>
                           <Td align="right" className="px-3 py-2.5 font-medium text-slate-800">
                             {l.unit_cost != null
                               ? `ZMW ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
-                              : "â€”"}
+                              : "—"}
                           </Td>
                         </Tr>
                       ))}
@@ -314,7 +314,7 @@ function PRDetailDialog({
   );
 }
 
-// â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main page ────────────────────────────────────────────────────────────────
 export default function PurchaseRequestsPage() {
   return (
     <Suspense>
@@ -528,8 +528,8 @@ function PurchaseRequestsContent() {
                     <Td className="px-4 py-3 font-mono font-medium text-slate-700">
                       {r.reference_number}
                     </Td>
-                    <Td className="px-4 py-3 text-slate-600">{r.sbus?.name ?? "â€”"}</Td>
-                    <Td className="px-4 py-3 text-slate-600">{r.supplier_name ?? "â€”"}</Td>
+                    <Td className="px-4 py-3 text-slate-600">{r.sbus?.name ?? "—"}</Td>
+                    <Td className="px-4 py-3 text-slate-600">{r.supplier_name ?? "—"}</Td>
                     <Td className="px-4 py-3 text-slate-500">
                       {r.purchase_request_line_items?.length ?? 0} item
                       {(r.purchase_request_line_items?.length ?? 0) !== 1 ? "s" : ""}
@@ -537,7 +537,7 @@ function PurchaseRequestsContent() {
                     <Td align="right" className="px-4 py-3 text-slate-700">
                       {r.estimated_total != null
                         ? `ZMW ${r.estimated_total.toLocaleString()}`
-                        : "â€”"}
+                        : "—"}
                     </Td>
                     <Td className="px-4 py-3">
                       <span
