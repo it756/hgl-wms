@@ -194,6 +194,7 @@ export default function SupplierGRNPage() {
     let cancelled = false;
 
     async function loadPurchaseRequestPrefill() {
+      if (!linkedPurchaseRequestId) return;
       setLoading(true);
       setError(null);
       setSuccess(null);
