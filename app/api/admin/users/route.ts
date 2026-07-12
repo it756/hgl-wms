@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("profiles")
     .select(
-      "id, full_name, role, sbu_id, is_active, whatsapp_number, licensed, license_type, license_expires_at, created_at",
+      "id, full_name, role, sbu_id, unit_id, is_active, whatsapp_number, licensed, license_type, license_expires_at, created_at",
     )
     .order("created_at", { ascending: false });
 

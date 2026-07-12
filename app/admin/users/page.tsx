@@ -38,6 +38,7 @@ interface UserRow {
   email: string;
   role: UserRole;
   sbu_id: string | null;
+  unit_id: string | null;
   is_active: boolean;
   whatsapp_number: string | null;
   licensed: boolean;
@@ -49,6 +50,13 @@ interface SBU {
   id: string;
   name: string;
   code: string;
+}
+
+interface SbuUnit {
+  id: string;
+  name: string;
+  code: string;
+  sbu_id: string;
 }
 
 const ROLES: UserRole[] = [
@@ -78,6 +86,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [sbus, setSbus] = useState<SBU[]>([]);
+  const [units, setUnits] = useState<SbuUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -88,6 +97,7 @@ export default function UsersPage() {
   const [requestEmail, setRequestEmail] = useState("");
   const [requestRole, setRequestRole] = useState<UserRole>("UNIT_STAFF");
   const [requestSbu, setRequestSbu] = useState("");
+  const [requestUnit, setRequestUnit] = useState("");
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
   const [requestLoading, setRequestLoading] = useState(false);
@@ -99,6 +109,7 @@ export default function UsersPage() {
   const [editWhatsapp, setEditWhatsapp] = useState("");
   const [editRole, setEditRole] = useState<UserRole>("UNIT_STAFF");
   const [editSbu, setEditSbu] = useState("");
+  const [editUnit, setEditUnit] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editPassword, setEditPassword] = useState("");
   const [showEditPassword, setShowEditPassword] = useState(false);
@@ -111,14 +122,21 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const [uRes, sRes] = await Promise.all([
+      const [uRes, sRes, unitRes] = await Promise.all([
         fetch("/api/admin/users", { headers: { Authorization: `Bearer ${token()}` } }),
         fetch("/api/admin/sbus", { headers: { Authorization: `Bearer ${token()}` } }),
+        fetch("/api/admin/sbu-units", { headers: { Authorization: `Bearer ${token()}` } }),
       ]);
-      const [uData, sData] = await Promise.all([uRes.json(), sRes.json()]);
+      const [uData, sData, unitData] = await Promise.all([
+        uRes.json(),
+        sRes.json(),
+        unitRes.json(),
+      ]);
       if (!uRes.ok) throw new Error(uData.error);
+      if (!unitRes.ok) throw new Error(unitData.error);
       setUsers(uData);
       setSbus(sData);
+      setUnits(unitData);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -171,6 +189,7 @@ export default function UsersPage() {
     setEditWhatsapp(u.whatsapp_number ?? "");
     setEditRole(u.role);
     setEditSbu(u.sbu_id ?? "");
+    setEditUnit(u.unit_id ?? "");
     setEditActive(u.is_active);
     setEditPassword("");
     setShowEditPassword(false);
@@ -189,6 +208,7 @@ export default function UsersPage() {
         whatsapp_number: editWhatsapp || null,
         role: editRole,
         sbu_id: editSbu || null,
+        unit_id: editRole === "UNIT_STAFF" ? editUnit || null : null,
         is_active: editActive,
       };
       if (editPassword) body.password = editPassword;
@@ -221,6 +241,12 @@ export default function UsersPage() {
             return s ? `${s.name} (${s.code})` : "";
           })()
         : "";
+      const unitLabel = requestUnit
+        ? (() => {
+            const unit = units.find((u) => u.id === requestUnit);
+            return unit ? `${unit.name} (${unit.code})` : "";
+          })()
+        : "";
       const res = await fetch("/api/admin/users/request", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
@@ -229,7 +255,9 @@ export default function UsersPage() {
           email: requestEmail,
           role: requestRole,
           sbu_id: requestSbu || undefined,
+          unit_id: requestRole === "UNIT_STAFF" ? requestUnit || undefined : undefined,
           sbu_label: sbuLabel || undefined,
+          unit_label: unitLabel || undefined,
         }),
       });
       const data = await res.json();
@@ -239,6 +267,7 @@ export default function UsersPage() {
       setRequestEmail("");
       setRequestRole("UNIT_STAFF");
       setRequestSbu("");
+      setRequestUnit("");
     } catch (e: any) {
       setRequestError(e.message);
     } finally {
@@ -256,6 +285,29 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(10);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  const requestUnits = units.filter((unit) => unit.sbu_id === requestSbu);
+  const editUnits = units.filter((unit) => unit.sbu_id === editSbu);
+
+  function handleRequestRoleChange(role: UserRole) {
+    setRequestRole(role);
+    if (role !== "UNIT_STAFF") setRequestUnit("");
+  }
+
+  function handleRequestSbuChange(sbuId: string) {
+    setRequestSbu(sbuId);
+    setRequestUnit("");
+  }
+
+  function handleEditRoleChange(role: UserRole) {
+    setEditRole(role);
+    if (role !== "UNIT_STAFF") setEditUnit("");
+  }
+
+  function handleEditSbuChange(sbuId: string) {
+    setEditSbu(sbuId);
+    setEditUnit("");
+  }
 
   useEffect(() => setPage(1), [search]);
   useEffect(() => {
@@ -412,7 +464,7 @@ export default function UsersPage() {
                   <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <select
                     value={requestRole}
-                    onChange={(e) => setRequestRole(e.target.value as UserRole)}
+                    onChange={(e) => handleRequestRoleChange(e.target.value as UserRole)}
                     className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
                   >
                     {ROLES.map((r) => (
@@ -432,13 +484,37 @@ export default function UsersPage() {
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <select
                     value={requestSbu}
-                    onChange={(e) => setRequestSbu(e.target.value)}
+                    onChange={(e) => handleRequestSbuChange(e.target.value)}
+                    required={requestRole === "UNIT_STAFF"}
                     className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-850 cursor-pointer appearance-none"
                   >
                     <option value="">— Independent / Cross-cutting Node —</option>
                     {sbus.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name} ({s.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  SBU Unit Assignment
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <select
+                    value={requestUnit}
+                    onChange={(e) => setRequestUnit(e.target.value)}
+                    required={requestRole === "UNIT_STAFF"}
+                    disabled={!requestSbu || requestRole !== "UNIT_STAFF"}
+                    className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white disabled:bg-slate-50 disabled:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-850 cursor-pointer appearance-none"
+                  >
+                    <option value="">— Select unit —</option>
+                    {requestUnits.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.name} ({unit.code})
                       </option>
                     ))}
                   </select>
@@ -541,8 +617,9 @@ export default function UsersPage() {
                       Team Member Info
                     </Th>
                     <Th className="w-[20%]">Email Address</Th>
-                    <Th className="w-[16%]">Operational Role</Th>
+                    <Th className="w-[14%]">Operational Role</Th>
                     <Th className="w-[10%]">SBU Node</Th>
+                    <Th className="w-[10%]">Unit</Th>
                     <Th className="w-[10%]">Licence</Th>
                     <Th className="w-[8%]">State</Th>
                     <Th align="right" className="w-[8%]">
@@ -598,6 +675,17 @@ export default function UsersPage() {
                           ) : (
                             <span className="text-slate-400 italic text-[11px] font-semibold">
                               Independent
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          {units.find((unit) => unit.id === u.unit_id) ? (
+                            <span className="font-mono bg-teal-50 text-teal-800 border border-teal-100 font-bold px-2 py-0.5 rounded text-[10px]">
+                              {units.find((unit) => unit.id === u.unit_id)?.code}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px] font-semibold">
+                              Unassigned
                             </span>
                           )}
                         </td>
@@ -746,7 +834,7 @@ export default function UsersPage() {
               </div>
 
               {/* Role + SBU */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                     Access Role
@@ -755,7 +843,7 @@ export default function UsersPage() {
                     <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <select
                       value={editRole}
-                      onChange={(e) => setEditRole(e.target.value as UserRole)}
+                      onChange={(e) => handleEditRoleChange(e.target.value as UserRole)}
                       className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
                     >
                       {ROLES.map((r) => (
@@ -775,13 +863,37 @@ export default function UsersPage() {
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <select
                       value={editSbu}
-                      onChange={(e) => setEditSbu(e.target.value)}
+                      onChange={(e) => handleEditSbuChange(e.target.value)}
+                      required={editRole === "UNIT_STAFF"}
                       className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
                     >
                       <option value="">— Independent —</option>
                       {sbus.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name} ({s.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    Unit Assignment
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={editUnit}
+                      onChange={(e) => setEditUnit(e.target.value)}
+                      required={editRole === "UNIT_STAFF"}
+                      disabled={!editSbu || editRole !== "UNIT_STAFF"}
+                      className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white disabled:bg-slate-50 disabled:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
+                    >
+                      <option value="">— Select unit —</option>
+                      {editUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name} ({unit.code})
                         </option>
                       ))}
                     </select>
