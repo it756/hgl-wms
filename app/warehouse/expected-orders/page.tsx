@@ -64,11 +64,11 @@ export default function WarehouseExpectedOrdersPage() {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
 
         {loading ? (
           <div className="text-center py-12 text-slate-500 text-sm">Loading expected orders…</div>
