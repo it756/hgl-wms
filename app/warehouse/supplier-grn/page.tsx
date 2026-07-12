@@ -193,15 +193,14 @@ export default function SupplierGRNPage() {
 
     let cancelled = false;
 
-    async function loadPurchaseRequestPrefill() {
-      if (!linkedPurchaseRequestId) return;
+    async function loadPurchaseRequestPrefill(purchaseRequestId: string) {
       setLoading(true);
       setError(null);
       setSuccess(null);
       try {
         const accessToken = localStorage.getItem("access_token") ?? "";
         const res = await fetch(
-          `/api/purchase-requests?id=${encodeURIComponent(linkedPurchaseRequestId)}`,
+          `/api/purchase-requests?id=${encodeURIComponent(purchaseRequestId)}`,
           { headers: { Authorization: `Bearer ${accessToken}` } },
         );
         const data = await res.json();
@@ -278,7 +277,7 @@ export default function SupplierGRNPage() {
       }
     }
 
-    void loadPurchaseRequestPrefill();
+    void loadPurchaseRequestPrefill(linkedPurchaseRequestId);
 
     return () => {
       cancelled = true;
