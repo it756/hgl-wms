@@ -5,7 +5,6 @@ import type {
   PurchaseRequestStatus,
   PurchaseRequestCreateInput,
   PurchaseRequestUpdateInput,
-  EDITABLE_STATUSES,
 } from "../models/purchaseRequest";
 import { writeAuditLog } from "./auditService";
 import { createNotification } from "./notificationService";
@@ -259,7 +258,7 @@ export async function submitToProcurement(
 export async function applyProcurementAction(
   id: string,
   action: "APPROVED" | "REJECTED" | "CHANGES_REQUESTED",
-  opts: { notes?: string; documentUrl?: string; actorEmail: string },
+  opts: { notes?: string; actorEmail: string },
 ): Promise<PurchaseRequest> {
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("purchase_requests")
@@ -287,7 +286,7 @@ export async function applyProcurementAction(
       procurement_actioned_at: new Date().toISOString(),
       procurement_action: action,
       procurement_notes: opts.notes ?? null,
-      procurement_document_url: opts.documentUrl ?? null,
+      procurement_document_url: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
