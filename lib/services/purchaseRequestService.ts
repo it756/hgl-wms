@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "../supabaseServer";
 import type {
   PurchaseRequest,
+  PurchaseRequestLineItem,
+  PurchaseRequestStatus,
   PurchaseRequestCreateInput,
   PurchaseRequestUpdateInput,
   EDITABLE_STATUSES,
@@ -399,4 +401,64 @@ export async function applyInternalControlAction(
   }
 
   return updated as PurchaseRequest;
+}
+
+// ─────────────────────────────────────────────
+// Print (mark as printed, write audit)
+// ─────────────────────────────────────────────
+
+/** Statuses from which a PR may be printed/exported. */
+const PRINTABLE_STATUSES: PurchaseRequestStatus[] = [
+  "APPROVED_FOR_PURCHASE",
+  "EXPECTED_ORDER",
+  "PARTIALLY_RECEIVED",
+  "RECEIVED",
+];
+
+export async function printPurchaseRequest(
+  id: string,
+  printedBy: string,
+): Promise<PurchaseRequest & { purchase_request_line_items: PurchaseRequestLineItem[] }> {
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("purchase_requests")
+    .select(
+      `*, purchase_request_line_items(
+        id, product_id, product_name, sku,
+        quantity_requested, unit_cost, unit_of_measure, notes
+      )`,
+    )
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !existing) throw new Error("Purchase request not found");
+
+  const pr = existing as PurchaseRequest & { purchase_request_line_items: PurchaseRequestLineItem[] };
+  if (!(PRINTABLE_STATUSES as string[]).includes(pr.status)) {
+    throw new Error(
+      `Purchase request cannot be printed in status: ${pr.status}. ` +
+        `Must be one of: ${PRINTABLE_STATUSES.join(", ")}.`,
+    );
+  }
+
+  const printedAt = new Date().toISOString();
+
+  const { error: updateError } = await supabaseAdmin
+    .from("purchase_requests")
+    .update({ printed_at: printedAt, updated_at: printedAt })
+    .eq("id", id);
+
+  if (updateError) throw updateError;
+
+  await writeAuditLog({
+    entity_type: "purchase_request",
+    entity_id: id,
+    action: "PRINTED",
+    performed_by: printedBy,
+    new_value: { printed_at: printedAt },
+  });
+
+  // Return enriched PR (with line items) for use in the print template
+  return { ...pr, printed_at: printedAt } as PurchaseRequest & {
+    purchase_request_line_items: PurchaseRequestLineItem[];
+  };
 }

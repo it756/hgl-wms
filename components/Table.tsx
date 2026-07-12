@@ -13,6 +13,14 @@ import { useHScrollOverflow } from "./HScrollArea";
  * applies to every table in the app that uses these components.
  */
 
+export function Table({ className = "", children, ...rest }: HTMLAttributes<HTMLTableElement>) {
+  return (
+    <table className={`w-full text-sm ${className}`} {...rest}>
+      {children}
+    </table>
+  );
+}
+
 export function TableHead({ children }: { children: ReactNode }) {
   return (
     <thead>
