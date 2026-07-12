@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Plus, Trash, ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 
@@ -225,77 +226,80 @@ function NewPurchaseRequestContent() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/purchase-requests"
-          className="text-slate-400 hover:text-slate-600"
-          aria-label="Back to purchase requests"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            {editId ? "Edit Purchase Request" : "New Purchase Request"}
-          </h1>
-          <p className="text-sm text-slate-500">
-            Create a purchase request to send to external procurement for approval.
-          </p>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-        {/* Request Details */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-          <h2 className="font-semibold text-slate-700">Request Details</h2>
-
+    <DashboardLayout>
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/purchase-requests"
+            className="text-slate-400 hover:text-slate-600"
+            aria-label="Back to purchase requests"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Procurement Email <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="email"
-              value={procurementEmail}
-              onChange={(e) => setProcurementEmail(e.target.value)}
-              placeholder="procurement@company.com"
-              required
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-            />
-            <p className="text-xs text-slate-400 mt-1">
-              A secure review link will be emailed here when you submit.
+            <h1 className="text-2xl font-bold text-slate-800">
+              {editId ? "Edit Purchase Request" : "New Purchase Request"}
+            </h1>
+            <p className="text-sm text-slate-500">
+              Create a purchase request to send to external procurement for approval.
             </p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Supplier Name</label>
-              <input
-                type="text"
-                value={supplierName}
-                onChange={(e) => setSupplierName(e.target.value)}
-                placeholder="Supplier Ltd."
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              />
-            </div>
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+          {/* Request Details */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+            <h2 className="font-semibold text-slate-700">Request Details</h2>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Supplier Email
+                Procurement Email <span className="text-rose-500">*</span>
               </label>
               <input
                 type="email"
-                value={supplierEmail}
-                onChange={(e) => setSupplierEmail(e.target.value)}
-                placeholder="supplier@example.com"
+                value={procurementEmail}
+                onChange={(e) => setProcurementEmail(e.target.value)}
+                placeholder="procurement@company.com"
+                required
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
+              <p className="text-xs text-slate-400 mt-1">
+                A secure review link will be emailed here when you submit.
+              </p>
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Supplier Name
+                </label>
+                <input
+                  type="text"
+                  value={supplierName}
+                  onChange={(e) => setSupplierName(e.target.value)}
+                  placeholder="Supplier Ltd."
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Supplier Email
+                </label>
+                <input
+                  type="email"
+                  value={supplierEmail}
+                  onChange={(e) => setSupplierEmail(e.target.value)}
+                  placeholder="supplier@example.com"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                />
+              </div>
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
@@ -440,33 +444,34 @@ function NewPurchaseRequestContent() {
             )}
           </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
-          <Link
-            href="/purchase-requests"
-            className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={submitting || productsLoading}
-            className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
-          >
-            Save as Draft
-          </button>
-          <button
-            type="button"
-            disabled={submitting || productsLoading}
-            onClick={(e) => handleSubmit(e as unknown as React.FormEvent, true)}
-            className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
-          >
-            <Send className="w-4 h-4" />
-            {submitting ? "Submitting…" : "Save & Send to Procurement"}
-          </button>
-        </div>
-      </form>
-    </div>
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
+            <Link
+              href="/purchase-requests"
+              className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={submitting || productsLoading}
+              className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Save as Draft
+            </button>
+            <button
+              type="button"
+              disabled={submitting || productsLoading}
+              onClick={(e) => handleSubmit(e as unknown as React.FormEvent, true)}
+              className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
+            >
+              <Send className="w-4 h-4" />
+              {submitting ? "Submitting…" : "Save & Send to Procurement"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </DashboardLayout>
   );
 }
 

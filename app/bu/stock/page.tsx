@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/PageHeader";
+import { Table } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Package,
@@ -360,7 +361,7 @@ export default function SbuStockPage() {
             )}
           </div>
         ) : (
-          <table className="w-full text-xs">
+          <Table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="px-4 py-3 text-left">Product</th>
@@ -417,7 +418,7 @@ export default function SbuStockPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </div>
     </div>

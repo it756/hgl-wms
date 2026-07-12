@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
 import DashboardLayout from "@/components/DashboardLayout";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import {
   Plus,
   Search,
@@ -89,7 +89,7 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: "Rejected",
 };
 
-// â”€â”€â”€ Review card helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Review card helper ---------------------------------------------
 function ReviewCard({
   title,
   action,
@@ -125,7 +125,7 @@ function ReviewCard({
         {icon}
         <span>
           {action.replace(/_/g, " ")}
-          {actionedAt && ` Â· ${new Date(actionedAt).toLocaleString()}`}
+          {actionedAt && ` � ${new Date(actionedAt).toLocaleString()}`}
         </span>
       </div>
       {notes && <p className="pl-6 opacity-80">Notes: {notes}</p>}
@@ -144,7 +144,7 @@ function ReviewCard({
   );
 }
 
-// â”€â”€â”€ Detail dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Detail dialog ---------------------------------------------------
 function PRDetailDialog({
   pr,
   loading,
@@ -223,11 +223,11 @@ function PRDetailDialog({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-0.5">SBU</p>
-                  <p className="text-slate-800">{pr.sbus?.name ?? "â€”"}</p>
+                  <p className="text-slate-800">{pr.sbus?.name ?? "�"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-0.5">Supplier</p>
-                  <p className="text-slate-800">{pr.supplier_name ?? "â€”"}</p>
+                  <p className="text-slate-800">{pr.supplier_name ?? "�"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-0.5">
@@ -236,7 +236,7 @@ function PRDetailDialog({
                   <p className="text-slate-800 font-semibold">
                     {pr.estimated_total != null
                       ? `ZMW ${pr.estimated_total.toLocaleString()}`
-                      : "â€”"}
+                      : "�"}
                   </p>
                 </div>
               </div>
@@ -274,40 +274,38 @@ function PRDetailDialog({
                   Requested Items ({pr.purchase_request_line_items.length})
                 </p>
                 <div className="rounded-lg border border-slate-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Item</th>
-                        <th className="px-3 py-2 text-center">Qty</th>
-                        <th className="px-3 py-2 text-right">Unit Cost</th>
-                        <th className="px-3 py-2 text-right">Total</th>
-                      </tr>
-                    </thead>
+                  <Table>
+                    <TableHead>
+                      <Th className="px-3 py-2">Item</Th>
+                      <Th align="center" className="px-3 py-2">Qty</Th>
+                      <Th align="right" className="px-3 py-2">Unit Cost</Th>
+                      <Th align="right" className="px-3 py-2">Total</Th>
+                    </TableHead>
                     <tbody className="divide-y divide-slate-100">
                       {pr.purchase_request_line_items.map((l) => (
-                        <tr key={l.id}>
-                          <td className="px-3 py-2.5">
+                        <Tr key={l.id}>
+                          <Td className="px-3 py-2.5">
                             <p className="font-medium text-slate-800">{l.product_name}</p>
                             {l.sku && <p className="text-xs text-slate-400">SKU: {l.sku}</p>}
                             {l.notes && (
                               <p className="text-xs italic text-slate-400 mt-0.5">{l.notes}</p>
                             )}
-                          </td>
-                          <td className="px-3 py-2.5 text-center text-slate-600">
+                          </Td>
+                          <Td align="center" className="px-3 py-2.5 text-slate-600">
                             {l.quantity_requested} {l.unit_of_measure}
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-slate-600">
-                            {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "â€”"}
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-medium text-slate-800">
+                          </Td>
+                          <Td align="right" className="px-3 py-2.5 text-slate-600">
+                            {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "�"}
+                          </Td>
+                          <Td align="right" className="px-3 py-2.5 font-medium text-slate-800">
                             {l.unit_cost != null
                               ? `ZMW ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
-                              : "â€”"}
-                          </td>
-                        </tr>
+                              : "�"}
+                          </Td>
+                        </Tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               </div>
             </>
@@ -318,7 +316,7 @@ function PRDetailDialog({
   );
 }
 
-// â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Main page ----------------------------------------------------------------
 export default function PurchaseRequestsPage() {
   return (
     <Suspense>
@@ -465,47 +463,47 @@ function PurchaseRequestsContent() {
         </Link>
       </div>
 
-      {banner && (
-        <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-4 py-3 text-sm">
-          {banner}
-        </div>
-      )}
+        {banner && (
+          <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-4 py-3 text-sm">
+            {banner}
+          </div>
+        )}
 
-      {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by reference or supplier..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by reference or supplier..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">All Statuses</option>
+            {Object.entries(STATUS_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="All">All Statuses</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests…</div>
+        <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests�</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-sm">
           No purchase requests found.{" "}
@@ -516,50 +514,50 @@ function PurchaseRequestsContent() {
       ) : (
         <div className="bg-white border border-slate-200/90 rounded-xl shadow-sm overflow-hidden">
           <HScrollArea>
-            <table className="min-w-full divide-y divide-slate-100 text-xs">
+            <Table className="min-w-full divide-y divide-slate-100 text-xs">
               <TableHead>
-                <Th pinned>Reference</Th>
-                <Th>SBU</Th>
-                <Th>Supplier</Th>
-                <Th>Items</Th>
-                <Th align="right">Est. Total</Th>
-                <Th>Status</Th>
-                <Th>Created</Th>
-                <Th align="center">Actions</Th>
+                <Th className="px-4 py-3">Reference</Th>
+                <Th className="px-4 py-3">SBU</Th>
+                <Th className="px-4 py-3">Supplier</Th>
+                <Th className="px-4 py-3">Items</Th>
+                <Th align="right" className="px-4 py-3">Est. Total</Th>
+                <Th className="px-4 py-3">Status</Th>
+                <Th className="px-4 py-3">Created</Th>
+                <Th align="center" className="px-4 py-3">Actions</Th>
               </TableHead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((r) => (
                   <Tr key={r.id}>
-                    <Td pinned className="font-mono font-bold text-slate-700">
+                    <Td className="px-4 py-3 font-mono font-medium text-slate-700">
                       {r.reference_number}
                     </Td>
-                    <td className="px-6 py-3.5 text-slate-600">{r.sbus?.name ?? "—"}</td>
-                    <td
+                    <Td className="px-6 py-3.5 text-slate-600">{r.sbus?.name ?? "—"}</Td>
+                    <Td
                       className="px-6 py-3.5 text-slate-600 max-w-45 truncate"
                       title={r.supplier_name ?? "—"}
                     >
                       {r.supplier_name ?? "—"}
-                    </td>
-                    <td className="px-6 py-3.5 text-slate-500">
+                    </Td>
+                    <Td className="px-6 py-3.5 text-slate-500">
                       {r.purchase_request_line_items?.length ?? 0} item
                       {(r.purchase_request_line_items?.length ?? 0) !== 1 ? "s" : ""}
-                    </td>
-                    <td className="px-6 py-3.5 text-right text-slate-700">
+                    </Td>
+                    <Td align="right" className="px-4 py-3 text-slate-700">
                       {r.estimated_total != null
                         ? `ZMW ${r.estimated_total.toLocaleString()}`
                         : "—"}
-                    </td>
-                    <td className="px-6 py-3.5">
+                    </Td>
+                    <Td className="px-6 py-3.5">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_COLORS[r.status] ?? "bg-slate-100 text-slate-500"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-slate-100 text-slate-500"}`}
                       >
                         {STATUS_LABELS[r.status] ?? r.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-3.5 text-slate-500">
+                    </Td>
+                    <Td className="px-4 py-3 text-slate-500">
                       {new Date(r.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-3.5">
+                    </Td>
+                    <Td className="px-6 py-3.5">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconButton
                           icon={<Eye className="w-3.5 h-3.5" />}
@@ -567,20 +565,22 @@ function PurchaseRequestsContent() {
                           href={`/purchase-requests/${r.id}`}
                         />
                         {(r.status === "DRAFT" || r.status === "PROCUREMENT_CHANGES_REQUESTED") && (
-                          <IconButton
-                            icon={<Send className="w-3.5 h-3.5" />}
-                            label={`Submit ${r.reference_number} to procurement`}
-                            variant="accent"
-                            disabled={submittingId === r.id}
+                          <button
                             onClick={() => handleSubmit(r.id, r.reference_number)}
-                          />
+                            disabled={submittingId === r.id}
+                            className="p-1.5 rounded hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-40"
+                            aria-label={`Submit ${r.reference_number} to procurement`}
+                            title="Submit to Procurement"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
                         )}
                       </div>
-                    </td>
+                    </Td>
                   </Tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </HScrollArea>
         </div>
       )}

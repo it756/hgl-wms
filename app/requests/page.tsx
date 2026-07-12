@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Search,
@@ -348,7 +348,7 @@ function RequestsListContent() {
           </div>
         ) : (
           <HScrollArea>
-            <table className="w-full border-collapse text-left">
+            <Table className="w-full border-collapse text-left">
               <TableHead>
                 <Th pinned>Reference</Th>
                 <Th>Unit</Th>
@@ -494,7 +494,7 @@ function RequestsListContent() {
                   </Tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </HScrollArea>
         )}
       </div>

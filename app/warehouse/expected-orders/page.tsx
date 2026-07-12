@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import { Truck, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ExpectedOrder {
@@ -52,14 +54,15 @@ export default function WarehouseExpectedOrdersPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Expected Inbound Orders</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Approved purchase requests awaiting supplier delivery. Receive against one by creating a
-          Supplier GRN.
-        </p>
-      </div>
+    <DashboardLayout>
+      <div className="p-6 space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Expected Inbound Orders</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Approved purchase requests awaiting supplier delivery. Receive against one by creating a
+            Supplier GRN.
+          </p>
+        </div>
 
       {error && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
@@ -122,59 +125,58 @@ export default function WarehouseExpectedOrdersPage() {
 
                 {expanded === order.id && (
                   <div className="border-t border-slate-100 px-5 py-4 space-y-4">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Item</th>
-                          <th className="px-3 py-2 text-center">Expected Qty</th>
-                          <th className="px-3 py-2 text-right">Unit Cost</th>
-                        </tr>
-                      </thead>
+                    <Table>
+                      <TableHead>
+                        <Th className="px-3 py-2">Item</Th>
+                        <Th align="center" className="px-3 py-2">Expected Qty</Th>
+                        <Th align="right" className="px-3 py-2">Unit Cost</Th>
+                      </TableHead>
                       <tbody className="divide-y divide-slate-100">
                         {order.purchase_request_line_items.map((l) => (
-                          <tr key={l.id}>
-                            <td className="px-3 py-2">
+                          <Tr key={l.id}>
+                            <Td className="px-3 py-2">
                               {l.product_name}
                               {l.sku && (
                                 <span className="ml-1 text-slate-400 text-xs">({l.sku})</span>
                               )}
-                            </td>
-                            <td className="px-3 py-2 text-center">
+                            </Td>
+                            <Td align="center" className="px-3 py-2">
                               {l.quantity_requested} {l.unit_of_measure}
-                            </td>
-                            <td className="px-3 py-2 text-right">
+                            </Td>
+                            <Td align="right" className="px-3 py-2">
                               {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
-                            </td>
-                          </tr>
+                            </Td>
+                          </Tr>
                         ))}
                       </tbody>
-                    </table>
+                    </Table>
 
-                  {order.notes && (
-                    <p className="text-sm text-slate-600">
-                      <span className="font-medium">Notes:</span> {order.notes}
-                    </p>
-                  )}
+                    {order.notes && (
+                      <p className="text-sm text-slate-600">
+                        <span className="font-medium">Notes:</span> {order.notes}
+                      </p>
+                    )}
 
-                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                    <Link
-                      href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      <Truck className="w-4 h-4" />
-                      Receive Goods (Create GRN)
-                    </Link>
-                    <span className="text-xs text-slate-400">
-                      Creates a Supplier GRN linked to this expected order. Stock posts after
-                      Finance approval.
-                    </span>
+                    <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                      <Link
+                        href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                      >
+                        <Truck className="w-4 h-4" />
+                        Receive Goods (Create GRN)
+                      </Link>
+                      <span className="text-xs text-slate-400">
+                        Creates a Supplier GRN linked to this expected order. Stock posts after
+                        Finance approval.
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }

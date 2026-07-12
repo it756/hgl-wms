@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Search, Loader2 } from "lucide-react";
+import { Table } from "@/components/Table";
 
 interface ExpiryRow {
   id: string;
@@ -152,7 +153,7 @@ export default function ExpiryLedgerPage() {
 
       {/* Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-xs">
+        <Table className="w-full text-xs">
           <thead className="bg-slate-50 text-slate-500 uppercase text-[10px]">
             <tr>
               <th className="px-4 py-2 text-left">Reference</th>
@@ -210,7 +211,7 @@ export default function ExpiryLedgerPage() {
               ))
             )}
           </tbody>
-        </table>
+        </Table>
       </div>
     </div>
   );

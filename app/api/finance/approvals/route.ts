@@ -70,21 +70,24 @@ async function updateLinkedPurchaseRequestStatus(
   if (!prLines?.length) return;
 
   // All GRN_APPROVED GRNs linked to this PR (including the one just approved)
-  const { data: linkedGrns } = await supabaseAdmin
+  const { data: linkedGrns, error: linkedGrnsError } = await supabaseAdmin
     .from("supplier_grns")
     .select("id")
     .eq("purchase_request_id", prId)
-    .in("status", ["GRN_APPROVED"]);
+    .eq("status", "GRN_APPROVED");
+
+  if (linkedGrnsError) throw linkedGrnsError;
 
   const grnIds = (linkedGrns ?? []).map((g: { id: string }) => g.id);
   // Ensure the just-approved GRN is included (status update is in the same transaction)
   if (!grnIds.includes(approvedGrnId)) grnIds.push(approvedGrnId);
 
-  const { data: grnLines } = await supabaseAdmin
+  const { data: grnLines, error: grnLinesError } = await supabaseAdmin
     .from("supplier_grn_line_items")
     .select("product_id, quantity_received")
     .in("supplier_grn_id", grnIds);
 
+  if (grnLinesError) throw grnLinesError;
   // Tally total received per product_id across all linked approved GRNs
   const receivedByProduct: Record<string, number> = {};
   for (const line of grnLines ?? []) {
@@ -105,11 +108,13 @@ async function updateLinkedPurchaseRequestStatus(
   if (!anyReceived) return;
 
   const newStatus = fullyReceived ? "RECEIVED" : "PARTIALLY_RECEIVED";
-  await supabaseAdmin
+  const { error: prUpdateError } = await supabaseAdmin
     .from("purchase_requests")
     .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq("id", prId)
     .in("status", ["EXPECTED_ORDER", "PARTIALLY_RECEIVED"]);
+
+  if (prUpdateError) throw prUpdateError;
 }
 
 /**
