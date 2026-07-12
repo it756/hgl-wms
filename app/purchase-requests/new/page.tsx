@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Plus, Trash, ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 
@@ -226,142 +225,139 @@ function NewPurchaseRequestContent() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/purchase-requests"
-            className="text-slate-400 hover:text-slate-600"
-            aria-label="Back to purchase requests"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <Link
+          href="/purchase-requests"
+          className="text-slate-400 hover:text-slate-600"
+          aria-label="Back to purchase requests"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">
+            {editId ? "Edit Purchase Request" : "New Purchase Request"}
+          </h1>
+          <p className="text-sm text-slate-500">
+            Create a purchase request to send to external procurement for approval.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+        {/* Request Details */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          <h2 className="font-semibold text-slate-700">Request Details</h2>
+
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">
-              {editId ? "Edit Purchase Request" : "New Purchase Request"}
-            </h1>
-            <p className="text-sm text-slate-500">
-              Create a purchase request to send to external procurement for approval.
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Procurement Email <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={procurementEmail}
+              onChange={(e) => setProcurementEmail(e.target.value)}
+              placeholder="procurement@company.com"
+              required
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              A secure review link will be emailed here when you submit.
             </p>
           </div>
-        </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-          {/* Request Details */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-            <h2 className="font-semibold text-slate-700">Request Details</h2>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Supplier Name</label>
+              <input
+                type="text"
+                value={supplierName}
+                onChange={(e) => setSupplierName(e.target.value)}
+                placeholder="Supplier Ltd."
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Procurement Email <span className="text-rose-500">*</span>
+                Supplier Email
               </label>
               <input
                 type="email"
-                value={procurementEmail}
-                onChange={(e) => setProcurementEmail(e.target.value)}
-                placeholder="procurement@company.com"
-                required
+                value={supplierEmail}
+                onChange={(e) => setSupplierEmail(e.target.value)}
+                placeholder="supplier@example.com"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                A secure review link will be emailed here when you submit.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Supplier Name
-                </label>
-                <input
-                  type="text"
-                  value={supplierName}
-                  onChange={(e) => setSupplierName(e.target.value)}
-                  placeholder="Supplier Ltd."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Supplier Email
-                </label>
-                <input
-                  type="email"
-                  value={supplierEmail}
-                  onChange={(e) => setSupplierEmail(e.target.value)}
-                  placeholder="supplier@example.com"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Any additional context for procurement…"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
               />
             </div>
           </div>
 
-          {/* Line Items */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-slate-700">Requested Items</h2>
-              <button
-                type="button"
-                onClick={addLine}
-                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                Add Item
-              </button>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Any additional context for procurement…"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
+            />
+          </div>
+        </div>
 
-            {productsLoading ? (
-              <p className="text-sm text-slate-400">Loading product catalogue…</p>
-            ) : products.length === 0 ? (
-              <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm">
-                No products found in your SBU catalogue. Contact your Warehouse Manager to ensure
-                products have been added to the inventory.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {lines.map((line, index) => {
-                  const selectedProduct = getProduct(line.product_id);
-                  return (
-                    <div
-                      key={index}
-                      className="grid grid-cols-12 gap-2 items-start p-3 bg-slate-50 rounded-lg"
-                    >
-                      {/* Product select */}
-                      <div className="col-span-12 sm:col-span-5">
-                        <label className="block text-xs text-slate-500 mb-1">
-                          Product <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={line.product_id}
-                          onChange={(e) => updateLine(index, "product_id", e.target.value)}
-                          required
-                          className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
-                        >
-                          <option value="">Select product…</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.sku})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+        {/* Line Items */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-700">Requested Items</h2>
+            <button
+              type="button"
+              onClick={addLine}
+              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add Item
+            </button>
+          </div>
+
+          {productsLoading ? (
+            <p className="text-sm text-slate-400">Loading product catalogue…</p>
+          ) : products.length === 0 ? (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm">
+              No products found in your SBU catalogue. Contact your Warehouse Manager to ensure
+              products have been added to the inventory.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {lines.map((line, index) => {
+                const selectedProduct = getProduct(line.product_id);
+                return (
+                  <div
+                    key={index}
+                    className="grid grid-cols-12 gap-2 items-start p-3 bg-slate-50 rounded-lg"
+                  >
+                    {/* Product select */}
+                    <div className="col-span-12 sm:col-span-5">
+                      <label className="block text-xs text-slate-500 mb-1">
+                        Product <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={line.product_id}
+                        onChange={(e) => updateLine(index, "product_id", e.target.value)}
+                        required
+                        className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                      >
+                        <option value="">Select product…</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.sku})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
                       {/* Auto-filled product info */}
                       <div className="col-span-6 sm:col-span-2">
@@ -389,54 +385,50 @@ function NewPurchaseRequestContent() {
                         />
                       </div>
 
-                      {/* Quantity */}
-                      <div className="col-span-6 sm:col-span-2">
-                        <label className="block text-xs text-slate-500 mb-1">Qty</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={line.quantity_requested}
-                          onChange={(e) =>
-                            updateLine(
-                              index,
-                              "quantity_requested",
-                              parseInt(e.target.value, 10) || 1,
-                            )
-                          }
-                          className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
-                        />
-                      </div>
-
-                      {/* Remove */}
-                      <div className="col-span-12 sm:col-span-1 flex items-end justify-end sm:justify-center pb-0.5">
-                        {lines.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeLine(index)}
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                            aria-label="Remove line item"
-                            title="Remove line"
-                          >
-                            <Trash className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Optional line notes — full-width second row */}
-                      <div className="col-span-12">
-                        <input
-                          type="text"
-                          value={line.notes}
-                          onChange={(e) => updateLine(index, "notes", e.target.value)}
-                          placeholder="Line notes (optional)…"
-                          className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
-                        />
-                      </div>
+                    {/* Quantity */}
+                    <div className="col-span-6 sm:col-span-2">
+                      <label className="block text-xs text-slate-500 mb-1">Qty</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={line.quantity_requested}
+                        onChange={(e) =>
+                          updateLine(index, "quantity_requested", parseInt(e.target.value, 10) || 1)
+                        }
+                        className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                      />
                     </div>
-                  );
-                })}
-              </div>
-            )}
+
+                    {/* Remove */}
+                    <div className="col-span-12 sm:col-span-1 flex items-end justify-end sm:justify-center pb-0.5">
+                      {lines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLine(index)}
+                          className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          aria-label="Remove line item"
+                          title="Remove line"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Optional line notes — full-width second row */}
+                    <div className="col-span-12">
+                      <input
+                        type="text"
+                        value={line.notes}
+                        onChange={(e) => updateLine(index, "notes", e.target.value)}
+                        placeholder="Line notes (optional)…"
+                        className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
             {estimatedTotal > 0 && (
               <div className="flex justify-end pt-2 border-t border-slate-100">
@@ -448,34 +440,33 @@ function NewPurchaseRequestContent() {
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
-            <Link
-              href="/purchase-requests"
-              className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={submitting || productsLoading}
-              className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
-            >
-              Save as Draft
-            </button>
-            <button
-              type="button"
-              disabled={submitting || productsLoading}
-              onClick={(e) => handleSubmit(e as unknown as React.FormEvent, true)}
-              className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
-            >
-              <Send className="w-4 h-4" />
-              {submitting ? "Submitting…" : "Save & Send to Procurement"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </DashboardLayout>
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
+          <Link
+            href="/purchase-requests"
+            className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={submitting || productsLoading}
+            className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+          >
+            Save as Draft
+          </button>
+          <button
+            type="button"
+            disabled={submitting || productsLoading}
+            onClick={(e) => handleSubmit(e as unknown as React.FormEvent, true)}
+            className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
+          >
+            <Send className="w-4 h-4" />
+            {submitting ? "Submitting…" : "Save & Send to Procurement"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 import { Truck, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -53,21 +52,20 @@ export default function WarehouseExpectedOrdersPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Expected Inbound Orders</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Approved purchase requests awaiting supplier delivery. Receive against one by creating a
-            Supplier GRN.
-          </p>
-        </div>
+    <div className="p-6 space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Expected Inbound Orders</h1>
+        <p className="text-sm text-slate-500 mt-0.5">
+          Approved purchase requests awaiting supplier delivery. Receive against one by creating a
+          Supplier GRN.
+        </p>
+      </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
 
         {loading ? (
           <div className="text-center py-12 text-slate-500 text-sm">Loading expected orders…</div>
@@ -152,32 +150,31 @@ export default function WarehouseExpectedOrdersPage() {
                       </tbody>
                     </table>
 
-                    {order.notes && (
-                      <p className="text-sm text-slate-600">
-                        <span className="font-medium">Notes:</span> {order.notes}
-                      </p>
-                    )}
+                  {order.notes && (
+                    <p className="text-sm text-slate-600">
+                      <span className="font-medium">Notes:</span> {order.notes}
+                    </p>
+                  )}
 
-                    <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                      <Link
-                        href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                      >
-                        <Truck className="w-4 h-4" />
-                        Receive Goods (Create GRN)
-                      </Link>
-                      <span className="text-xs text-slate-400">
-                        Creates a Supplier GRN linked to this expected order. Stock posts after
-                        Finance approval.
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                    <Link
+                      href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    >
+                      <Truck className="w-4 h-4" />
+                      Receive Goods (Create GRN)
+                    </Link>
+                    <span className="text-xs text-slate-400">
+                      Creates a Supplier GRN linked to this expected order. Stock posts after
+                      Finance approval.
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

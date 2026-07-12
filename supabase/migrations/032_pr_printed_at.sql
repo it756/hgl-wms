@@ -1,4 +1,4 @@
--- Migration: 026_pr_printed_at.sql
+-- Migration: 032_pr_printed_at.sql
 -- Purpose: Adds a printed_at audit timestamp to purchase_requests so the system
 --          can record when a finance-approved PR was printed/exported.
 --
