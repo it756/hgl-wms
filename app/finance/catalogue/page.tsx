@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import DamageWriteOffModal from "@/components/DamageWriteOffModal";
 import { Layers, Search, Flame, Plus, CheckCircle, Package } from "lucide-react";
 
@@ -124,7 +123,7 @@ export default function FinanceCataloguePage() {
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="px-6 py-6 space-y-6">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -357,6 +356,6 @@ export default function FinanceCataloguePage() {
       {active && (
         <DamageWriteOffModal product={active} onClose={() => setActive(null)} onSuccess={load} />
       )}
-    </DashboardLayout>
+    </>
   );
 }
