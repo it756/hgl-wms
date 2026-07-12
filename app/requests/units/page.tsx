@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
+import { Table } from "@/components/Table";
 import {
   Building2,
   Users,
@@ -410,7 +411,7 @@ export default function BUUnitsPage() {
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <table className="w-full text-sm">
+              <Table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -516,7 +517,7 @@ export default function BUUnitsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
           )}
         </div>
@@ -678,7 +679,7 @@ export default function BUUnitsPage() {
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <table className="w-full text-sm">
+              <Table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -807,7 +808,7 @@ export default function BUUnitsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
           )}
         </div>
