@@ -354,8 +354,8 @@ export default function SbuStockPage() {
             </p>
             {!search && (
               <p className="text-xs text-slate-400 max-w-xs text-center">
-                Stock appears here once the warehouse issues goods to your unit via an approved
-                transfer request.
+                Stock appears here once your unit receives goods by submitting a GRN for an
+                issued transfer request.
               </p>
             )}
           </div>
