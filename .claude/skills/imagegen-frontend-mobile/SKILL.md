@@ -69,7 +69,7 @@ Standard AI mobile output tends to collapse into repetitive defaults:
 - fake complexity instead of good mobile hierarchy
 - sterile flat backgrounds with no texture or visual atmosphere
 - generic palettes
-- default purple-blue startup color clichÃ©s
+- default purple-blue startup color clichés
 - random bright colors
 - generic developer-tool icon sets
 - overly simplistic layouts that feel empty instead of elegant
@@ -231,14 +231,14 @@ Do not be lazy with screen count.
 
 If the user asks for:
 
-- 1 screen â†’ generate 1 screen image
-- 2 screens â†’ generate 2 screen images
-- 3 screens â†’ generate 3 screen images
-- 5 screens â†’ generate 5 screen images
-- 7 screens â†’ generate 7 screen images
-- onboarding flow â†’ generate multiple onboarding screens, not one
-- auth flow â†’ generate separate sign in / sign up / recovery states when useful
-- app concept â†’ generate a meaningful set, not one isolated hero mockup
+- 1 screen → generate 1 screen image
+- 2 screens → generate 2 screen images
+- 3 screens → generate 3 screen images
+- 5 screens → generate 5 screen images
+- 7 screens → generate 7 screen images
+- onboarding flow → generate multiple onboarding screens, not one
+- auth flow → generate separate sign in / sign up / recovery states when useful
+- app concept → generate a meaningful set, not one isolated hero mockup
 
 It is better to generate:
 
@@ -354,12 +354,12 @@ The screen order should make sense.
 
 Examples:
 
-- onboarding â†’ auth â†’ home
-- home â†’ browse â†’ detail
-- profile â†’ settings â†’ edit profile
-- cart â†’ checkout â†’ confirmation
-- dashboard â†’ activity â†’ detail
-- welcome â†’ permissions â†’ personalized home
+- onboarding → auth → home
+- home → browse → detail
+- profile → settings → edit profile
+- cart → checkout → confirmation
+- dashboard → activity → detail
+- welcome → permissions → personalized home
 
 Ask internally:
 
