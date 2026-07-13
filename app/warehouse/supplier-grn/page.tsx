@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Building,
@@ -811,7 +811,7 @@ export default function SupplierGRNPage() {
             </div>
           ) : (
             <HScrollArea>
-              <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <Table className="min-w-full divide-y divide-slate-100 text-xs">
                 <TableHead>
                   <Th pinned>Reference</Th>
                   <Th>Supplier</Th>
@@ -867,7 +867,7 @@ export default function SupplierGRNPage() {
                     </Tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </HScrollArea>
           )}
         </div>
@@ -1043,7 +1043,7 @@ export default function SupplierGRNPage() {
               )}
 
               <div className="overflow-visible">
-                <table className="w-full min-w-160 text-left border-collapse">
+                <Table className="w-full min-w-160 text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
                       <th className="py-3 px-3">Product Description</th>
@@ -1172,7 +1172,7 @@ export default function SupplierGRNPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
 
               {/* Totals footer */}
