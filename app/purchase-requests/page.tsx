@@ -1,8 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import IconButton from "@/components/IconButton";
+import HScrollArea from "@/components/HScrollArea";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import {
@@ -87,7 +89,7 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: "Rejected",
 };
 
-// ─── Review card helper ─────────────────────────────────────────────
+// --- Review card helper ---------------------------------------------
 function ReviewCard({
   title,
   action,
@@ -123,7 +125,7 @@ function ReviewCard({
         {icon}
         <span>
           {action.replace(/_/g, " ")}
-          {actionedAt && ` · ${new Date(actionedAt).toLocaleString()}`}
+          {actionedAt && ` — ${new Date(actionedAt).toLocaleString()}`}
         </span>
       </div>
       {notes && <p className="pl-6 opacity-80">Notes: {notes}</p>}
@@ -142,7 +144,7 @@ function ReviewCard({
   );
 }
 
-// ─── Detail dialog ───────────────────────────────────────────────────
+// --- Detail dialog ---------------------------------------------------
 function PRDetailDialog({
   pr,
   loading,
@@ -314,7 +316,7 @@ function PRDetailDialog({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// --- Main page ----------------------------------------------------------------
 export default function PurchaseRequestsPage() {
   return (
     <Suspense>
@@ -445,21 +447,21 @@ function PurchaseRequestsContent() {
   return (
     <DashboardLayout>
       <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Purchase Requests</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Manage external purchase requests and procurement approvals
-            </p>
-          </div>
-          <Link
-            href="/purchase-requests/new"
-            className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
-          >
-            <Plus className="w-4 h-4" />
-            New Request
-          </Link>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Purchase Requests</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Manage external purchase requests and procurement approvals
+          </p>
         </div>
+        <Link
+          href="/purchase-requests/new"
+          className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
+        >
+          <Plus className="w-4 h-4" />
+          New Request
+        </Link>
+      </div>
 
         {banner && (
           <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-4 py-3 text-sm">
@@ -499,19 +501,20 @@ function PurchaseRequestsContent() {
           </select>
         </div>
 
-        {/* Table */}
-        {loading ? (
-          <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests…</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">
-            No purchase requests found.{" "}
-            <Link href="/purchase-requests/new" className="text-blue-600 hover:underline">
-              Create one
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <Table>
+      {/* Table */}
+      {loading ? (
+        <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-slate-400 text-sm">
+          No purchase requests found.{" "}
+          <Link href="/purchase-requests/new" className="text-blue-600 hover:underline">
+            Create one
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-sm overflow-hidden">
+          <HScrollArea>
+            <Table className="min-w-full divide-y divide-slate-100 text-xs">
               <TableHead>
                 <Th className="px-4 py-3">Reference</Th>
                 <Th className="px-4 py-3">SBU</Th>
@@ -529,7 +532,12 @@ function PurchaseRequestsContent() {
                       {r.reference_number}
                     </Td>
                     <Td className="px-4 py-3 text-slate-600">{r.sbus?.name ?? "—"}</Td>
-                    <Td className="px-4 py-3 text-slate-600">{r.supplier_name ?? "—"}</Td>
+                    <Td
+                      className="px-4 py-3 text-slate-600 max-w-45 truncate"
+                      title={r.supplier_name ?? "—"}
+                    >
+                      {r.supplier_name ?? "—"}
+                    </Td>
                     <Td className="px-4 py-3 text-slate-500">
                       {r.purchase_request_line_items?.length ?? 0} item
                       {(r.purchase_request_line_items?.length ?? 0) !== 1 ? "s" : ""}
@@ -550,15 +558,12 @@ function PurchaseRequestsContent() {
                       {new Date(r.created_at).toLocaleDateString()}
                     </Td>
                     <Td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openDialog(r.id)}
-                          className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-                          aria-label={`View purchase request ${r.reference_number}`}
-                          title="View details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconButton
+                          icon={<Eye className="w-3.5 h-3.5" />}
+                          label={`View purchase request ${r.reference_number}`}
+                          href={`/purchase-requests/${r.id}`}
+                        />
                         {(r.status === "DRAFT" || r.status === "PROCUREMENT_CHANGES_REQUESTED") && (
                           <button
                             onClick={() => handleSubmit(r.id, r.reference_number)}
@@ -576,8 +581,9 @@ function PurchaseRequestsContent() {
                 ))}
               </tbody>
             </Table>
-          </div>
-        )}
+          </HScrollArea>
+        </div>
+      )}
       </div>
 
       {/* Detail dialog */}

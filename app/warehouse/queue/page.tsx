@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import {
   ClipboardList,
   Clock,
@@ -562,7 +562,7 @@ export default function WarehouseQueuePage() {
               </div>
             ) : (
               <HScrollArea>
-                <table className="w-full text-left border-collapse">
+                <Table className="w-full text-left border-collapse">
                   <TableHead>
                     <Th pinned>Reference</Th>
                     <Th>SBU / Dept</Th>
@@ -669,7 +669,7 @@ export default function WarehouseQueuePage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </Table>
               </HScrollArea>
             )}
           </div>
@@ -850,7 +850,7 @@ export default function WarehouseQueuePage() {
               </div>
 
               <HScrollArea>
-                <table className="w-full text-left border-collapse">
+                <Table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)] whitespace-nowrap border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       <th className="sticky left-0 z-20 bg-slate-50 py-3.5 pl-4 pr-4 w-12 text-center">
@@ -1004,7 +1004,7 @@ export default function WarehouseQueuePage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </Table>
               </HScrollArea>
 
               {/* Shortfall Warnings Banner */}

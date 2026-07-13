@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { TrendingDown, Package, Building, Loader2, AlertTriangle, Search, X } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ export default function LossAccountPage() {
       {!loading && !error && filtered.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <HScrollArea>
-            <table className="min-w-full divide-y divide-slate-100 text-xs">
+            <Table className="min-w-full divide-y divide-slate-100 text-xs">
               <TableHead>
                 <Th pinned>Transfer Ref</Th>
                 <Th>Product</Th>
@@ -299,7 +299,7 @@ export default function LossAccountPage() {
                   </tr>
                 </tfoot>
               )}
-            </table>
+            </Table>
           </HScrollArea>
         </div>
       )}
