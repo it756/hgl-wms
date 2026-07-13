@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import {
   ArrowLeft,
   AlertCircle,
@@ -301,7 +301,7 @@ export default function NewReturnPage() {
               className="rounded-xl border border-slate-100"
               maxHeightClassName="max-h-[50vh]"
             >
-              <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <Table className="min-w-full divide-y divide-slate-100 text-xs">
                 <TableHead>
                   <Th pinned>Product</Th>
                   <Th>SKU</Th>
@@ -335,7 +335,7 @@ export default function NewReturnPage() {
                     </Tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </HScrollArea>
           </div>
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import type { UserRole } from "@/lib/models/user";
 import {
   AlertTriangle,
@@ -321,7 +321,7 @@ export default function LicenseManagementPage() {
             </div>
           ) : (
             <HScrollArea>
-              <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <Table className="min-w-full divide-y divide-slate-100 text-xs">
                 <TableHead>
                   <Th pinned>Staff</Th>
                   <Th>Role</Th>
@@ -410,7 +410,7 @@ export default function LicenseManagementPage() {
                     );
                   })}
                 </tbody>
-              </table>
+              </Table>
             </HScrollArea>
           )}
         </section>

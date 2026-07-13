@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { ArrowLeftRight, Search, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface Product {
@@ -258,7 +258,7 @@ export default function IntraTransferPage() {
           <span className="text-[10px] text-slate-400">{transfers.length} total</span>
         </div>
         <HScrollArea>
-          <table className="min-w-full divide-y divide-slate-100 text-xs">
+          <Table className="min-w-full divide-y divide-slate-100 text-xs">
             <TableHead>
               <Th pinned>Reference</Th>
               <Th>Product</Th>
@@ -319,7 +319,7 @@ export default function IntraTransferPage() {
                 ))
               )}
             </tbody>
-          </table>
+          </Table>
         </HScrollArea>
       </div>
     </div>
