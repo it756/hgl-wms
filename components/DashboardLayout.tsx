@@ -338,6 +338,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       case "FINANCE_MANAGER":
         return [
           { href: "/finance/queue", label: "Pending Approvals", icon: ClipboardList },
+          { href: "/finance/history", label: "Approval History", icon: History },
           { href: "/finance/catalogue", label: "Catalogue", icon: Layers },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
           { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },

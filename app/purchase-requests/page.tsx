@@ -5,11 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import {
   Plus,
-  Search,
   Eye,
   Send,
   X,
@@ -18,7 +16,9 @@ import {
   XCircle,
   Clock,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface PurchaseRequest {
   id: string;
@@ -148,10 +148,12 @@ function ReviewCard({
 function PRDetailDialog({
   pr,
   loading,
+  token,
   onClose,
 }: {
   pr: PurchaseRequestDetail | null;
   loading: boolean;
+  token: string | null;
   onClose: () => void;
 }) {
   // Close on Escape
@@ -268,6 +270,21 @@ function PRDetailDialog({
                 </div>
               )}
 
+              {token && (
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase">
+                    Procurement Documents
+                  </p>
+                  <DocumentUpload
+                    transactionType="purchase_request"
+                    transactionId={pr.id}
+                    token={token}
+                    canDelete={false}
+                    readOnly
+                  />
+                </div>
+              )}
+
               {/* line items */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase mb-2">
@@ -277,9 +294,15 @@ function PRDetailDialog({
                   <Table>
                     <TableHead>
                       <Th className="px-3 py-2">Item</Th>
-                      <Th align="center" className="px-3 py-2">Qty</Th>
-                      <Th align="right" className="px-3 py-2">Unit Cost</Th>
-                      <Th align="right" className="px-3 py-2">Total</Th>
+                      <Th align="center" className="px-3 py-2">
+                        Qty
+                      </Th>
+                      <Th align="right" className="px-3 py-2">
+                        Unit Cost
+                      </Th>
+                      <Th align="right" className="px-3 py-2">
+                        Total
+                      </Th>
                     </TableHead>
                     <tbody className="divide-y divide-slate-100">
                       {pr.purchase_request_line_items.map((l) => (
@@ -335,25 +358,23 @@ function PurchaseRequestsContent() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [search] = useState("");
+  const [statusFilter] = useState("All");
   const [banner, setBanner] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogPr, setDialogPr] = useState<PurchaseRequestDetail | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
 
-  useEffect(() => {
-    if (created) {
-      setBanner(
-        submitted === "true"
-          ? `Purchase request ${created} submitted to procurement.`
-          : `Purchase request ${created} saved as draft.`,
-      );
-    }
-  }, [created, submitted]);
+  const urlBanner = created
+    ? submitted === "true"
+      ? `Purchase request ${created} submitted to procurement.`
+      : `Purchase request ${created} saved as draft.`
+    : null;
+  const visibleBanner = banner ?? urlBanner;
 
   useEffect(() => {
     fetchRequests();
@@ -371,6 +392,7 @@ function PurchaseRequestsContent() {
     setLoading(true);
     try {
       const token = localStorage.getItem("access_token");
+      setAuthToken(token);
       const res = await fetch("/api/purchase-requests", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -390,6 +412,7 @@ function PurchaseRequestsContent() {
     setDialogOpen(true);
     try {
       const token = localStorage.getItem("access_token");
+      setAuthToken(token);
       const res = await fetch(`/api/purchase-requests/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -445,8 +468,7 @@ function PurchaseRequestsContent() {
   });
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Purchase Requests</h1>
@@ -463,43 +485,17 @@ function PurchaseRequestsContent() {
         </Link>
       </div>
 
-        {banner && (
-          <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-4 py-3 text-sm">
-            {banner}
-          </div>
-        )}
-
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by reference or supplier..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="All">All Statuses</option>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
+      {visibleBanner && (
+        <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-4 py-3 text-sm">
+          {visibleBanner}
         </div>
+      )}
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -520,10 +516,14 @@ function PurchaseRequestsContent() {
                 <Th className="px-4 py-3">SBU</Th>
                 <Th className="px-4 py-3">Supplier</Th>
                 <Th className="px-4 py-3">Items</Th>
-                <Th align="right" className="px-4 py-3">Est. Total</Th>
+                <Th align="right" className="px-4 py-3">
+                  Est. Total
+                </Th>
                 <Th className="px-4 py-3">Status</Th>
                 <Th className="px-4 py-3">Created</Th>
-                <Th align="center" className="px-4 py-3">Actions</Th>
+                <Th align="center" className="px-4 py-3">
+                  Actions
+                </Th>
               </TableHead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((r) => (
@@ -565,15 +565,29 @@ function PurchaseRequestsContent() {
                           href={`/purchase-requests/${r.id}`}
                         />
                         {(r.status === "DRAFT" || r.status === "PROCUREMENT_CHANGES_REQUESTED") && (
-                          <button
-                            onClick={() => handleSubmit(r.id, r.reference_number)}
-                            disabled={submittingId === r.id}
-                            className="p-1.5 rounded hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-40"
-                            aria-label={`Submit ${r.reference_number} to procurement`}
-                            title="Submit to Procurement"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
+                          <>
+                            <Link
+                              href={`/purchase-requests/new?edit=${r.id}`}
+                              className="p-1.5 rounded hover:bg-amber-50 text-amber-600 hover:text-amber-700 transition-colors"
+                              aria-label={`Edit purchase request ${r.reference_number}`}
+                              title="Edit request"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Link>
+                            <button
+                              onClick={() => handleSubmit(r.id, r.reference_number)}
+                              disabled={submittingId === r.id}
+                              className="p-1.5 rounded hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-40"
+                              aria-label={`Submit ${r.reference_number} to procurement`}
+                              title={
+                                r.status === "PROCUREMENT_CHANGES_REQUESTED"
+                                  ? "Resubmit to Procurement"
+                                  : "Submit to Procurement"
+                              }
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </Td>
@@ -584,14 +598,15 @@ function PurchaseRequestsContent() {
           </HScrollArea>
         </div>
       )}
-      </div>
-
       {/* Detail dialog */}
       {dialogOpen && (
-        <PRDetailDialog pr={dialogPr} loading={dialogLoading} onClose={closeDialog} />
+        <PRDetailDialog
+          pr={dialogPr}
+          loading={dialogLoading}
+          token={authToken}
+          onClose={closeDialog}
+        />
       )}
-    </DashboardLayout>
+    </div>
   );
 }
-
-

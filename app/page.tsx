@@ -23,6 +23,7 @@ function routeForRole(role: UserRole): string {
   if (role === "BU_MANAGER" || role === "UNIT_STAFF") return "/requests";
   if (role === "WAREHOUSE_MANAGER") return "/warehouse/queue";
   if (role === "FINANCE_MANAGER") return "/finance/queue";
+  if (role === "INTERNAL_CONTROL_OFFICER") return "/internal-control";
   return "/requests";
 }
 

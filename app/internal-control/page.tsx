@@ -56,7 +56,7 @@ const STATUS_COLORS: Record<string, string> = {
   RECEIVED: "bg-green-50 text-green-700 border-green-200",
 };
 
-export default function AdminPurchaseRequestsPage() {
+export default function InternalControlPage() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,16 +126,18 @@ export default function AdminPurchaseRequestsPage() {
       r.reference_number.toLowerCase().includes(search.toLowerCase()) ||
       (r.supplier_name ?? "").toLowerCase().includes(search.toLowerCase()) ||
       (r.sbus?.name ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = activeTab === "queue" || statusFilter === "All" || r.status === statusFilter;
+    const matchesStatus =
+      activeTab === "queue" || statusFilter === "All" || r.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   return (
     <div className="flex w-full flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Internal Control — Purchase Requests</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Purchase Requests</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Review pending purchase requests and keep a searchable history of internal control outcomes.
+          Review pending purchase requests and keep a searchable history of internal control
+          outcomes.
         </p>
       </div>
 
@@ -169,7 +171,7 @@ export default function AdminPurchaseRequestsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by reference, SBU, or supplier..."
+            placeholder="Search by reference, SBU, or supplier…"
             className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {activeTab === "history" && (
@@ -202,7 +204,9 @@ export default function AdminPurchaseRequestsPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests…</div>
+        <div className="text-center py-12 text-slate-500 text-sm">
+          Loading purchase requests…
+        </div>
       ) : visibleRequests.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-sm">
           {activeTab === "queue"
@@ -333,7 +337,9 @@ export default function AdminPurchaseRequestsPage() {
                               {l.quantity_requested} {l.unit_of_measure}
                             </Td>
                             <Td align="right" className="px-3 py-2">
-                              {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
+                              {l.unit_cost != null
+                                ? `ZMW ${l.unit_cost.toLocaleString()}`
+                                : "—"}
                             </Td>
                             <Td align="right" className="px-3 py-2 font-medium">
                               {l.unit_cost != null
@@ -368,6 +374,7 @@ export default function AdminPurchaseRequestsPage() {
                       />
                       <div className="flex items-center gap-3">
                         <button
+                          type="button"
                           onClick={() => handleAction(r.id, "approve")}
                           disabled={actioning === r.id}
                           className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
@@ -376,6 +383,7 @@ export default function AdminPurchaseRequestsPage() {
                           {actioning === r.id ? "Processing…" : "Approve"}
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleAction(r.id, "reject")}
                           disabled={actioning === r.id}
                           className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors disabled:opacity-50"

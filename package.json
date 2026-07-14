@@ -25,6 +25,7 @@
     "prepush": "npm run lockfile:check && npm run migrations:check && npm run typecheck && npm run biome:check && npm run lint:backend && npm test && npm run test:backend && npm run openapi:check && npm audit --omit=dev --audit-level=high && npm run build",
     "prepare": "husky",
     "seed": "npx tsx scripts/seed/seed_data.ts",
+    "seed:labambam:stock": "npx tsx scripts/seed/seed_labambam_stock.ts",
     "report:emails": "npx tsx scripts/reports/email-activity-report.ts"
   },
   "dependencies": {
@@ -61,7 +62,8 @@
     "tsx": "^4.22.3",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "xlsx": "^0.18.5"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint --fix",

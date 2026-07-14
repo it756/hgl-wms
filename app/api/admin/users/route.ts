@@ -8,6 +8,7 @@ const VALID_ROLES: UserRole[] = [
   "UNIT_STAFF",
   "FINANCE_MANAGER",
   "ADMIN",
+  "INTERNAL_CONTROL_OFFICER",
 ];
 
 /** GET /api/admin/users — list all profiles (ADMIN only) */

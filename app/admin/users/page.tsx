@@ -65,6 +65,7 @@ const ROLES: UserRole[] = [
   "UNIT_STAFF",
   "FINANCE_MANAGER",
   "ADMIN",
+  "INTERNAL_CONTROL_OFFICER",
 ];
 
 const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
@@ -73,6 +74,7 @@ const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   UNIT_STAFF: "Unit Staff Personnel",
   FINANCE_MANAGER: "Finance Manager",
   ADMIN: "System Administrator",
+  INTERNAL_CONTROL_OFFICER: "Internal Control Officer",
 };
 
 const ROLE_COLORS: Record<UserRole, string> = {
@@ -81,6 +83,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   UNIT_STAFF: "bg-slate-50 border border-slate-200 text-slate-700",
   FINANCE_MANAGER: "bg-purple-50 border border-purple-200 text-purple-800",
   ADMIN: "bg-rose-50 border border-rose-200 text-rose-800",
+  INTERNAL_CONTROL_OFFICER: "bg-amber-50 border border-amber-200 text-amber-800",
 };
 
 export default function UsersPage() {
