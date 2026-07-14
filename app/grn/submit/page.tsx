@@ -4,14 +4,12 @@ import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import {
   CheckCircle,
-  Calendar,
   ArrowLeft,
   AlertCircle,
   Truck,
   Info,
   FileText,
   Layers,
-  ShieldCheck,
   ChevronRight,
   ClipboardList,
   Paperclip,
@@ -36,13 +34,35 @@ interface GRNLineItemInput {
   product_name: string;
   sku: string;
   issued_quantity: number;
-  quantity_received: number;
+  quantity_received: number | "";
   variance_notes?: string;
+}
+
+interface GRNHistoryRecord {
+  id: string;
+  transfer_request_id: string;
+  date_received: string;
+  condition_notes: string | null;
+  has_variance: boolean;
+  created_at: string;
+  transfer_requests: {
+    reference_number: string;
+    status: string;
+    sbus: { name: string; code: string } | null;
+  } | null;
+  grn_line_items: {
+    id: string;
+    issued_quantity: number;
+    quantity_received: number;
+    products: { name: string; sku: string; unit_of_measure: string } | null;
+  }[];
 }
 
 export default function SubmitGRNPage() {
   const [transfers, setTransfers] = useState<IssuedTransfer[]>([]);
+  const [grnHistory, setGrnHistory] = useState<GRNHistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [grnItems, setGrnItems] = useState<GRNLineItemInput[]>([]);
   const [conditionNotes, setConditionNotes] = useState("");
@@ -59,11 +79,17 @@ export default function SubmitGRNPage() {
     async function load() {
       try {
         const token = localStorage.getItem("access_token");
-        const res = await fetch("/api/transfer-requests?status=ISSUED", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        const [transfersRes, grnsRes] = await Promise.all([
+          fetch("/api/transfer-requests?status=ISSUED", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch("/api/grns?mine=true", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        const [data, grnData] = await Promise.all([transfersRes.json(), grnsRes.json()]);
+        if (!transfersRes.ok) throw new Error(data.error);
+        if (!grnsRes.ok) throw new Error(grnData.error);
         const enriched = (data ?? []).map((t: any) => ({
           ...t,
           transfer_line_items: (t.transfer_line_items ?? []).map((line: any) => ({
@@ -73,6 +99,7 @@ export default function SubmitGRNPage() {
           })),
         }));
         setTransfers(enriched);
+        setGrnHistory(grnData ?? []);
       } catch (err: any) {
         setError(err.message || "Failed to load issued transfers.");
       } finally {
@@ -90,7 +117,7 @@ export default function SubmitGRNPage() {
         product_name: l.product_name || `Product Code ${l.product_id}`,
         sku: l.sku || `SKU-${l.product_id}`,
         issued_quantity: l.requested_quantity,
-        quantity_received: 0,
+        quantity_received: "",
         variance_notes: "",
       })),
     );
@@ -102,8 +129,18 @@ export default function SubmitGRNPage() {
     setGrnItems((prev) => prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
   }
 
+  const canVerifyGRN =
+    selectedId !== null &&
+    grnItems.length > 0 &&
+    grnItems.every(
+      (item) =>
+        item.quantity_received !== "" &&
+        Number.isFinite(item.quantity_received) &&
+        item.quantity_received >= 0,
+    );
+
   async function submitGRN() {
-    if (!selectedId) return;
+    if (!selectedId || !canVerifyGRN) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -119,7 +156,10 @@ export default function SubmitGRNPage() {
           transfer_request_id: selectedId,
           date_received: dateReceived,
           condition_notes: conditionNotes || undefined,
-          items: grnItems,
+          items: grnItems.map((item) => ({
+            ...item,
+            quantity_received: Number(item.quantity_received),
+          })),
         }),
       });
       const data = await res.json();
@@ -137,6 +177,11 @@ export default function SubmitGRNPage() {
       setSelectedId(null);
       setGrnItems([]);
       setTransfers((prev) => prev.filter((t) => t.id !== selectedId));
+      setActiveTab("history");
+      const historyRes = await fetch("/api/grns?mine=true", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (historyRes.ok) setGrnHistory(await historyRes.json());
     } catch (err: any) {
       setError(err.message || "GRN submission failed. Please try again.");
     } finally {
@@ -151,6 +196,31 @@ export default function SubmitGRNPage() {
         title="Receive Goods Received Note (GRN)"
         description="Verify quantities, record physical conditions, note variances on inbound transfers, and update available stock."
       />
+
+      <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab("queue")}
+          className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+            activeTab === "queue"
+              ? "bg-primary text-white"
+              : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          Awaiting GRN ({transfers.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("history")}
+          className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+            activeTab === "history"
+              ? "bg-primary text-white"
+              : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          My GRN History ({grnHistory.length})
+        </button>
+      </div>
 
       {/* Status Alerts */}
       {success && (
@@ -212,6 +282,75 @@ export default function SubmitGRNPage() {
             Loading issued transfers…
           </p>
         </div>
+      ) : activeTab === "history" ? (
+        grnHistory.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-xs">
+            <p className="text-[#1E293B] font-extrabold text-base">No GRNs Submitted Yet</p>
+            <p className="text-slate-450 text-xs mt-1 max-w-sm mx-auto">
+              Completed goods receipt notes will stay here after submission.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
+              <h2 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                My Submitted GRNs
+              </h2>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {grnHistory.map((grn) => (
+                <div key={grn.id} className="p-5 flex flex-col gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-mono text-sm font-black text-slate-900">
+                        {grn.transfer_requests?.reference_number ?? grn.id}
+                      </p>
+                      <p className="text-xs font-semibold text-slate-500">
+                        {grn.transfer_requests?.sbus?.name ?? "Assigned SBU"} · Received {" "}
+                        {new Date(grn.date_received).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span
+                      className={`w-fit rounded-full border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
+                        grn.has_variance
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {grn.has_variance ? "Variance Reported" : "Completed"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {grn.grn_line_items.map((line) => (
+                      <div
+                        key={line.id}
+                        className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs"
+                      >
+                        <p className="font-bold text-slate-700">
+                          {line.products?.name ?? "Product"}
+                          {line.products?.sku && (
+                            <span className="ml-1 font-mono text-[10px] text-slate-400">
+                              ({line.products.sku})
+                            </span>
+                          )}
+                        </p>
+                        <p className="mt-1 text-slate-500">
+                          Issued {line.issued_quantity}, received {line.quantity_received}{" "}
+                          {line.products?.unit_of_measure ?? "units"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {grn.condition_notes && (
+                    <p className="text-xs font-medium text-slate-500">
+                      Notes: {grn.condition_notes}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       ) : transfers.length === 0 && !selectedId ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-xs">
           <div className="w-16 h-12 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-4">
@@ -332,9 +471,13 @@ export default function SubmitGRNPage() {
                             <input
                               type="number"
                               min={0}
-                              value={item.quantity_received || ""}
+                              value={item.quantity_received}
                               onChange={(e) =>
-                                updateGRNItem(idx, "quantity_received", Number(e.target.value))
+                                updateGRNItem(
+                                  idx,
+                                  "quantity_received",
+                                  e.target.value === "" ? "" : Number(e.target.value),
+                                )
                               }
                               className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-800 font-extrabold focus:border-primary focus:outline-hidden leading-normal"
                             />
@@ -402,8 +545,8 @@ export default function SubmitGRNPage() {
                   <div className="flex flex-col gap-2 pt-4 border-t border-slate-100">
                     <button
                       onClick={submitGRN}
-                      disabled={submitting}
-                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-black rounded-lg transition shadow-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                      disabled={submitting || !canVerifyGRN}
+                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-black rounded-lg transition shadow-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <CheckCircle className="w-4 h-4" />
                       {submitting ? "Verifying..." : "Verify & Complete GRN"}

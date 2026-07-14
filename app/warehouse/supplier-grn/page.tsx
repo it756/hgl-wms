@@ -73,6 +73,23 @@ interface SupplierGRNRecord {
   supplier_grn_line_items: { id: string }[];
 }
 
+interface PurchaseRequestPrefill {
+  id: string;
+  reference_number: string;
+  status: string;
+  supplier_name: string | null;
+  sbu_id: string | null;
+  purchase_request_line_items: {
+    id: string;
+    product_id: string | null;
+    product_name: string;
+    sku: string | null;
+    quantity_requested: number;
+    unit_of_measure: string;
+    unit_cost: number | null;
+  }[];
+}
+
 function statusBadge(status: string) {
   switch (status) {
     case "AWAITING_FINANCE_APPROVAL":
@@ -113,6 +130,7 @@ export default function SupplierGRNPage() {
   // Form state
   const [supplier, setSupplier] = useState("");
   const [invoiceRef, setInvoiceRef] = useState("");
+  const [purchaseRequestId, setPurchaseRequestId] = useState<string | null>(null);
   const [dateReceived, setDateReceived] = useState(new Date().toISOString().split("T")[0]);
   const [sbuId, setSbuId] = useState("");
   const [sbus, setSbus] = useState<SbuOption[]>([]);
@@ -164,6 +182,107 @@ export default function SupplierGRNPage() {
       .then(setSbus)
       .catch(() => {});
   }, [loadGrns]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const linkedPurchaseRequestId = new URLSearchParams(window.location.search).get(
+      "purchase_request_id",
+    );
+    if (!linkedPurchaseRequestId) return;
+
+    let cancelled = false;
+
+    async function loadPurchaseRequestPrefill(purchaseRequestId: string) {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+      try {
+        const accessToken = localStorage.getItem("access_token") ?? "";
+        const res = await fetch(
+          `/api/purchase-requests?id=${encodeURIComponent(purchaseRequestId)}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load expected order.");
+
+        const purchaseRequest = (Array.isArray(data) ? data[0] : data) as
+          | PurchaseRequestPrefill
+          | undefined;
+        if (!purchaseRequest) throw new Error("Expected order was not found.");
+
+        const loadedLines: LineItem[] = purchaseRequest.purchase_request_line_items.map((line) => {
+          const quantityExpected = Number(line.quantity_requested ?? 0);
+          const unitCost = Number(line.unit_cost ?? 0);
+          return {
+            product_id: line.product_id ?? "",
+            product_name: line.product_name,
+            sku: line.sku ?? "",
+            unit_of_measure: line.unit_of_measure || "EA",
+            quantity_expected: quantityExpected,
+            quantity_received: quantityExpected,
+            unit_cost: unitCost,
+            total_cost: quantityExpected * unitCost,
+            expiry_date: "",
+          };
+        });
+
+        if (cancelled) return;
+
+        setPurchaseRequestId(purchaseRequest.id);
+        setEditingGrnId(null);
+        setSubmittedGrn(null);
+        setSupplier(purchaseRequest.supplier_name ?? "");
+        setInvoiceRef("");
+        setSbuId(purchaseRequest.sbu_id ?? "");
+        setLines(
+          loadedLines.length
+            ? loadedLines
+            : [
+                {
+                  product_id: "",
+                  product_name: "",
+                  sku: "",
+                  unit_of_measure: "EA",
+                  quantity_expected: 0,
+                  quantity_received: 0,
+                  unit_cost: 0,
+                  total_cost: 0,
+                  expiry_date: "",
+                },
+              ],
+        );
+        setProductSearch(loadedLines.length ? loadedLines.map((line) => line.product_name) : [""]);
+        setProductOptions(loadedLines.length ? loadedLines.map(() => []) : [[]]);
+        setView("form");
+
+        const uncataloguedLines = purchaseRequest.purchase_request_line_items.filter(
+          (line) => !line.product_id,
+        );
+        if (uncataloguedLines.length > 0) {
+          setError(
+            `Expected order ${purchaseRequest.reference_number} includes uncatalogued item${uncataloguedLines.length === 1 ? "" : "s"}: ${uncataloguedLines.map((line) => line.product_name).join(", ")}. Select catalogue products before submitting the Supplier GRN.`,
+          );
+        } else {
+          setSuccess(
+            `Loaded expected order ${purchaseRequest.reference_number}. Confirm received quantities, expiry dates, and submit the Supplier GRN.`,
+          );
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load expected order.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadPurchaseRequestPrefill(linkedPurchaseRequestId);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ── Packing list CSV import ──
   const [importing, setImporting] = useState(false);
@@ -325,6 +444,7 @@ export default function SupplierGRNPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      setPurchaseRequestId(null);
       setSupplier(data.supplier_name ?? "");
       setInvoiceRef(data.supplier_invoice_reference ?? "");
       setDateReceived(data.date_received ?? new Date().toISOString().split("T")[0]);
@@ -382,6 +502,7 @@ export default function SupplierGRNPage() {
     setError(null);
     const payload = {
       supplier_name: supplier,
+      purchase_request_id: purchaseRequestId || undefined,
       supplier_invoice_reference: invoiceRef || undefined,
       invoice_amount: totalVal > 0 ? totalVal : undefined,
       date_received: dateReceived,
@@ -428,6 +549,7 @@ export default function SupplierGRNPage() {
 
   function resetForm() {
     setEditingGrnId(null);
+    setPurchaseRequestId(null);
     setSupplier("");
     setInvoiceRef("");
     setSbuId("");
