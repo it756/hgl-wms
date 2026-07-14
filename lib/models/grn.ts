@@ -67,6 +67,7 @@ export interface SupplierGRNLineItem {
 }
 
 export interface SupplierGRNCreateInput {
+  purchase_request_id?: string;
   supplier_name: string;
   supplier_invoice_reference?: string;
   invoice_amount?: number;

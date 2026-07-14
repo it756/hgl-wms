@@ -17,6 +17,7 @@ interface AtomicSupplierGrnResult {
 type SupplierGrnItemInput = SupplierGRNCreateInput["items"][number];
 
 interface SupplierGrnFallbackInput {
+  purchase_request_id?: string | null;
   supplier_name: string;
   supplier_invoice_reference?: string | null;
   invoice_amount?: number | null;
@@ -84,6 +85,7 @@ async function createSupplierGrnFallback(
         date_received: input.date_received ?? new Date().toISOString().slice(0, 10),
         status: "AWAITING_FINANCE_APPROVAL",
         sbu_id: input.sbu_id ?? null,
+        purchase_request_id: input.purchase_request_id ?? null,
       },
     ])
     .select("id, reference_number")
@@ -155,6 +157,7 @@ export async function POST(req: Request) {
 
   const body: SupplierGRNCreateInput = await req.json();
   const {
+    purchase_request_id,
     supplier_name,
     supplier_invoice_reference,
     invoice_amount,
@@ -197,6 +200,7 @@ export async function POST(req: Request) {
         invoice_amount,
         date_received,
         sbu_id,
+        purchase_request_id,
         items,
       },
       user.id,
@@ -209,6 +213,17 @@ export async function POST(req: Request) {
     );
   } else {
     created = data as AtomicSupplierGrnResult;
+
+    if (purchase_request_id) {
+      const { error: linkError } = await supabaseAdmin
+        .from("supplier_grns")
+        .update({ purchase_request_id })
+        .eq("id", created.id);
+
+      if (linkError) {
+        return NextResponse.json({ error: linkError.message }, { status: 500 });
+      }
+    }
   }
 
   const grnId = created.id;
