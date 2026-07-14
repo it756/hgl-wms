@@ -8,7 +8,6 @@ import HScrollArea from "@/components/HScrollArea";
 import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import {
   Plus,
-  Search,
   Eye,
   Send,
   X,
@@ -359,8 +358,8 @@ function PurchaseRequestsContent() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [search] = useState("");
+  const [statusFilter] = useState("All");
   const [banner, setBanner] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
