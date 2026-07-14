@@ -51,6 +51,10 @@ export default function BuApprovalQueuePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [approvedToday, setApprovedToday] = useState(0);
   const [rejectedToday, setRejectedToday] = useState(0);
+  const [processingAction, setProcessingAction] = useState<{
+    requestId: string;
+    action: "approve" | "reject";
+  } | null>(null);
   const { currency, rate, fetching: rateFetching, rateError, toggleCurrency, fmt } = useCurrency();
 
   async function loadQueue() {
@@ -95,6 +99,7 @@ export default function BuApprovalQueuePage() {
   async function handleAction(requestId: string, action: "approve" | "reject") {
     setError(null);
     setSuccess(null);
+    setProcessingAction({ requestId, action });
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
       const res = await fetch("/api/bu/approvals", {
@@ -123,6 +128,8 @@ export default function BuApprovalQueuePage() {
       await loadQueue();
     } catch (err: any) {
       setError(err.message || "Action failed. Please try again.");
+    } finally {
+      setProcessingAction(null);
     }
   }
 
@@ -362,6 +369,15 @@ export default function BuApprovalQueuePage() {
         <div className="lg:sticky lg:top-6">
           {selectedItem ? (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col gap-5 p-5">
+              {(() => {
+                const isProcessingSelected = processingAction?.requestId === selectedItem.id;
+                const isRejecting =
+                  isProcessingSelected && processingAction?.action === "reject";
+                const isApproving =
+                  isProcessingSelected && processingAction?.action === "approve";
+
+                return (
+                  <>
               {/* Detail header */}
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -481,6 +497,7 @@ export default function BuApprovalQueuePage() {
                   Your Notes (optional)
                 </label>
                 <textarea
+                  disabled={isProcessingSelected}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none resize-none bg-slate-50/50"
                   rows={3}
                   placeholder="Add remarks or reasons for your decision…"
@@ -496,20 +513,33 @@ export default function BuApprovalQueuePage() {
                 <button
                   type="button"
                   onClick={() => handleAction(selectedItem.id, "reject")}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-all cursor-pointer"
+                  disabled={isProcessingSelected}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <X className="w-4 h-4" />
-                  Reject
+                  {isRejecting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <X className="w-4 h-4" />
+                  )}
+                  {isRejecting ? "Rejecting..." : "Reject"}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleAction(selectedItem.id, "approve")}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
+                  disabled={isProcessingSelected}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Check className="w-4 h-4" />
-                  Approve & Forward
+                  {isApproving ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  {isApproving ? "Verifying & Forwarding..." : "Approve & Forward"}
                 </button>
               </div>
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-center gap-3 text-slate-400">

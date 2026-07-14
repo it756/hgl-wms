@@ -4,6 +4,7 @@ import Link from "next/link";
 
 const sections = [
   { href: "/admin/users", label: "Users", desc: "Manage user accounts and roles" },
+  { href: "/admin/licenses", label: "Licences", desc: "Review account licence status" },
   { href: "/admin/sbus", label: "SBUs", desc: "Manage Strategic Business Units" },
   { href: "/admin/products", label: "Products", desc: "Manage product catalogue and stock" },
   {
@@ -17,6 +18,13 @@ const sections = [
     href: "/admin/variance",
     label: "Variance Resolution",
     desc: "Review and resolve transfer variances",
+  },
+  { href: "/admin/damage", label: "Damage Ledger", desc: "Track damaged-stock write-offs" },
+  { href: "/admin/expiry", label: "Expiry Ledger", desc: "Track expired-stock write-offs" },
+  {
+    href: "/admin/purchase-requests",
+    label: "Purchase Request Control",
+    desc: "Review pending requests and audit purchase history",
   },
 ];
 
