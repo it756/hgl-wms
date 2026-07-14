@@ -41,6 +41,7 @@ export default function WarehouseReturnsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [receiving, setReceiving] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
 
   const token = () =>
     typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
@@ -49,7 +50,7 @@ export default function WarehouseReturnsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/return-requests?status=APPROVED", {
+      const res = await fetch("/api/return-requests", {
         headers: { Authorization: `Bearer ${token()}` },
       });
       const data = await res.json();
@@ -76,8 +77,9 @@ export default function WarehouseReturnsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Receipt confirmation failed");
-      setSuccessMsg(`Return ${ref} confirmed. Stock has been restored to the warehouse.`);
-      setReturns((prev) => prev.filter((r) => r.id !== id));
+      setSuccessMsg(`Return ${ref} confirmed. It is now awaiting Finance stock-credit approval.`);
+      await load();
+      setActiveTab("history");
       setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err: any) {
       setError(err.message || "Receipt confirmation failed. Please try again.");
@@ -86,13 +88,41 @@ export default function WarehouseReturnsPage() {
     }
   }
 
+  const awaitingReturns = returns.filter((r) => r.status === "APPROVED");
+  const visibleReturns = activeTab === "queue" ? awaitingReturns : returns;
+
   return (
     <div className="flex flex-col gap-6 w-full text-slate-800">
       {/* Header */}
       <PageHeader
         title="Returns Incoming"
-        description="BU Manager–approved returns awaiting physical receipt. Confirm receipt to restore stock to the warehouse."
+        description="Confirm approved returns and keep the full warehouse return receipt history visible."
       />
+
+      <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setActiveTab("queue")}
+          className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+            activeTab === "queue"
+              ? "bg-primary text-white"
+              : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          Awaiting Receipt ({awaitingReturns.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("history")}
+          className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+            activeTab === "history"
+              ? "bg-primary text-white"
+              : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          Return History ({returns.length})
+        </button>
+      </div>
 
       {/* KPI strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -101,7 +131,7 @@ export default function WarehouseReturnsPage() {
             Awaiting Receipt
           </span>
           <span className="text-3xl font-extrabold text-blue-600 font-mono">
-            {String(returns.length).padStart(2, "0")}
+            {String(awaitingReturns.length).padStart(2, "0")}
           </span>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-1">
@@ -143,17 +173,21 @@ export default function WarehouseReturnsPage() {
             Loading approved returns…
           </p>
         </div>
-      ) : returns.length === 0 ? (
+      ) : visibleReturns.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-14 text-center flex flex-col items-center gap-3">
           <RotateCcw className="w-10 h-10 text-slate-200" />
-          <p className="font-extrabold text-slate-700">No Returns Awaiting Receipt</p>
+          <p className="font-extrabold text-slate-700">
+            {activeTab === "queue" ? "No Returns Awaiting Receipt" : "No Return History"}
+          </p>
           <p className="text-xs text-slate-400 max-w-xs">
-            Approved return requests from SBUs will appear here for physical confirmation.
+            {activeTab === "queue"
+              ? "Approved return requests from SBUs will appear here for physical confirmation."
+              : "Warehouse return receipts will stay here after confirmation."}
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          {returns.map((r) => (
+          {visibleReturns.map((r) => (
             <div
               key={r.id}
               className="bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-5 shadow-sm transition-all flex flex-col gap-4"
@@ -165,8 +199,16 @@ export default function WarehouseReturnsPage() {
                     <span className="font-mono font-black text-slate-900 text-sm">
                       {r.reference_number}
                     </span>
-                    <span className="bg-blue-50 border border-blue-200 text-blue-800 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">
-                      Approved — Awaiting Receipt
+                    <span
+                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${
+                        r.status === "APPROVED"
+                          ? "bg-blue-50 border-blue-200 text-blue-800"
+                          : r.status === "REJECTED"
+                            ? "bg-rose-50 border-rose-200 text-rose-700"
+                            : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      }`}
+                    >
+                      {r.status === "APPROVED" ? "Approved — Awaiting Receipt" : r.status.replace(/_/g, " ")}
                     </span>
                   </div>
                   {r.transfer_requests && (
@@ -257,26 +299,31 @@ export default function WarehouseReturnsPage() {
                 </div>
               </div>
 
-              {/* Confirm receipt */}
-              <div className="border-t border-slate-100 pt-3 flex justify-end">
-                <button
-                  onClick={() => confirmReceipt(r.id, r.reference_number)}
-                  disabled={receiving === r.id}
-                  className="flex items-center gap-2 bg-emerald-600 text-white font-extrabold text-xs px-6 py-2.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {receiving === r.id ? (
-                    <>
-                      <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
-                      Confirming…
-                    </>
-                  ) : (
-                    <>
-                      <PackageCheck className="w-4 h-4" />
-                      Confirm Receipt &amp; Restore Stock
-                    </>
-                  )}
-                </button>
-              </div>
+              {r.status === "APPROVED" ? (
+                <div className="border-t border-slate-100 pt-3 flex justify-end">
+                  <button
+                    onClick={() => confirmReceipt(r.id, r.reference_number)}
+                    disabled={receiving === r.id}
+                    className="flex items-center gap-2 bg-emerald-600 text-white font-extrabold text-xs px-6 py-2.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {receiving === r.id ? (
+                      <>
+                        <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
+                        Confirming…
+                      </>
+                    ) : (
+                      <>
+                        <PackageCheck className="w-4 h-4" />
+                        Confirm Receipt
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="border-t border-slate-100 pt-3 text-xs font-semibold text-slate-500">
+                  This return has already moved out of the warehouse receipt queue.
+                </div>
+              )}
             </div>
           ))}
         </div>

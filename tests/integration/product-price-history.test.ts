@@ -9,7 +9,14 @@
  *  5. Rejected Supplier GRN does not update stock, product cost, or price history.
  *  6. GET /api/admin/products/[id]/price-history returns history ordered newest-first.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const priceHistoryConflictRepairSql = readFileSync(
+  join(process.cwd(), "supabase/migrations/037_fix_price_history_conflict_target.sql"),
+  "utf8",
+).replaceAll("\r\n", "\n");
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -82,6 +89,16 @@ describe("product_price_history — Finance approval", () => {
     vi.resetModules();
     mockBuildSupplierGrnNotificationMessage.mockResolvedValue("GRN notification message");
     mockCreateNotification.mockResolvedValue({ id: "notif-001" });
+  });
+
+  it("keeps the GRN line conflict target backed by a non-partial unique index", () => {
+    expect(priceHistoryConflictRepairSql).toContain(
+      "DROP INDEX IF EXISTS public.idx_pph_unique_grn_line",
+    );
+    expect(priceHistoryConflictRepairSql).toContain(
+      "CREATE UNIQUE INDEX idx_pph_unique_grn_line\n  ON public.product_price_history(supplier_grn_line_item_id);",
+    );
+    expect(priceHistoryConflictRepairSql).not.toContain("WHERE supplier_grn_line_item_id IS NOT NULL");
   });
 
   it("1. Approving a supplier GRN calls increment_stock_after_grn RPC and returns 200", async () => {

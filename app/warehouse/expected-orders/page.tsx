@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import { Truck, ChevronDown, ChevronUp } from "lucide-react";
@@ -31,37 +30,72 @@ export default function WarehouseExpectedOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
 
   useEffect(() => {
-    fetchOrders();
+    let cancelled = false;
+
+    async function loadOrders() {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(
+          "/api/purchase-requests?status=EXPECTED_ORDER,PARTIALLY_RECEIVED,RECEIVED",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load expected orders");
+        if (!cancelled) setOrders(data);
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadOrders();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function fetchOrders() {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch("/api/purchase-requests?status=EXPECTED_ORDER", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load expected orders");
-      setOrders(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const activeOrders = orders.filter((order) => order.status !== "RECEIVED");
+  const visibleOrders = activeTab === "queue" ? activeOrders : orders;
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-4">
+    <div className="flex flex-col gap-4 w-full text-slate-800">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Expected Inbound Orders</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Approved purchase requests awaiting supplier delivery. Receive against one by creating a
             Supplier GRN.
           </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setActiveTab("queue")}
+            className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+              activeTab === "queue"
+                ? "bg-primary text-white"
+                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Awaiting Receipt ({activeOrders.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+              activeTab === "history"
+                ? "bg-primary text-white"
+                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Order History ({orders.length})
+          </button>
         </div>
 
         {error && (
@@ -72,13 +106,15 @@ export default function WarehouseExpectedOrdersPage() {
 
         {loading ? (
           <div className="text-center py-12 text-slate-500 text-sm">Loading expected orders…</div>
-        ) : orders.length === 0 ? (
+        ) : visibleOrders.length === 0 ? (
           <div className="text-center py-12 text-slate-400 text-sm">
-            No expected orders at this time.
+            {activeTab === "queue"
+              ? "No expected orders at this time."
+              : "No expected order history found."}
           </div>
         ) : (
           <div className="space-y-3">
-            {orders.map((order) => (
+            {visibleOrders.map((order) => (
               <div
                 key={order.id}
                 className="bg-white rounded-xl border border-slate-200 overflow-hidden"
@@ -110,7 +146,11 @@ export default function WarehouseExpectedOrdersPage() {
                       </span>
                     )}
                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium">
-                      Expected
+                      {order.status === "RECEIVED"
+                        ? "Received"
+                        : order.status === "PARTIALLY_RECEIVED"
+                          ? "Partially Received"
+                          : "Expected"}
                     </span>
                     <span className="text-xs text-slate-400">
                       {new Date(order.created_at).toLocaleDateString()}
@@ -157,19 +197,25 @@ export default function WarehouseExpectedOrdersPage() {
                       </p>
                     )}
 
-                    <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                      <Link
-                        href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                      >
-                        <Truck className="w-4 h-4" />
-                        Receive Goods (Create GRN)
-                      </Link>
-                      <span className="text-xs text-slate-400">
-                        Creates a Supplier GRN linked to this expected order. Stock posts after
-                        Finance approval.
-                      </span>
-                    </div>
+                    {order.status !== "RECEIVED" ? (
+                      <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                        <Link
+                          href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
+                        >
+                          <Truck className="w-4 h-4" />
+                          Receive Goods (Create GRN)
+                        </Link>
+                        <span className="text-xs text-slate-400">
+                          Creates a Supplier GRN linked to this expected order. Stock posts after
+                          Finance approval.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-100 text-xs font-semibold text-slate-500">
+                        This expected order has been fully received.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -177,6 +223,5 @@ export default function WarehouseExpectedOrdersPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

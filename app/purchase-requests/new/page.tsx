@@ -289,19 +289,6 @@ function NewPurchaseRequestContent() {
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Supplier Email
-              </label>
-              <input
-                type="email"
-                value={supplierEmail}
-                onChange={(e) => setSupplierEmail(e.target.value)}
-                placeholder="supplier@example.com"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              />
-            </div>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
@@ -312,6 +299,138 @@ function NewPurchaseRequestContent() {
               placeholder="Any additional context for procurement…"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
             />
+          </div>
+        </div>
+
+        {/* Line Items */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-700">Requested Items</h2>
+            <button
+              type="button"
+              onClick={addLine}
+              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add Item
+            </button>
+          </div>
+
+          {productsLoading ? (
+            <p className="text-sm text-slate-400">Loading product catalogue…</p>
+          ) : products.length === 0 ? (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm">
+              No products found in your SBU catalogue. Contact your Warehouse Manager to ensure
+              products have been added to the inventory.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {lines.map((line, index) => {
+                const selectedProduct = getProduct(line.product_id);
+                return (
+                  <div
+                    key={index}
+                    className="grid grid-cols-12 gap-2 items-start p-3 bg-slate-50 rounded-lg"
+                  >
+                    {/* Product select */}
+                    <div className="col-span-12 sm:col-span-5">
+                      <label className="block text-xs text-slate-500 mb-1">
+                        Product <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={line.product_id}
+                        onChange={(e) => updateLine(index, "product_id", e.target.value)}
+                        required
+                        className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                      >
+                        <option value="">Select product…</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.sku})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                      {/* Auto-filled product info */}
+                      <div className="col-span-6 sm:col-span-2">
+                        <label className="block text-xs text-slate-500 mb-1">Unit</label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={selectedProduct?.uom ?? "—"}
+                          className="w-full border border-slate-100 rounded px-2 py-1.5 text-sm bg-slate-100 text-slate-500 cursor-default"
+                          tabIndex={-1}
+                        />
+                      </div>
+                      <div className="col-span-6 sm:col-span-2">
+                        <label className="block text-xs text-slate-500 mb-1">Unit Cost (ZMW)</label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={
+                            selectedProduct?.unit_cost != null
+                              ? selectedProduct.unit_cost.toLocaleString()
+                              : "—"
+                          }
+                          className="w-full border border-slate-100 rounded px-2 py-1.5 text-sm bg-slate-100 text-slate-500 cursor-default"
+                          tabIndex={-1}
+                        />
+                      </div>
+
+                    {/* Quantity */}
+                    <div className="col-span-6 sm:col-span-2">
+                      <label className="block text-xs text-slate-500 mb-1">Qty</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={line.quantity_requested}
+                        onChange={(e) =>
+                          updateLine(index, "quantity_requested", parseInt(e.target.value, 10) || 1)
+                        }
+                        className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                      />
+                    </div>
+
+                    {/* Remove */}
+                    <div className="col-span-12 sm:col-span-1 flex items-end justify-end sm:justify-center pb-0.5">
+                      {lines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLine(index)}
+                          className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          aria-label="Remove line item"
+                          title="Remove line"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Optional line notes — full-width second row */}
+                    <div className="col-span-12">
+                      <input
+                        type="text"
+                        value={line.notes}
+                        onChange={(e) => updateLine(index, "notes", e.target.value)}
+                        placeholder="Line notes (optional)…"
+                        className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+            {estimatedTotal > 0 && (
+              <div className="flex justify-end pt-2 border-t border-slate-100">
+                <span className="text-sm text-slate-500">
+                  Estimated Total:{" "}
+                  <strong className="text-slate-800">ZMW {estimatedTotal.toLocaleString()}</strong>
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

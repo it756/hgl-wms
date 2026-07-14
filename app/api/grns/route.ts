@@ -6,6 +6,49 @@ import {
   buildTransferNotificationMessage,
 } from "../../../lib/notifications/messages";
 
+export async function GET(req: Request) {
+  try {
+    const user = await getUserFromAuthHeader(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const role = (user.user_metadata as any)?.role || "";
+    if (!["UNIT_STAFF", "BU_MANAGER", "WAREHOUSE_MANAGER", "ADMIN"].includes(role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const sbuId = (user.user_metadata as any)?.sbu_id || null;
+    const url = new URL(req.url);
+    const mineOnly = url.searchParams.get("mine") === "true";
+
+    let query = supabaseAdmin
+      .from("grns")
+      .select(
+        `id, transfer_request_id, received_by, date_received, condition_notes, has_variance, created_at,
+         transfer_requests ( id, reference_number, sbu_id, status, sbus ( id, name, code ) ),
+         grn_line_items (
+           id, product_id, issued_quantity, quantity_received,
+           products ( id, name, sku, unit_of_measure )
+         )`,
+      )
+      .order("created_at", { ascending: false });
+
+    if (role === "UNIT_STAFF" || mineOnly) {
+      query = query.eq("received_by", user.id);
+    } else if (role === "BU_MANAGER") {
+      if (!sbuId) return NextResponse.json([], { status: 200 });
+      query = query.eq("transfer_requests.sbu_id", sbuId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return NextResponse.json(data ?? []);
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const user = await getUserFromAuthHeader(req);

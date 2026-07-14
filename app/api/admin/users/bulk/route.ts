@@ -18,6 +18,7 @@ interface BulkUserEntry {
   password: string;
   role: string;
   sbu_code?: string;
+  unit_code?: string;
   whatsapp_number?: string;
 }
 
@@ -52,10 +53,17 @@ export async function POST(req: Request) {
   const sbuMap: Record<string, string> = {};
   for (const s of sbus ?? []) sbuMap[s.code.toUpperCase()] = s.id;
 
+  const { data: units } = await supabaseAdmin
+    .from("sbu_units")
+    .select("id, code, sbu_id")
+    .eq("is_active", true);
+  const unitMap: Record<string, string> = {};
+  for (const unit of units ?? []) unitMap[`${unit.sbu_id}:${unit.code.toUpperCase()}`] = unit.id;
+
   const results: { email: string; success: boolean; id?: string; error?: string }[] = [];
 
   for (const entry of users) {
-    const { email, password, full_name, role, sbu_code, whatsapp_number } = entry;
+    const { email, password, full_name, role, sbu_code, unit_code, whatsapp_number } = entry;
 
     // Basic field validation
     if (!email || !password || !role) {
@@ -88,11 +96,24 @@ export async function POST(req: Request) {
       }
     }
 
+    let unit_id: string | null = null;
+    if (unit_code) {
+      if (!sbu_id) {
+        results.push({ email, success: false, error: "unit_code requires a valid sbu_code" });
+        continue;
+      }
+      unit_id = unitMap[`${sbu_id}:${unit_code.toUpperCase()}`] ?? null;
+      if (!unit_id) {
+        results.push({ email, success: false, error: `Unknown unit code for SBU: ${unit_code}` });
+        continue;
+      }
+    }
+
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { role, sbu_id, full_name: full_name ?? null },
+      user_metadata: { role, sbu_id, unit_id, full_name: full_name ?? null },
     });
 
     if (createError) {
@@ -106,6 +127,7 @@ export async function POST(req: Request) {
       full_name: full_name ?? null,
       role,
       sbu_id,
+      unit_id,
       whatsapp_number: whatsapp_number ?? null,
       is_active: true,
       updated_at: new Date().toISOString(),

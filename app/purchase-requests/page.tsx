@@ -3,8 +3,9 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import DocumentUpload from "@/components/DocumentUpload";
+import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import {
   Plus,
@@ -89,7 +90,7 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: "Rejected",
 };
 
-// ─── Review card helper ─────────────────────────────────────────────
+// --- Review card helper ---------------------------------------------
 function ReviewCard({
   title,
   action,
@@ -125,7 +126,7 @@ function ReviewCard({
         {icon}
         <span>
           {action.replace(/_/g, " ")}
-          {actionedAt && ` · ${new Date(actionedAt).toLocaleString()}`}
+          {actionedAt && ` — ${new Date(actionedAt).toLocaleString()}`}
         </span>
       </div>
       {notes && <p className="pl-6 opacity-80">Notes: {notes}</p>}
@@ -144,7 +145,7 @@ function ReviewCard({
   );
 }
 
-// ─── Detail dialog ───────────────────────────────────────────────────
+// --- Detail dialog ---------------------------------------------------
 function PRDetailDialog({
   pr,
   loading,
@@ -339,7 +340,7 @@ function PRDetailDialog({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// --- Main page ----------------------------------------------------------------
 export default function PurchaseRequestsPage() {
   return (
     <Suspense>
@@ -468,7 +469,8 @@ function PurchaseRequestsContent() {
   });
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <DashboardLayout>
+      <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Purchase Requests</h1>
@@ -497,32 +499,6 @@ function PurchaseRequestsContent() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by reference or supplier..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="All">All Statuses</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Table */}
       {loading ? (
         <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests…</div>
@@ -534,9 +510,9 @@ function PurchaseRequestsContent() {
           </Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-sm overflow-hidden">
           <HScrollArea>
-            <Table>
+            <Table className="min-w-full divide-y divide-slate-100 text-xs">
               <TableHead>
                 <Th className="px-4 py-3">Reference</Th>
                 <Th className="px-4 py-3">SBU</Th>
@@ -558,7 +534,12 @@ function PurchaseRequestsContent() {
                       {r.reference_number}
                     </Td>
                     <Td className="px-4 py-3 text-slate-600">{r.sbus?.name ?? "—"}</Td>
-                    <Td className="px-4 py-3 text-slate-600">{r.supplier_name ?? "—"}</Td>
+                    <Td
+                      className="px-4 py-3 text-slate-600 max-w-45 truncate"
+                      title={r.supplier_name ?? "—"}
+                    >
+                      {r.supplier_name ?? "—"}
+                    </Td>
                     <Td className="px-4 py-3 text-slate-500">
                       {r.purchase_request_line_items?.length ?? 0} item
                       {(r.purchase_request_line_items?.length ?? 0) !== 1 ? "s" : ""}
@@ -579,15 +560,12 @@ function PurchaseRequestsContent() {
                       {new Date(r.created_at).toLocaleDateString()}
                     </Td>
                     <Td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openDialog(r.id)}
-                          className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-                          aria-label={`View purchase request ${r.reference_number}`}
-                          title="View details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconButton
+                          icon={<Eye className="w-3.5 h-3.5" />}
+                          label={`View purchase request ${r.reference_number}`}
+                          href={`/purchase-requests/${r.id}`}
+                        />
                         {(r.status === "DRAFT" || r.status === "PROCUREMENT_CHANGES_REQUESTED") && (
                           <>
                             <Link
@@ -622,6 +600,7 @@ function PurchaseRequestsContent() {
           </HScrollArea>
         </div>
       )}
+      </div>
 
       {/* Detail dialog */}
       {dialogOpen && (
