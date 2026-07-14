@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import {
   Plus,
@@ -20,6 +19,7 @@ import {
   AlertCircle,
   Pencil,
 } from "lucide-react";
+import DocumentUpload from "@/components/DocumentUpload";
 
 interface PurchaseRequest {
   id: string;
@@ -469,8 +469,7 @@ function PurchaseRequestsContent() {
   });
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Purchase Requests</h1>
@@ -600,8 +599,6 @@ function PurchaseRequestsContent() {
           </HScrollArea>
         </div>
       )}
-      </div>
-
       {/* Detail dialog */}
       {dialogOpen && (
         <PRDetailDialog
