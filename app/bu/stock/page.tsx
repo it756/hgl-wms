@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import { Table } from "@/components/Table";
+import ExpiryBadge from "@/components/ExpiryBadge";
 import { useCurrency } from "@/lib/hooks/useCurrency";
+import { getExpiryStatus } from "@/lib/expiry";
 import {
   Package,
   Search,
@@ -23,9 +25,18 @@ interface SbuStockItem {
   unit_of_measure: string;
   unit_cost: number | null;
   is_active: boolean;
+  expiry_date: string | null;
   sbu_name: string;
   sbu_code: string;
 }
+
+const EXPIRY_FILTERS = [
+  { value: "all", label: "All Items" },
+  { value: "expiring_soon", label: "Expiring Soon" },
+  { value: "expired", label: "Expired" },
+] as const;
+
+type ExpiryFilter = (typeof EXPIRY_FILTERS)[number]["value"];
 
 interface Sbu {
   id: string;
@@ -40,6 +51,7 @@ export default function SbuStockPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
   const [sbus, setSbus] = useState<Sbu[]>([]);
   const [sbuError, setSbuError] = useState(false);
   const [selectedSbuId, setSelectedSbuId] = useState<string>("");
@@ -110,11 +122,23 @@ export default function SbuStockPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (i) => i.product_name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q),
-    );
-  }, [items, search]);
+    return items.filter((i) => {
+      const matchesSearch =
+        !q || i.product_name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q);
+      const matchesExpiry =
+        expiryFilter === "all" || getExpiryStatus(i.expiry_date) === expiryFilter;
+      return matchesSearch && matchesExpiry;
+    });
+  }, [items, search, expiryFilter]);
+
+  const expiringCount = useMemo(
+    () => items.filter((i) => getExpiryStatus(i.expiry_date) === "expiring_soon").length,
+    [items],
+  );
+  const expiredCount = useMemo(
+    () => items.filter((i) => getExpiryStatus(i.expiry_date) === "expired").length,
+    [items],
+  );
 
   const totalValue = useMemo(
     () => filtered.reduce((sum, i) => sum + (i.unit_cost ?? 0) * i.quantity, 0),
@@ -198,6 +222,17 @@ export default function SbuStockPage() {
             className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
           />
         </div>
+        <select
+          value={expiryFilter}
+          onChange={(e) => setExpiryFilter(e.target.value as ExpiryFilter)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          {EXPIRY_FILTERS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
         <button
           onClick={() => load()}
           disabled={loading}
@@ -315,6 +350,22 @@ export default function SbuStockPage() {
         </div>
       )}
 
+      {!loading && (expiringCount > 0 || expiredCount > 0) && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 text-amber-800 px-4 py-2.5 rounded-lg text-xs font-medium">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {expiredCount > 0 && (
+            <span>
+              {expiredCount} item{expiredCount !== 1 ? "s" : ""} expired.
+            </span>
+          )}
+          {expiringCount > 0 && (
+            <span>
+              {expiringCount} item{expiringCount !== 1 ? "s" : ""} expiring within 30 days.
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Summary card */}
       {!loading && filtered.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -368,6 +419,7 @@ export default function SbuStockPage() {
                 <th className="px-4 py-3 text-left">SKU</th>
                 <th className="px-4 py-3 text-left">UoM</th>
                 {isPrivileged && <th className="px-4 py-3 text-left">SBU</th>}
+                <th className="px-4 py-3 text-left">Expiry</th>
                 <th className="px-4 py-3 text-right">Qty Held</th>
                 <th className="px-4 py-3 text-right">Unit Cost</th>
                 <th className="px-4 py-3 text-right">Total Value</th>
@@ -396,6 +448,9 @@ export default function SbuStockPage() {
                       </span>
                     </td>
                   )}
+                  <td className="px-4 py-3">
+                    <ExpiryBadge expiryDate={item.expiry_date} />
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800">
                     <span
                       className={

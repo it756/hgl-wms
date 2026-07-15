@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     let query = supabaseAdmin
       .from("unit_stock")
       .select(
-        "unit_id, sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, unit_name, unit_code, sbu_name, sbu_code",
+        "unit_id, sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, expiry_date, unit_name, unit_code, sbu_name, sbu_code",
       )
       .eq("unit_id", effectiveUnitId)
       .order("product_name", { ascending: true });
@@ -109,7 +109,7 @@ export async function GET(req: Request) {
     let unitQuery = supabaseAdmin
       .from("unit_stock")
       .select(
-        "unit_id, sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, unit_name, unit_code, sbu_name, sbu_code",
+        "unit_id, sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, expiry_date, unit_name, unit_code, sbu_name, sbu_code",
       )
       .eq("unit_id", unitIdParam)
       .order("product_name", { ascending: true });
@@ -125,7 +125,7 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("sbu_stock")
     .select(
-      "sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, sbu_name, sbu_code",
+      "sbu_id, product_id, quantity, product_name, sku, unit_of_measure, unit_cost, is_active, expiry_date, sbu_name, sbu_code",
     )
     .order("product_name", { ascending: true });
 

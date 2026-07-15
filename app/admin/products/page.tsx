@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import DamageWriteOffModal from "@/components/DamageWriteOffModal";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
+import ExpiryBadge from "@/components/ExpiryBadge";
 import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
+import { getExpiryStatus } from "@/lib/expiry";
 import {
   Package,
   Plus,
@@ -43,7 +45,16 @@ interface Product {
   unit_cost: number | null;
   is_active: boolean;
   warehouse_location: string;
+  expiry_date: string | null;
 }
+
+const EXPIRY_FILTERS = [
+  { value: "all", label: "All Expiry" },
+  { value: "expiring_soon", label: "Expiring Soon" },
+  { value: "expired", label: "Expired" },
+] as const;
+
+type ExpiryFilter = (typeof EXPIRY_FILTERS)[number]["value"];
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -53,6 +64,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [sbus, setSbus] = useState<SBU[]>([]);
   const [sbuFilter, setSbuFilter] = useState("");
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
@@ -250,6 +262,22 @@ export default function ProductsPage() {
   }
 
   const lowStock = (p: Product) => p.stock_quantity <= p.low_stock_threshold;
+
+  const visibleProducts = useMemo(
+    () =>
+      products.filter(
+        (p) => expiryFilter === "all" || getExpiryStatus(p.expiry_date) === expiryFilter,
+      ),
+    [products, expiryFilter],
+  );
+  const expiringCount = useMemo(
+    () => products.filter((p) => getExpiryStatus(p.expiry_date) === "expiring_soon").length,
+    [products],
+  );
+  const expiredCount = useMemo(
+    () => products.filter((p) => getExpiryStatus(p.expiry_date) === "expired").length,
+    [products],
+  );
 
   // Compute product stats
   const totalQty = products.reduce((sum, p) => sum + p.stock_quantity, 0);
@@ -516,6 +544,17 @@ export default function ProductsPage() {
                   </select>
                 </div>
               )}
+              <select
+                value={expiryFilter}
+                onChange={(e) => setExpiryFilter(e.target.value as ExpiryFilter)}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-semibold text-slate-700"
+              >
+                {EXPIRY_FILTERS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
               <button
                 onClick={load}
                 className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-[11px] font-bold rounded-lg cursor-pointer transition-all"
@@ -546,16 +585,34 @@ export default function ProductsPage() {
             </div>
           </div>
 
+          {!loading && (expiringCount > 0 || expiredCount > 0) && (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border-b border-amber-100 text-amber-800 text-xs font-medium">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              {expiredCount > 0 && (
+                <span>
+                  {expiredCount} product{expiredCount !== 1 ? "s" : ""} expired.
+                </span>
+              )}
+              {expiringCount > 0 && (
+                <span>
+                  {expiringCount} product{expiringCount !== 1 ? "s" : ""} expiring within 30 days.
+                </span>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
               <span className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#005c55]"></span>
               <p className="text-xs font-bold font-mono">RETRIEVING PRODUCT REGISTER...</p>
             </div>
-          ) : products.length === 0 ? (
+          ) : visibleProducts.length === 0 ? (
             <div className="py-16 text-center text-slate-400 font-semibold text-xs font-mono uppercase">
-              {sbuFilter
-                ? `No products found for ${sbus.find((s) => s.id === sbuFilter)?.name ?? "this SBU"}.`
-                : "No matching products found in register."}
+              {expiryFilter !== "all"
+                ? "No products match this expiry filter."
+                : sbuFilter
+                  ? `No products found for ${sbus.find((s) => s.id === sbuFilter)?.name ?? "this SBU"}.`
+                  : "No matching products found in register."}
             </div>
           ) : (
             <HScrollArea className="text-[#1E293B]">
@@ -570,13 +627,14 @@ export default function ProductsPage() {
                   <Th className="w-[8%]">Stock Qty</Th>
                   <Th className="w-[8%]">Low Safe Limit</Th>
                   <Th className="w-[8%]">Unit Cost</Th>
+                  <Th className="w-[10%]">Expiry</Th>
                   <Th className="w-[10%]">State</Th>
                   <Th align="right" className="w-[14%]">
                     Operations
                   </Th>
                 </TableHead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {products.map((p) => {
+                  {visibleProducts.map((p) => {
                     const isLow = lowStock(p);
                     return (
                       <Tr key={p.id}>
@@ -616,6 +674,9 @@ export default function ProductsPage() {
                         </td>
                         <td className="px-6 py-3.5 font-mono text-[#0D9488] font-bold">
                           {fmt(p.unit_cost)}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <ExpiryBadge expiryDate={p.expiry_date} />
                         </td>
                         <td className="px-6 py-3.5">
                           <span
