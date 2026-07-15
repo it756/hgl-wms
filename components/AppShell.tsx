@@ -14,10 +14,15 @@ function isSiloedRoute(pathname: string) {
   return SILOED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+function isPrintRoute(pathname: string) {
+  return pathname.endsWith("/print");
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (isPublicRoute(pathname) || isSiloedRoute(pathname)) return <>{children}</>;
+  if (isPublicRoute(pathname) || isSiloedRoute(pathname) || isPrintRoute(pathname))
+    return <>{children}</>;
 
   return <DashboardLayout>{children}</DashboardLayout>;
 }

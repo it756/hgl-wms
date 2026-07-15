@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DocumentUpload from "@/components/DocumentUpload";
 import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
-import { CheckCircle, XCircle, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { CheckCircle, XCircle, ChevronDown, ChevronUp, FileText, Printer } from "lucide-react";
+
+const PRINTABLE_STATUSES = new Set([
+  "APPROVED_FOR_PURCHASE",
+  "EXPECTED_ORDER",
+  "PARTIALLY_RECEIVED",
+  "RECEIVED",
+]);
 
 interface PurchaseRequest {
   id: string;
@@ -242,6 +250,18 @@ export default function AdminPurchaseRequestsPage() {
                   <span className="text-xs text-slate-400">
                     {new Date(r.created_at).toLocaleDateString()}
                   </span>
+                  {PRINTABLE_STATUSES.has(r.status) && (
+                    <Link
+                      href={`/admin/purchase-requests/${r.id}/print`}
+                      target="_blank"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
+                      aria-label={`Print purchase request ${r.reference_number}`}
+                      title="Print request"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </Link>
+                  )}
                   {expanded === r.id ? (
                     <ChevronUp className="w-4 h-4 text-slate-400" />
                   ) : (
