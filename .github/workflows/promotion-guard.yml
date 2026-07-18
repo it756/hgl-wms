@@ -46,8 +46,8 @@ jobs:
               fi
               ;;
             main)
-              if [ "${HEAD_BRANCH}" != "staging" ] && [[ ! "${HEAD_BRANCH}" =~ ^hotfix/ ]]; then
-                echo "Only staging or hotfix/* branches can be merged into main."
+              if [ "${HEAD_BRANCH}" != "QA" ] && [[ ! "${HEAD_BRANCH}" =~ ^hotfix/ ]]; then
+                echo "Only QA or hotfix/* branches can be merged into main."
                 exit 1
               fi
               ;;

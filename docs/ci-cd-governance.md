@@ -3,7 +3,7 @@
 This repo uses a guarded promotion flow:
 
 ```text
-dev -> QA -> staging -> main
+dev -> QA -> main
 ```
 
 The `QA` branch is intentionally uppercase to match the requested branch model.
@@ -14,7 +14,7 @@ The `QA` branch is intentionally uppercase to match the requested branch model.
 - PRs from any source branch can merge into `dev`.
 - Only `dev` can merge into `QA`.
 - Only `QA` can merge into `staging`.
-- Only `staging` can merge into `main`.
+- Only `QA` can merge into `main` through the normal promotion path.
 - Long-lived branches must be protected from force pushes and deletion.
 
 ## GitHub Actions
@@ -54,7 +54,8 @@ Examples:
 - `feature/foo` -> `QA` fails.
 - `QA` -> `staging` passes.
 - `dev` -> `staging` fails.
-- `staging` -> `main` passes.
+- `QA` -> `main` passes.
+- `staging` -> `main` fails.
 
 ### AI PR Review
 
@@ -89,7 +90,7 @@ branch only.
 
 ### Emergency Hotfixes
 
-Normal production promotion is `staging` -> `main`. Emergency fixes can use a
+Normal production promotion is `QA` -> `main`. Emergency fixes can use a
 `hotfix/*` branch directly into `main`, but they still require a pull request,
 required status checks, and production review. After a hotfix lands in `main`,
 back-merge or cherry-pick the fix into lower branches so `dev`, `QA`, and

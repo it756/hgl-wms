@@ -33,7 +33,7 @@ resource "github_branch_protection" "protected" {
   require_signed_commits          = false
 
   required_status_checks {
-    strict   = true
+    strict   = !contains(["QA", "main"], each.value)
     contexts = each.value == "QA" ? local.required_status_checks_qa : local.required_status_checks_common
   }
 
