@@ -24,8 +24,11 @@
     "test:coverage": "vitest run --coverage",
     "prepush": "npm run lockfile:check && npm run migrations:check && npm run typecheck && npm run biome:check && npm run lint:backend && npm test && npm run test:backend && npm run openapi:check && npm audit --omit=dev --audit-level=high && npm run build",
     "prepare": "husky",
-    "seed": "npx tsx scripts/seed/seed_data.ts",
-    "seed:labambam:stock": "npx tsx scripts/seed/seed_labambam_stock.ts",
+    "seed:backup": "npx tsx scripts/seed/backup_before_seed.ts",
+    "seed": "npm run seed:backup && npx tsx scripts/seed/seed_data.ts",
+    "seed:labambam:stock": "npm run seed:backup && npx tsx scripts/seed/seed_labambam_stock.ts",
+    "seed:jara:stock": "npm run seed:backup && npx tsx scripts/seed/seed_jara_stock.ts",
+    "seed:jara:units": "npm run seed:backup && npx tsx scripts/seed/seed_jara_units.ts",
     "report:emails": "npx tsx scripts/reports/email-activity-report.ts"
   },
   "dependencies": {

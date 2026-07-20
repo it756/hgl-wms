@@ -47,6 +47,9 @@ manual-plan.md
 # BMAD generated output
 ._bmad_output/
 
+# Seed backups (local only)
+scripts/seed/backups/
+
 # terraform
 **/.terraform/*
 *.tfstate
