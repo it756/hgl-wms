@@ -29,6 +29,7 @@
     "seed:labambam:stock": "npm run seed:backup && npx tsx scripts/seed/seed_labambam_stock.ts",
     "seed:jara:stock": "npm run seed:backup && npx tsx scripts/seed/seed_jara_stock.ts",
     "seed:jara:units": "npm run seed:backup && npx tsx scripts/seed/seed_jara_units.ts",
+    "seed:jara:clusters": "npm run seed:backup && npx tsx scripts/seed/seed_jara_clusters.ts",
     "report:emails": "npx tsx scripts/reports/email-activity-report.ts"
   },
   "dependencies": {

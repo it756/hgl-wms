@@ -11,6 +11,6 @@ export default defineConfig({
       reporter: ["text", "lcov"],
     },
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
-    setupFiles: [],
+    setupFiles: ["./tests/setup.ts"],
   },
 });

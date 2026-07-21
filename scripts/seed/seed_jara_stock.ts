@@ -344,6 +344,28 @@ async function main() {
 
   // ── 4. Delete JARA supplier GRNs (cascades to line items) ───────────────────
   console.log(`\n[4] Clearing JARA supplier GRNs…`);
+
+  // Fetch the IDs first so we can clear product_price_history, which holds a
+  // non-cascading FK to supplier_grns (and supplier_grn_line_items). Without
+  // this pre-deletion the DELETE on supplier_grns raises FK violation 23503.
+  const { data: jaraGrns, error: grnsLookupErr } = await supabase
+    .from("supplier_grns")
+    .select("id")
+    .eq("sbu_id", jaraId);
+  if (grnsLookupErr) throw grnsLookupErr;
+
+  if (jaraGrns && jaraGrns.length > 0) {
+    const grnIds = jaraGrns.map((g) => g.id);
+
+    // Delete price-history rows that reference these GRNs (both FK columns)
+    const { error: pphErr } = await supabase
+      .from("product_price_history")
+      .delete()
+      .in("supplier_grn_id", grnIds);
+    if (pphErr) throw pphErr;
+    console.log(`  Cleared product_price_history rows for ${grnIds.length} GRN(s)`);
+  }
+
   const { data: grnsDeleted, error: grnErr } = await supabase
     .from("supplier_grns")
     .delete()

@@ -141,7 +141,7 @@ async function resolveRecipients(opts: {
         .eq("is_active", true);
       profiles = globalProfiles as any;
     }
-    if (!profiles || profiles.length === 0) return [];
+    if (!Array.isArray(profiles) || profiles.length === 0) return [];
 
     const out = await Promise.all(
       (profiles as NotificationRecipientProfile[]).map(async (p) => {

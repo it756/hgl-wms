@@ -84,7 +84,11 @@ interface ExistingProduct {
  * First tries exact match, then substring match.
  */
 function detectColumn(headers: string[], patterns: string[]): number {
-  const normalised = headers.map((h) => String(h ?? "").toLowerCase().trim());
+  const normalised = headers.map((h) =>
+    String(h ?? "")
+      .toLowerCase()
+      .trim(),
+  );
   // Exact match first
   for (const pat of patterns) {
     const idx = normalised.findIndex((h) => h === pat);
@@ -99,17 +103,48 @@ function detectColumn(headers: string[], patterns: string[]): number {
 }
 
 const COL_PATTERNS = {
-  name: ["name", "description", "item name", "item description", "item", "product", "product name", "desc"],
-  qty: ["stock balance", "stock qty", "stock quantity", "balance", "qty", "quantity", "stock", "count", "amount"],
+  name: [
+    "name",
+    "description",
+    "item name",
+    "item description",
+    "item",
+    "product",
+    "product name",
+    "desc",
+  ],
+  qty: [
+    "stock balance",
+    "stock qty",
+    "stock quantity",
+    "balance",
+    "qty",
+    "quantity",
+    "stock",
+    "count",
+    "amount",
+  ],
   uom: ["unit of measure", "unit_of_measure", "uom", "unit", "um", "measure"],
   cost: ["unit cost", "unit_cost", "cost price", "cost", "price", "unit price", "rate"],
-  location: ["warehouse location", "warehouse_location", "location", "bay", "shelf", "loc", "area", "aisle"],
+  location: [
+    "warehouse location",
+    "warehouse_location",
+    "location",
+    "bay",
+    "shelf",
+    "loc",
+    "area",
+    "aisle",
+  ],
 };
 
 /** Normalise a warehouse_location value to [A-Z][1-2]. Falls back to DEFAULT_LOCATION. */
 function normaliseLocation(raw: unknown): string {
   if (!raw) return DEFAULT_LOCATION;
-  const s = String(raw).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const s = String(raw)
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
   // Direct match: already like "E1" or "G2"
   if (/^[A-Z][12]$/.test(s)) return s;
   // Lenient: grab first letter and first digit that is 1 or 2
@@ -170,11 +205,21 @@ function parseExcel(filePath: string): ParsedRow[] {
   const colLoc = detectColumn(headers, COL_PATTERNS.location);
 
   console.log(`\n  Column mapping:`);
-  console.log(`    Name     → col ${colName >= 0 ? colName : "NOT FOUND"} ${colName >= 0 ? `("${headers[colName]}")` : "(will use col 0)"}`);
-  console.log(`    Quantity → col ${colQty >= 0 ? colQty : "NOT FOUND"} ${colQty >= 0 ? `("${headers[colQty]}")` : "(will use col 1)"}`);
-  console.log(`    UOM      → col ${colUom >= 0 ? colUom : "NOT FOUND"} ${colUom >= 0 ? `("${headers[colUom]}")` : `(default: "${DEFAULT_UOM}")`}`);
-  console.log(`    Cost     → col ${colCost >= 0 ? colCost : "NOT FOUND"} ${colCost >= 0 ? `("${headers[colCost]}")` : "(default: null)"}`);
-  console.log(`    Location → col ${colLoc >= 0 ? colLoc : "NOT FOUND"} ${colLoc >= 0 ? `("${headers[colLoc]}")` : `(default: "${DEFAULT_LOCATION}")`}`);
+  console.log(
+    `    Name     → col ${colName >= 0 ? colName : "NOT FOUND"} ${colName >= 0 ? `("${headers[colName]}")` : "(will use col 0)"}`,
+  );
+  console.log(
+    `    Quantity → col ${colQty >= 0 ? colQty : "NOT FOUND"} ${colQty >= 0 ? `("${headers[colQty]}")` : "(will use col 1)"}`,
+  );
+  console.log(
+    `    UOM      → col ${colUom >= 0 ? colUom : "NOT FOUND"} ${colUom >= 0 ? `("${headers[colUom]}")` : `(default: "${DEFAULT_UOM}")`}`,
+  );
+  console.log(
+    `    Cost     → col ${colCost >= 0 ? colCost : "NOT FOUND"} ${colCost >= 0 ? `("${headers[colCost]}")` : "(default: null)"}`,
+  );
+  console.log(
+    `    Location → col ${colLoc >= 0 ? colLoc : "NOT FOUND"} ${colLoc >= 0 ? `("${headers[colLoc]}")` : `(default: "${DEFAULT_LOCATION}")`}`,
+  );
 
   // Use detected indices, falling back to positional guesses
   const nameIdx = colName >= 0 ? colName : 0;
@@ -211,7 +256,9 @@ function parseExcel(filePath: string): ParsedRow[] {
   if (parsed.length > 0) {
     console.log("  First 3 rows:");
     for (const r of parsed.slice(0, 3)) {
-      console.log(`    "${r.name}" qty=${r.stock_quantity} uom=${r.unit_of_measure} loc=${r.warehouse_location}`);
+      console.log(
+        `    "${r.name}" qty=${r.stock_quantity} uom=${r.unit_of_measure} loc=${r.warehouse_location}`,
+      );
     }
   }
 
@@ -239,14 +286,18 @@ async function main() {
   if (!fs.existsSync(excelPath)) {
     console.error(`\n✗ Excel file not found: ${excelPath}`);
     console.error(`  Save the inventory Excel file to that path and re-run.`);
-    console.error(`  Or pass a custom path: npx tsx scripts/seed/seed_labambam_stock.ts path/to/file.xlsx`);
+    console.error(
+      `  Or pass a custom path: npx tsx scripts/seed/seed_labambam_stock.ts path/to/file.xlsx`,
+    );
     process.exit(1);
   }
 
   // ── Parse Excel ─────────────────────────────────────────────────────────────
   const excelRows = parseExcel(excelPath);
   if (excelRows.length === 0) {
-    console.error("\n✗ No valid product rows found in the Excel file. Check the column mapping above.");
+    console.error(
+      "\n✗ No valid product rows found in the Excel file. Check the column mapping above.",
+    );
     process.exit(1);
   }
 
@@ -287,6 +338,27 @@ async function main() {
 
   // ── 4. Delete LBMB supplier GRNs (cascades to line items) ───────────────────
   console.log(`\n[4] Clearing LBMB supplier GRNs…`);
+
+  // Fetch IDs first so we can clear product_price_history, which holds a
+  // non-cascading FK to supplier_grns. Without this pre-deletion the DELETE
+  // raises FK violation 23503.
+  const { data: lbmbGrns, error: grnsLookupErr } = await supabase
+    .from("supplier_grns")
+    .select("id")
+    .eq("sbu_id", lbmbId);
+  if (grnsLookupErr) throw grnsLookupErr;
+
+  if (lbmbGrns && lbmbGrns.length > 0) {
+    const grnIds = lbmbGrns.map((g) => g.id);
+
+    const { error: pphErr } = await supabase
+      .from("product_price_history")
+      .delete()
+      .in("supplier_grn_id", grnIds);
+    if (pphErr) throw pphErr;
+    console.log(`  Cleared product_price_history rows for ${grnIds.length} GRN(s)`);
+  }
+
   const { data: grnsDeleted, error: grnErr } = await supabase
     .from("supplier_grns")
     .delete()
