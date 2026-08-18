@@ -32,6 +32,8 @@ export interface DispatchInput {
   type?: string;
   /** Recipient role label (e.g. "WAREHOUSE_MANAGER") — used in the email template. */
   role?: string;
+  /** Absolute URL for the CTA button rendered in the email. */
+  actionUrl?: string;
   /** Override active channels (defaults to NOTIFICATION_CHANNELS env). */
   channels?: Channel[];
 }
@@ -61,6 +63,7 @@ export async function dispatchToChannels(input: DispatchInput): Promise<void> {
             type: input.type ?? input.subject,
             role: input.role ?? "",
             message: input.message,
+            actionUrl: input.actionUrl,
           });
           await sendEmail(input.recipient.email, input.subject, html);
         } else if (channel === "whatsapp") {

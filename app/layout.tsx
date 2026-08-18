@@ -4,7 +4,7 @@ import AuthGuard from "@/components/AuthGuard";
 import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "HWMS",
+  title: "WMS",
   description: "HGL Warehouse Management System",
   icons: { icon: "/favicon.ico" },
 };

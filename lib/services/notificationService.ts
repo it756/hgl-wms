@@ -29,6 +29,8 @@ export interface NotifyInput {
    * existing call-site behaviour.
    */
   dispatchChannels?: boolean;
+  /** Absolute URL for the CTA button in the dispatched email. */
+  actionUrl?: string;
 }
 
 /**
@@ -70,6 +72,7 @@ export async function createNotification(input: NotifyInput): Promise<Notificati
             message: input.message,
             type: input.type,
             role: input.user_role,
+            actionUrl: input.actionUrl,
           }),
         ),
       );

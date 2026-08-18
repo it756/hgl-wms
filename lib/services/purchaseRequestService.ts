@@ -247,6 +247,7 @@ export async function submitToProcurement(
     type: "purchase_request_submitted",
     message: `Purchase request ${pr.reference_number} has been submitted to procurement for approval.`,
     related_entity_id: id,
+    actionUrl: `${appBaseUrl}/admin/purchase-requests`,
   });
 
   return { purchaseRequest: updated as PurchaseRequest, procurementLink };
@@ -307,6 +308,7 @@ export async function applyProcurementAction(
       type: "purchase_request_pending_internal_control",
       message: `Purchase request ${pr.reference_number} was approved by procurement and is awaiting internal control review.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/purchase-requests`,
     });
   } else if (action === "CHANGES_REQUESTED") {
     await createNotification({
@@ -314,6 +316,7 @@ export async function applyProcurementAction(
       type: "purchase_request_changes_requested",
       message: `Procurement has requested changes to purchase request ${pr.reference_number}. Please review and resubmit.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   } else {
     await createNotification({
@@ -321,6 +324,7 @@ export async function applyProcurementAction(
       type: "purchase_request_rejected_procurement",
       message: `Purchase request ${pr.reference_number} was rejected by procurement.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   }
 
@@ -382,6 +386,7 @@ export async function applyInternalControlAction(
       type: "purchase_request_expected_order",
       message: `Purchase request ${pr.reference_number} has been approved. Goods are expected to arrive.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/expected-orders`,
     });
     // Notify creator
     await createNotification({
@@ -389,6 +394,7 @@ export async function applyInternalControlAction(
       type: "purchase_request_approved",
       message: `Your purchase request ${pr.reference_number} has been fully approved and is now an expected warehouse order.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   } else {
     await createNotification({
@@ -396,6 +402,7 @@ export async function applyInternalControlAction(
       type: "purchase_request_rejected_internal_control",
       message: `Purchase request ${pr.reference_number} was rejected by internal control.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   }
 
@@ -431,7 +438,9 @@ export async function printPurchaseRequest(
 
   if (fetchError || !existing) throw new Error("Purchase request not found");
 
-  const pr = existing as PurchaseRequest & { purchase_request_line_items: PurchaseRequestLineItem[] };
+  const pr = existing as PurchaseRequest & {
+    purchase_request_line_items: PurchaseRequestLineItem[];
+  };
   if (!(PRINTABLE_STATUSES as string[]).includes(pr.status)) {
     throw new Error(
       `Purchase request cannot be printed in status: ${pr.status}. ` +

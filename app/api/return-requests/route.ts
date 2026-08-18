@@ -119,6 +119,7 @@ export async function POST(req: Request) {
     message,
     related_entity_id: returnId,
     dispatchChannels: true,
+    actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns/approvals`,
   });
 
   await writeAuditLog({
@@ -144,7 +145,13 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const role = (user.user_metadata as any)?.role ?? "";
-  const allowedRoles = ["UNIT_STAFF", "BU_MANAGER", "WAREHOUSE_MANAGER", "FINANCE_MANAGER", "ADMIN"];
+  const allowedRoles = [
+    "UNIT_STAFF",
+    "BU_MANAGER",
+    "WAREHOUSE_MANAGER",
+    "FINANCE_MANAGER",
+    "ADMIN",
+  ];
   if (!allowedRoles.includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

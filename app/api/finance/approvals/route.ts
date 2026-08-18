@@ -207,6 +207,7 @@ export async function POST(req: Request) {
       message,
       related_entity_id: entity_id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/queue`,
     });
 
     await writeAuditLog({
@@ -261,10 +262,7 @@ export async function POST(req: Request) {
       // Update linked purchase request status (EXPECTED_ORDER → PARTIALLY_RECEIVED or RECEIVED)
       if (supplierGrn.purchase_request_id) {
         try {
-          await updateLinkedPurchaseRequestStatus(
-            supplierGrn.purchase_request_id,
-            entity_id,
-          );
+          await updateLinkedPurchaseRequestStatus(supplierGrn.purchase_request_id, entity_id);
         } catch (prUpdateErr) {
           // Non-fatal: GRN is already approved and stock incremented.
           console.error("[finance/approvals] PR status update failed", prUpdateErr);
@@ -314,6 +312,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/supplier-grn`,
         });
       } catch (notifErr) {
         console.error(`[finance/approvals] notification failed for ${r}`, notifErr);
@@ -379,6 +378,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
         });
       }
     } else {
@@ -420,6 +420,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
         });
       }
     }
@@ -493,6 +494,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/intra-transfer`,
         }),
         createNotification({
           user_role: "BU_MANAGER",
@@ -539,6 +541,7 @@ export async function POST(req: Request) {
         message,
         related_entity_id: entity_id,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/intra-transfer`,
       });
     }
 

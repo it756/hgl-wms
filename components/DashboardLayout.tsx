@@ -33,6 +33,7 @@ import {
   ShoppingCart,
   Truck,
   ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -321,6 +322,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/returns/approvals", label: "Returns Approval", icon: ClipboardCheck },
           { href: "/bu/stock", label: "My Stock", icon: Layers },
           { href: "/purchase-requests", label: "Purchase Requests", icon: ShoppingCart },
+          { href: "/users/request", label: "Request New User", icon: UserPlus },
         ];
       case "WAREHOUSE_MANAGER":
         return [
@@ -334,6 +336,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/admin/products", label: "Product Catalogue", icon: Layers },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
           { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
+          { href: "/users/request", label: "Request New User", icon: UserPlus },
         ];
       case "FINANCE_MANAGER":
         return [
@@ -342,6 +345,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/finance/catalogue", label: "Catalogue", icon: Layers },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
           { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
+          { href: "/users/request", label: "Request New User", icon: UserPlus },
         ];
       default: // UNIT_STAFF
         return [
@@ -351,6 +355,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/returns", label: "My Returns", icon: RotateCcw },
           { href: "/returns/new", label: "New Return", icon: Plus },
           { href: "/bu/stock", label: "My Stock", icon: Layers },
+          { href: "/users/request", label: "Request New User", icon: UserPlus },
         ];
     }
   };

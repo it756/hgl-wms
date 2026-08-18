@@ -29,6 +29,10 @@
     "seed:labambam:stock": "npm run seed:backup && npx tsx scripts/seed/seed_labambam_stock.ts",
     "seed:jara:stock": "npm run seed:backup && npx tsx scripts/seed/seed_jara_stock.ts",
     "seed:jara:units": "npm run seed:backup && npx tsx scripts/seed/seed_jara_units.ts",
+    "seed:ejabali:stock": "npm run seed:backup && npx tsx scripts/seed/seed_ejabali_stock.ts",
+    "seed:ejabali:q2": "npm run seed:backup && npx tsx scripts/seed/seed_ejabali_q2_stock.ts",
+    "seed:hgc:stock": "npm run seed:backup && npx tsx scripts/seed/seed_hgc_stock.ts",
+    "seed:harvest:stock": "npm run seed:backup && npx tsx scripts/seed/seed_harvest_stock.ts",
     "seed:jara:clusters": "npm run seed:backup && npx tsx scripts/seed/seed_jara_clusters.ts",
     "report:emails": "npx tsx scripts/reports/email-activity-report.ts"
   },

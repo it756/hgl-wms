@@ -38,10 +38,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const callerMetadata = caller.user_metadata as { role?: string; full_name?: string } | null;
-  const callerRole = callerMetadata?.role ?? "";
-  if (callerRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
-  }
 
   const body = await req.json().catch(() => null);
   const fullName = asTrimmedString(body?.full_name);

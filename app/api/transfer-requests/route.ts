@@ -188,12 +188,14 @@ export async function POST(req: Request) {
         actorId: user.id,
         actorLabel: "Raised by",
       });
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       await createNotification({
         user_role: "BU_MANAGER",
         type: "transfer_request_pending_bu_approval",
         message,
         related_entity_id: transferId,
         dispatchChannels: true,
+        actionUrl: `${appBaseUrl}/bu/queue`,
       });
     } else {
       // BU_MANAGER-raised: notify warehouse (or finance if requires approval)
@@ -204,12 +206,14 @@ export async function POST(req: Request) {
         actorId: user.id,
         actorLabel: "Raised by",
       });
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       await createNotification({
         user_role: notifyRole,
         type: "transfer_request_submitted",
         message,
         related_entity_id: transferId,
         dispatchChannels: true,
+        actionUrl: `${appBaseUrl}/${requiresFinanceApproval ? "finance/queue" : "warehouse/queue"}`,
       });
     }
 
