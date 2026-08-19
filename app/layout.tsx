@@ -6,7 +6,6 @@ import AppShell from "@/components/AppShell";
 export const metadata: Metadata = {
   title: "WMS",
   description: "HGL Warehouse Management System",
-  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
