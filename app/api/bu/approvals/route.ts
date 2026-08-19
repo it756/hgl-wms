@@ -152,12 +152,14 @@ export async function POST(req: Request) {
       actorId: user.id,
       actorLabel: "BU Manager decision",
     });
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     await createNotification({
       user_role: "FINANCE_MANAGER",
       type: "transfer_request_pending_finance_approval",
       message,
       related_entity_id: transfer_request_id,
       dispatchChannels: true,
+      actionUrl: `${appBaseUrl}/finance/queue`,
     });
   } else {
     // Notify the originating unit staff member directly
@@ -168,12 +170,14 @@ export async function POST(req: Request) {
       actorLabel: "BU Manager decision",
       notes,
     });
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     await createNotification({
       user_id: raisedBy,
       type: "transfer_request_rejected_by_bu",
       message,
       related_entity_id: transfer_request_id,
       dispatchChannels: true,
+      actionUrl: `${appBaseUrl}/requests/${transfer_request_id}`,
     });
   }
 

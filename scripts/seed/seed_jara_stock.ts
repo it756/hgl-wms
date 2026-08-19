@@ -1,31 +1,33 @@
 /**
- * seed_labambam_stock.ts
+ * seed_jara_stock.ts
  *
- * Replaces Labambam (LBMB) warehouse stock with data from an Excel file.
+ * Replaces Jara Retail FMCG Store (JARA) warehouse stock with data from an
+ * Excel file ("jara sheet 2.xlsx" or any path passed as an argument).
  *
  * What it does:
  *   1. Reads the Excel file and auto-detects column layout
- *   2. Upserts the Labambam SBU (code: LBMB)
- *   3. Zeroes out and deactivates every existing LBMB-* product
+ *   2. Upserts the Jara SBU (code: JARA)
+ *   3. Zeroes out and deactivates every existing JARA-* product
  *      (is_active=false means the sbu_stock view's sku_tagged CTE ignores them)
- *   4. Deletes any supplier_grns for the LBMB SBU
+ *   4. Deletes any supplier_grns for the JARA SBU
  *      (removes GRN-seeded stock contributions from the sbu_stock view)
  *   5. Upserts products from the Excel file:
- *        – Matches by name (case-insensitive) to reuse existing LBMB-* SKUs
- *        – Assigns the next LBMB-XXX SKU to genuinely new items
+ *        – Matches by name (case-insensitive) to reuse existing JARA-* SKUs
+ *        – Assigns the next JARA-XXX SKU to genuinely new items
  *
  * Why products.stock_quantity is sufficient:
  *   The sbu_stock view includes a sku_tagged CTE that contributes
  *   products.stock_quantity for every active product whose SKU starts with
- *   'LBMB-'. No GRN or transfer record is needed for BU stock screens to
+ *   'JARA-'. No GRN or transfer record is needed for BU stock screens to
  *   reflect the balance.
  *
  * Usage:
- *   npx tsx scripts/seed/seed_labambam_stock.ts [path/to/file.xlsx]
- *   npm run seed:labambam:stock
+ *   npx tsx scripts/seed/seed_jara_stock.ts [path/to/file.xlsx]
+ *   npm run seed:jara:stock
  *
- *   Default Excel path: scripts/seed/labambam_inventory.xlsx
- *   Save the attached "inventory transcription.xlsx" to that path before running.
+ *   Default Excel path: scripts/seed/jara_inventory.xlsx
+ *   Save "jara sheet 2.xlsx" to that path (or pass the path directly) before
+ *   running.
  *
  * Requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and
  * SUPABASE_SERVICE_ROLE_KEY in .env
@@ -38,11 +40,11 @@ import { createClient } from "@supabase/supabase-js";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const DEFAULT_EXCEL_PATH = path.resolve("scripts/seed/labambam_inventory.xlsx");
-const LBMB_CODE = "LBMB";
-const LBMB_NAME = "Labambam";
+const DEFAULT_EXCEL_PATH = path.resolve("scripts/seed/jara_inventory.xlsx");
+const JARA_CODE = "JARA";
+const JARA_NAME = "Jara Retail FMCG Store";
 const DEFAULT_UOM = "unit";
-const DEFAULT_LOCATION = "A1";
+const DEFAULT_LOCATION = "B1";
 const DEFAULT_LOW_STOCK = 1;
 
 // ─── Supabase client ──────────────────────────────────────────────────────────
@@ -112,6 +114,8 @@ const COL_PATTERNS = {
     "product",
     "product name",
     "desc",
+    "asset name",
+    "asset",
   ],
   qty: [
     "stock balance",
@@ -123,9 +127,10 @@ const COL_PATTERNS = {
     "stock",
     "count",
     "amount",
+    "units",
   ],
   uom: ["unit of measure", "unit_of_measure", "uom", "unit", "um", "measure"],
-  cost: ["unit cost", "unit_cost", "cost price", "cost", "price", "unit price", "rate"],
+  cost: ["unit cost", "unit_cost", "cost price", "cost", "price", "unit price", "rate", "value"],
   location: [
     "warehouse location",
     "warehouse_location",
@@ -135,6 +140,7 @@ const COL_PATTERNS = {
     "loc",
     "area",
     "aisle",
+    "store",
   ],
 };
 
@@ -145,7 +151,7 @@ function normaliseLocation(raw: unknown): string {
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
-  // Direct match: already like "E1" or "G2"
+  // Direct match: already like "B1" or "G2"
   if (/^[A-Z][12]$/.test(s)) return s;
   // Lenient: grab first letter and first digit that is 1 or 2
   const letter = s.match(/[A-Z]/)?.[0];
@@ -154,7 +160,7 @@ function normaliseLocation(raw: unknown): string {
   return DEFAULT_LOCATION;
 }
 
-/** Parse numeric cell value; returns null if not a valid positive number. */
+/** Parse numeric cell value; returns null if not a valid non-negative number. */
 function parseNumber(val: unknown): number | null {
   const n = parseFloat(String(val ?? ""));
   return Number.isFinite(n) && n >= 0 ? n : null;
@@ -184,7 +190,7 @@ function parseExcel(filePath: string): ParsedRow[] {
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
   if (rows.length === 0) throw new Error("Sheet is empty.");
 
-  // Find the header row — the first row that has at least two non-empty cells
+  // Find the header row — first row with at least two non-empty cells
   let headerRowIdx = 0;
   for (let i = 0; i < Math.min(rows.length, 10); i++) {
     const nonEmpty = (rows[i] ?? []).filter((c) => c !== null && c !== "");
@@ -236,8 +242,8 @@ function parseExcel(filePath: string): ParsedRow[] {
     if (!rawName || rawName.toLowerCase() === "item" || rawName.toLowerCase() === "name") continue;
 
     const qty = parseQty(rawQty);
-    // Skip rows with no valid quantity or with 0 stock
-    if (qty === null || qty === 0) continue;
+    // Skip rows with no valid quantity; include zero-stock items so we accurately reflect the sheet
+    if (qty === null) continue;
 
     const rawUom = colUom >= 0 ? String(row[colUom] ?? "").trim() : "";
     const rawCost = colCost >= 0 ? row[colCost] : null;
@@ -252,7 +258,7 @@ function parseExcel(filePath: string): ParsedRow[] {
     });
   }
 
-  console.log(`\n  Parsed ${parsed.length} rows with stock > 0`);
+  console.log(`\n  Parsed ${parsed.length} valid row(s)`);
   if (parsed.length > 0) {
     console.log("  First 3 rows:");
     for (const r of parsed.slice(0, 3)) {
@@ -267,15 +273,15 @@ function parseExcel(filePath: string): ParsedRow[] {
 
 // ─── SKU helpers ──────────────────────────────────────────────────────────────
 
-/** Extract numeric suffix from "LBMB-042" → 42 */
+/** Extract numeric suffix from "JARA-042" → 42. Returns 0 for non-matching SKUs. */
 function skuToNumber(sku: string): number {
-  const m = sku.match(/^LBMB-(\d+)$/i);
+  const m = sku.match(/^JARA-(\d+)$/i);
   return m ? parseInt(m[1], 10) : 0;
 }
 
-/** Format a sequential number as "LBMB-001" */
+/** Format a sequential number as "JARA-001" */
 function formatSku(n: number): string {
-  return `${LBMB_CODE}-${String(n).padStart(3, "0")}`;
+  return `${JARA_CODE}-${String(n).padStart(3, "0")}`;
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -285,10 +291,10 @@ async function main() {
 
   if (!fs.existsSync(excelPath)) {
     console.error(`\n✗ Excel file not found: ${excelPath}`);
-    console.error(`  Save the inventory Excel file to that path and re-run.`);
-    console.error(
-      `  Or pass a custom path: npx tsx scripts/seed/seed_labambam_stock.ts path/to/file.xlsx`,
-    );
+    console.error(`  Save "jara sheet 2.xlsx" to that path and re-run:`);
+    console.error(`    cp "path/to/jara sheet 2.xlsx" scripts/seed/jara_inventory.xlsx`);
+    console.error(`  Or pass the path directly:`);
+    console.error(`    npx tsx scripts/seed/seed_jara_stock.ts "path/to/jara sheet 2.xlsx"`);
     process.exit(1);
   }
 
@@ -301,56 +307,57 @@ async function main() {
     process.exit(1);
   }
 
-  // ── 1. Upsert LBMB SBU ──────────────────────────────────────────────────────
+  // ── 1. Upsert JARA SBU ──────────────────────────────────────────────────────
   console.log(`\n[1] Upserting SBU…`);
   const { data: sbuData, error: sbuError } = await supabase
     .from("sbus")
-    .upsert({ name: LBMB_NAME, code: LBMB_CODE, is_active: true }, { onConflict: "code" })
+    .upsert({ name: JARA_NAME, code: JARA_CODE, is_active: true }, { onConflict: "code" })
     .select("id, code")
     .single();
   if (sbuError) throw sbuError;
-  const lbmbId = sbuData.id;
-  console.log(`  SBU "${LBMB_NAME}" (${LBMB_CODE}) — id: ${lbmbId}`);
+  const jaraId = sbuData.id;
+  console.log(`  SBU "${JARA_NAME}" (${JARA_CODE}) — id: ${jaraId}`);
 
-  // ── 2. Load existing LBMB-* products ────────────────────────────────────────
-  console.log(`\n[2] Loading existing LBMB products…`);
+  // ── 2. Load existing JARA-* products ────────────────────────────────────────
+  console.log(`\n[2] Loading existing JARA products…`);
   const { data: existingProducts, error: existErr } = await supabase
     .from("products")
     .select("id, name, sku, is_active, stock_quantity")
-    .like("sku", `${LBMB_CODE}-%`);
+    .like("sku", `${JARA_CODE}-%`);
   if (existErr) throw existErr;
 
   const existing = (existingProducts ?? []) as ExistingProduct[];
-  console.log(`  Found ${existing.length} existing LBMB-* products`);
+  console.log(`  Found ${existing.length} existing JARA-* products`);
 
-  // ── 3. Deactivate + zero out all existing LBMB products ─────────────────────
+  // ── 3. Deactivate + zero out all existing JARA products ─────────────────────
   if (existing.length > 0) {
-    console.log(`\n[3] Deactivating existing LBMB stock…`);
+    console.log(`\n[3] Deactivating existing JARA stock…`);
     const { error: zeroErr } = await supabase
       .from("products")
       .update({ stock_quantity: 0, is_active: false, updated_at: new Date().toISOString() })
-      .like("sku", `${LBMB_CODE}-%`);
+      .like("sku", `${JARA_CODE}-%`);
     if (zeroErr) throw zeroErr;
     console.log(`  Zeroed and deactivated ${existing.length} products`);
   } else {
-    console.log(`\n[3] No existing LBMB products to deactivate`);
+    console.log(`\n[3] No existing JARA products to deactivate`);
   }
 
-  // ── 4. Delete LBMB supplier GRNs (cascades to line items) ───────────────────
-  console.log(`\n[4] Clearing LBMB supplier GRNs…`);
+  // ── 4. Delete JARA supplier GRNs (cascades to line items) ───────────────────
+  console.log(`\n[4] Clearing JARA supplier GRNs…`);
 
-  // Fetch IDs first so we can clear product_price_history, which holds a
-  // non-cascading FK to supplier_grns. Without this pre-deletion the DELETE
-  // raises FK violation 23503.
-  const { data: lbmbGrns, error: grnsLookupErr } = await supabase
+  // Fetch the IDs first so we can clear product_price_history, which holds a
+  // non-cascading FK to supplier_grns (and supplier_grn_line_items). Without
+  // this pre-deletion the DELETE on supplier_grns raises FK violation 23503.
+  const { data: jaraGrns, error: grnsLookupErr } = await supabase
     .from("supplier_grns")
     .select("id")
-    .eq("sbu_id", lbmbId);
+    .eq("sbu_id", jaraId);
   if (grnsLookupErr) throw grnsLookupErr;
 
-  if (lbmbGrns && lbmbGrns.length > 0) {
-    const grnIds = lbmbGrns.map((g) => g.id);
+  if (jaraGrns && jaraGrns.length > 0) {
+    const grnIds = jaraGrns.map((g) => g.id);
 
+    // Delete price-history rows that reference these GRNs (both FK columns)
     const { error: pphErr } = await supabase
       .from("product_price_history")
       .delete()
@@ -362,7 +369,7 @@ async function main() {
   const { data: grnsDeleted, error: grnErr } = await supabase
     .from("supplier_grns")
     .delete()
-    .eq("sbu_id", lbmbId)
+    .eq("sbu_id", jaraId)
     .select("id");
   if (grnErr) throw grnErr;
   console.log(`  Deleted ${(grnsDeleted ?? []).length} supplier GRN(s) (+ their line items)`);
@@ -373,7 +380,7 @@ async function main() {
     nameToSku.set(p.name.toLowerCase().trim(), p.sku);
   }
 
-  // Find the highest existing LBMB SKU number
+  // Find the highest existing JARA-NNN SKU number (ignores JARA-SHF-* etc.)
   let nextSkuNum = existing.reduce((max, p) => Math.max(max, skuToNumber(p.sku)), 0) + 1;
 
   // ── 6. Build upsert payload ──────────────────────────────────────────────────
@@ -394,8 +401,8 @@ async function main() {
       created++;
     }
 
-    // low_stock_threshold: 10% of qty (min 1)
-    const low_stock_threshold = Math.max(1, Math.round(row.stock_quantity * 0.1));
+    // low_stock_threshold: 10% of qty (minimum DEFAULT_LOW_STOCK)
+    const low_stock_threshold = Math.max(DEFAULT_LOW_STOCK, Math.round(row.stock_quantity * 0.1));
 
     return {
       name: row.name,
@@ -412,10 +419,9 @@ async function main() {
 
   console.log(`  ${reused} matched by name (SKU preserved), ${created} new`);
 
-  // ── 7. Upsert products ───────────────────────────────────────────────────────
+  // ── 7. Upsert products (batched to avoid request size limits) ────────────────
   console.log(`\n[6] Upserting ${upserts.length} products…`);
 
-  // Batch in groups of 100 to avoid request size limits
   const BATCH = 100;
   let upsertedCount = 0;
   for (let i = 0; i < upserts.length; i += BATCH) {
@@ -432,14 +438,14 @@ async function main() {
   // ── Summary ──────────────────────────────────────────────────────────────────
   const totalQty = upserts.reduce((sum, p) => sum + p.stock_quantity, 0);
 
-  console.log(`\n✓ Done. Labambam stock refreshed.`);
-  console.log(`  SBU id            : ${lbmbId}`);
+  console.log(`\n✓ Done. Jara stock refreshed.`);
+  console.log(`  SBU id            : ${jaraId}`);
   console.log(`  Products upserted : ${upsertedCount}`);
   console.log(`    ↳ matched (name) : ${reused}`);
   console.log(`    ↳ new SKUs       : ${created}`);
   console.log(`  Total units       : ${totalQty.toLocaleString()}`);
   console.log(`\n  Stock is visible in the BU stock screen via the sbu_stock view`);
-  console.log(`  (sku_tagged CTE picks up all active LBMB-* products automatically)`);
+  console.log(`  (sku_tagged CTE picks up all active JARA-* products automatically)`);
 }
 
 main().catch((err) => {

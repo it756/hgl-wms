@@ -106,6 +106,7 @@ export async function POST(req: Request) {
       message,
       related_entity_id: transferId,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
     });
   } catch (e) {
     console.error("intra-transfer notify failed", e);

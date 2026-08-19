@@ -49,16 +49,11 @@ function isMissingCreateSupplierGrnRpc(message: string): boolean {
 function hasPackingVariance(items: SupplierGrnItemInput[]): boolean {
   return items.some(
     (item) =>
-      item.quantity_expected !== undefined &&
-      item.quantity_expected !== item.quantity_received,
+      item.quantity_expected !== undefined && item.quantity_expected !== item.quantity_received,
   );
 }
 
-function buildLineItems(
-  grnId: string,
-  items: SupplierGrnItemInput[],
-  includeExpiryDate: boolean,
-) {
+function buildLineItems(grnId: string, items: SupplierGrnItemInput[], includeExpiryDate: boolean) {
   return items.map((item) => ({
     supplier_grn_id: grnId,
     product_id: item.product_id,
@@ -95,8 +90,9 @@ async function createSupplierGrnFallback(
 
   const grn = createdGrn as { id: string; reference_number: string };
   const lineItemsWithExpiry = buildLineItems(grn.id, input.items, true);
-  let lineInsertError = (await supabaseAdmin.from("supplier_grn_line_items").insert(lineItemsWithExpiry))
-    .error;
+  let lineInsertError = (
+    await supabaseAdmin.from("supplier_grn_line_items").insert(lineItemsWithExpiry)
+  ).error;
 
   if (
     lineInsertError &&
@@ -242,6 +238,7 @@ export async function POST(req: Request) {
     message: baseMessage,
     related_entity_id: grnId,
     dispatchChannels: true,
+    actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
   });
 
   // Notify Admin + Finance silently if there was a packing variance
@@ -260,6 +257,7 @@ export async function POST(req: Request) {
         message: varianceMessage,
         related_entity_id: grnId,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/supplier-grn`,
       }),
       createNotification({
         user_role: "FINANCE_MANAGER",
@@ -267,6 +265,7 @@ export async function POST(req: Request) {
         message: varianceMessage,
         related_entity_id: grnId,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
       }),
     ]);
   }

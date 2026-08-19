@@ -126,6 +126,7 @@ export async function POST(req: Request) {
         message: grnVarianceMessage,
         user_role: "WAREHOUSE_MANAGER",
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/queue`,
       });
 
       // Auto-raise a variance proposal so Finance can see and act on the variance
@@ -187,6 +188,7 @@ export async function POST(req: Request) {
                 message: proposalMessage,
                 user_role: "FINANCE_MANAGER",
                 dispatchChannels: true,
+                actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
               });
             }
           } else if (propError) {
