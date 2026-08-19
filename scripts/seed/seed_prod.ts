@@ -83,13 +83,21 @@ async function main() {
   // ── STEP 0: Wipe everything ────────────────────────────────────────────────
   console.log("\n[0] Clearing database…");
 
-  // Delete all auth users first
-  const { data: userList } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  const users = userList?.users ?? [];
-  for (const u of users) {
+  // Delete all auth users first (paginate to handle any number of users)
+  let allUsers: { id: string }[] = [];
+  let page = 1;
+  while (true) {
+    const { data: userList } = await supabase.auth.admin.listUsers({ perPage: 1000, page });
+    const batch = userList?.users ?? [];
+    if (batch.length === 0) break;
+    allUsers = allUsers.concat(batch);
+    if (batch.length < 1000) break;
+    page++;
+  }
+  for (const u of allUsers) {
     await supabase.auth.admin.deleteUser(u.id);
   }
-  console.log(`  Deleted ${users.length} auth user(s)`);
+  console.log(`  Deleted ${allUsers.length} auth user(s)`);
 
   // Delete application table data in FK-safe dependency order (deepest children first).
   const ZERO = "00000000-0000-0000-0000-000000000000";
@@ -102,6 +110,7 @@ async function main() {
     "grn_line_items", // FK → grns, products
     "variance_proposals", // FK → transfer_requests
     "grns", // FK → transfer_requests
+    "product_price_history", // FK → products, supplier_grns, supplier_grn_line_items
     "supplier_grn_line_items", // FK → supplier_grns, products
     "supplier_grns", // FK → sbus
     "intra_warehouse_transfers",
@@ -112,11 +121,16 @@ async function main() {
     "transfer_line_items", // FK → transfer_requests, products
     "transaction_documents", // FK → transfer_requests
     "expiry_ledger", // FK → products
+    "purchase_request_line_items", // FK → purchase_requests, products
+    "external_action_tokens", // FK → auth.users (nullable)
     "transfer_requests", // FK → sbus, sbu_units
     "products",
     "audit_logs",
     "notifications",
+    "license_audit_log", // FK → profiles (ON DELETE CASCADE)
     "profiles", // usually already gone via auth user cascade
+    "staff_requests", // FK → sbus, auth.users
+    "purchase_requests", // FK → sbus, auth.users
     "sbu_units", // FK → sbus
     "sbus",
   ];
@@ -154,6 +168,7 @@ async function main() {
 
   // ADMIN
   await createUser("grace.usoro@harvestgl.net", "Grace Usoro", "ADMIN", null);
+  await createUser("david.okuku@harvestgl.net", "David Okuku", "ADMIN", null);
 
   // WAREHOUSE_MANAGER
   await createUser("chinedu.ewuzie@harvestgl.net", "Ewuzie Chinedu", "WAREHOUSE_MANAGER", null);

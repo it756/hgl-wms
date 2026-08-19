@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import type { UserRole } from "../../../lib/models/user";
 import {
   Users,
@@ -25,11 +25,9 @@ import {
   TrendingUp,
   Activity,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   Pencil,
   KeyRound,
-  Send,
 } from "lucide-react";
 
 interface UserRow {
@@ -38,6 +36,7 @@ interface UserRow {
   email: string;
   role: UserRole;
   sbu_id: string | null;
+  unit_id: string | null;
   is_active: boolean;
   whatsapp_number: string | null;
   licensed: boolean;
@@ -51,12 +50,20 @@ interface SBU {
   code: string;
 }
 
+interface SbuUnit {
+  id: string;
+  name: string;
+  code: string;
+  sbu_id: string;
+}
+
 const ROLES: UserRole[] = [
   "BU_MANAGER",
   "WAREHOUSE_MANAGER",
   "UNIT_STAFF",
   "FINANCE_MANAGER",
   "ADMIN",
+  "INTERNAL_CONTROL_OFFICER",
 ];
 
 const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
@@ -65,7 +72,16 @@ const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   UNIT_STAFF: "Unit Staff Personnel",
   FINANCE_MANAGER: "Finance Manager",
   ADMIN: "System Administrator",
+  INTERNAL_CONTROL_OFFICER: "Internal Control Officer",
 };
+
+const CREATEABLE_ROLES: UserRole[] = [
+  "BU_MANAGER",
+  "WAREHOUSE_MANAGER",
+  "UNIT_STAFF",
+  "FINANCE_MANAGER",
+  "ADMIN",
+];
 
 const ROLE_COLORS: Record<UserRole, string> = {
   BU_MANAGER: "bg-blue-50 border border-blue-200 text-blue-800",
@@ -73,24 +89,29 @@ const ROLE_COLORS: Record<UserRole, string> = {
   UNIT_STAFF: "bg-slate-50 border border-slate-200 text-slate-700",
   FINANCE_MANAGER: "bg-purple-50 border border-purple-200 text-purple-800",
   ADMIN: "bg-rose-50 border border-rose-200 text-rose-800",
+  INTERNAL_CONTROL_OFFICER: "bg-amber-50 border border-amber-200 text-amber-800",
 };
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [sbus, setSbus] = useState<SBU[]>([]);
+  const [units, setUnits] = useState<SbuUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  // Request-new-user form (sends an email request instead of creating an account directly)
-  const [showRequestForm, setShowRequestForm] = useState(false);
-  const [requestName, setRequestName] = useState("");
-  const [requestEmail, setRequestEmail] = useState("");
-  const [requestRole, setRequestRole] = useState<UserRole>("UNIT_STAFF");
-  const [requestSbu, setRequestSbu] = useState("");
-  const [requestError, setRequestError] = useState<string | null>(null);
-  const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
-  const [requestLoading, setRequestLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [createRole, setCreateRole] = useState<UserRole>("UNIT_STAFF");
+  const [createSbu, setCreateSbu] = useState("");
+  const [createUnit, setCreateUnit] = useState("");
+  const [createWhatsapp, setCreateWhatsapp] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
+  const [createLoading, setCreateLoading] = useState(false);
 
   // Edit user state
   const [editUser, setEditUser] = useState<UserRow | null>(null);
@@ -99,6 +120,7 @@ export default function UsersPage() {
   const [editWhatsapp, setEditWhatsapp] = useState("");
   const [editRole, setEditRole] = useState<UserRole>("UNIT_STAFF");
   const [editSbu, setEditSbu] = useState("");
+  const [editUnit, setEditUnit] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editPassword, setEditPassword] = useState("");
   const [showEditPassword, setShowEditPassword] = useState(false);
@@ -111,14 +133,21 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const [uRes, sRes] = await Promise.all([
+      const [uRes, sRes, unitRes] = await Promise.all([
         fetch("/api/admin/users", { headers: { Authorization: `Bearer ${token()}` } }),
         fetch("/api/admin/sbus", { headers: { Authorization: `Bearer ${token()}` } }),
+        fetch("/api/admin/sbu-units", { headers: { Authorization: `Bearer ${token()}` } }),
       ]);
-      const [uData, sData] = await Promise.all([uRes.json(), sRes.json()]);
+      const [uData, sData, unitData] = await Promise.all([
+        uRes.json(),
+        sRes.json(),
+        unitRes.json(),
+      ]);
       if (!uRes.ok) throw new Error(uData.error);
+      if (!unitRes.ok) throw new Error(unitData.error);
       setUsers(uData);
       setSbus(sData);
+      setUnits(unitData);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -171,6 +200,7 @@ export default function UsersPage() {
     setEditWhatsapp(u.whatsapp_number ?? "");
     setEditRole(u.role);
     setEditSbu(u.sbu_id ?? "");
+    setEditUnit(u.unit_id ?? "");
     setEditActive(u.is_active);
     setEditPassword("");
     setShowEditPassword(false);
@@ -189,6 +219,7 @@ export default function UsersPage() {
         whatsapp_number: editWhatsapp || null,
         role: editRole,
         sbu_id: editSbu || null,
+        unit_id: editRole === "UNIT_STAFF" ? editUnit || null : null,
         is_active: editActive,
       };
       if (editPassword) body.password = editPassword;
@@ -209,40 +240,40 @@ export default function UsersPage() {
     }
   }
 
-  async function handleRequestUser(e: React.FormEvent) {
+  async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
-    setRequestLoading(true);
-    setRequestError(null);
-    setRequestSuccess(null);
+    setCreateLoading(true);
+    setCreateError(null);
+    setCreateSuccess(null);
     try {
-      const sbuLabel = requestSbu
-        ? (() => {
-            const s = sbus.find((sb) => sb.id === requestSbu);
-            return s ? `${s.name} (${s.code})` : "";
-          })()
-        : "";
-      const res = await fetch("/api/admin/users/request", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({
-          full_name: requestName,
-          email: requestEmail,
-          role: requestRole,
-          sbu_id: requestSbu || undefined,
-          sbu_label: sbuLabel || undefined,
+          full_name: createName || null,
+          email: createEmail,
+          password: createPassword,
+          role: createRole,
+          sbu_id: createSbu || null,
+          unit_id: createRole === "UNIT_STAFF" ? createUnit || null : null,
+          whatsapp_number: createWhatsapp || null,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setRequestSuccess("Request sent. The operations team will create and license this account.");
-      setRequestName("");
-      setRequestEmail("");
-      setRequestRole("UNIT_STAFF");
-      setRequestSbu("");
+      if (!res.ok) throw new Error(data.error || "Failed to create user");
+      setCreateSuccess(`Account created for ${createEmail}.`);
+      setCreateName("");
+      setCreateEmail("");
+      setCreatePassword("");
+      setCreateRole("UNIT_STAFF");
+      setCreateSbu("");
+      setCreateUnit("");
+      setCreateWhatsapp("");
+      load();
     } catch (e: any) {
-      setRequestError(e.message);
+      setCreateError(e.message);
     } finally {
-      setRequestLoading(false);
+      setCreateLoading(false);
     }
   }
 
@@ -256,6 +287,29 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(10);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  const createUnits = units.filter((unit) => unit.sbu_id === createSbu);
+  const editUnits = units.filter((unit) => unit.sbu_id === editSbu);
+
+  function handleCreateRoleChange(role: UserRole) {
+    setCreateRole(role);
+    if (role !== "UNIT_STAFF") setCreateUnit("");
+  }
+
+  function handleCreateSbuChange(sbuId: string) {
+    setCreateSbu(sbuId);
+    setCreateUnit("");
+  }
+
+  function handleEditRoleChange(role: UserRole) {
+    setEditRole(role);
+    if (role !== "UNIT_STAFF") setEditUnit("");
+  }
+
+  function handleEditSbuChange(sbuId: string) {
+    setEditSbu(sbuId);
+    setEditUnit("");
+  }
 
   useEffect(() => setPage(1), [search]);
   useEffect(() => {
@@ -276,14 +330,14 @@ export default function UsersPage() {
           actions={
             <button
               onClick={() => {
-                setShowRequestForm(!showRequestForm);
-                setRequestError(null);
-                setRequestSuccess(null);
+                setShowCreateForm(!showCreateForm);
+                setCreateError(null);
+                setCreateSuccess(null);
               }}
               className="px-4 py-2.5 bg-[#005c55] hover:bg-[#004740] text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm font-sans"
             >
               <UserPlus className="w-4 h-4" />
-              Request New User
+              Create User
             </button>
           }
         />
@@ -348,29 +402,30 @@ export default function UsersPage() {
           </div>
         </section>
 
-        {/* Request New User panel — sends an email request instead of creating an account directly */}
-        {showRequestForm && (
+        {/* Create User panel — direct account provisioning, admin only */}
+        {showCreateForm && (
           <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <Sparkles className="w-5 h-5 text-teal-650 shrink-0" />
-              <h2 className="font-extrabold text-[#1E293B] text-sm">Request New User Account</h2>
+              <UserPlus className="w-5 h-5 text-[#005c55] shrink-0" />
+              <h2 className="font-extrabold text-[#1E293B] text-sm">Create New User Account</h2>
             </div>
             <p className="text-[11px] text-slate-400 font-medium mb-4">
-              Submit the proposed user&apos;s details. This sends a request to the operations team
-              to create and license the account — it does not create the account directly.
+              Provision a new account directly. The user can sign in immediately with the
+              credentials set below.
             </p>
-            {requestError && (
-              <div className="mb-4 bg-rose-50 text-rose-750 border border-rose-100 px-3.5 py-2 rounded-lg text-xs font-bold font-mono uppercase">
-                {requestError}
+            {createError && (
+              <div className="mb-4 bg-rose-50 text-rose-700 border border-rose-100 px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                {createError}
               </div>
             )}
-            {requestSuccess && (
+            {createSuccess && (
               <div className="mb-4 bg-teal-50 text-teal-800 border border-teal-100 px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" /> {requestSuccess}
+                <CheckCircle2 className="w-4 h-4 shrink-0" /> {createSuccess}
               </div>
             )}
 
-            <form onSubmit={handleRequestUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                   Full Name
@@ -380,8 +435,8 @@ export default function UsersPage() {
                   <input
                     required
                     placeholder="e.g. Jane Doe"
-                    value={requestName}
-                    onChange={(e) => setRequestName(e.target.value)}
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
                     className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
                   />
                 </div>
@@ -397,25 +452,57 @@ export default function UsersPage() {
                     required
                     type="email"
                     placeholder="e.g. staff@harvest.co.ke"
-                    value={requestEmail}
-                    onChange={(e) => setRequestEmail(e.target.value)}
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
                     className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
                   />
                 </div>
               </div>
 
+              <div className="md:col-span-2 flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    required
+                    type={showCreatePassword ? "text" : "password"}
+                    placeholder="Min. 8 chars, one number, one special character"
+                    value={createPassword}
+                    onChange={(e) => setCreatePassword(e.target.value)}
+                    className="w-full pl-9 pr-10 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePassword((s) => !s)}
+                    aria-label={showCreatePassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showCreatePassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                  Min. 8 characters · at least 1 number · at least 1 special character
+                </p>
+              </div>
+
               <div className="flex flex-col gap-1">
                 <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Proposed Access Scope Role
+                  Access Role
                 </label>
                 <div className="relative">
                   <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <select
-                    value={requestRole}
-                    onChange={(e) => setRequestRole(e.target.value as UserRole)}
+                    value={createRole}
+                    onChange={(e) => handleCreateRoleChange(e.target.value as UserRole)}
                     className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
                   >
-                    {ROLES.map((r) => (
+                    {CREATEABLE_ROLES.map((r) => (
                       <option key={r} value={r}>
                         {ROLE_DISPLAY_NAMES[r]}
                       </option>
@@ -426,16 +513,17 @@ export default function UsersPage() {
 
               <div className="flex flex-col gap-1">
                 <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                  Strategic Business Unit Association
+                  SBU Association
                 </label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <select
-                    value={requestSbu}
-                    onChange={(e) => setRequestSbu(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-850 cursor-pointer appearance-none"
+                    value={createSbu}
+                    onChange={(e) => handleCreateSbuChange(e.target.value)}
+                    required={createRole === "UNIT_STAFF"}
+                    className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
                   >
-                    <option value="">— Independent / Cross-cutting Node —</option>
+                    <option value="">— Independent / Cross-cutting —</option>
                     {sbus.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name} ({s.code})
@@ -445,25 +533,69 @@ export default function UsersPage() {
                 </div>
               </div>
 
+              {createRole === "UNIT_STAFF" && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    Unit Assignment
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={createUnit}
+                      onChange={(e) => setCreateUnit(e.target.value)}
+                      required
+                      disabled={!createSbu}
+                      className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white disabled:bg-slate-50 disabled:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
+                    >
+                      <option value="">— Select unit —</option>
+                      {createUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name} ({unit.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  WhatsApp Number{" "}
+                  <span className="text-slate-300 font-normal normal-case tracking-normal">
+                    optional
+                  </span>
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="tel"
+                    placeholder="+260977000000"
+                    value={createWhatsapp}
+                    onChange={(e) => setCreateWhatsapp(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-medium text-slate-800"
+                  />
+                </div>
+              </div>
+
               <div className="md:col-span-2 flex gap-2 justify-end border-t border-slate-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowRequestForm(false)}
+                  onClick={() => setShowCreateForm(false)}
                   className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-1"
                 >
                   <X className="w-3.5 h-3.5" /> Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={requestLoading}
+                  disabled={createLoading}
                   className="px-4 py-2 bg-[#005c55] hover:bg-[#004740] disabled:opacity-55 text-white text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
                 >
-                  {requestLoading ? (
+                  {createLoading ? (
                     <span className="animate-spin rounded-full h-3.5 w-3.5 border-t-2 border-white"></span>
                   ) : (
-                    <Send className="w-3.5 h-3.5" />
+                    <Check className="w-3.5 h-3.5" />
                   )}
-                  Send Request
+                  Create Account
                 </button>
               </div>
             </form>
@@ -535,14 +667,15 @@ export default function UsersPage() {
                 </div>
               </div>
               <HScrollArea className="text-[#1E293B]">
-                <table className="min-w-full divide-y divide-slate-100 text-xs">
+                <Table className="min-w-full divide-y divide-slate-100 text-xs">
                   <TableHead>
                     <Th pinned className="w-[28%]">
                       Team Member Info
                     </Th>
                     <Th className="w-[20%]">Email Address</Th>
-                    <Th className="w-[16%]">Operational Role</Th>
+                    <Th className="w-[14%]">Operational Role</Th>
                     <Th className="w-[10%]">SBU Node</Th>
+                    <Th className="w-[10%]">Unit</Th>
                     <Th className="w-[10%]">Licence</Th>
                     <Th className="w-[8%]">State</Th>
                     <Th align="right" className="w-[8%]">
@@ -602,6 +735,17 @@ export default function UsersPage() {
                           )}
                         </td>
                         <td className="px-6 py-3.5">
+                          {units.find((unit) => unit.id === u.unit_id) ? (
+                            <span className="font-mono bg-teal-50 text-teal-800 border border-teal-100 font-bold px-2 py-0.5 rounded text-[10px]">
+                              {units.find((unit) => unit.id === u.unit_id)?.code}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px] font-semibold">
+                              Unassigned
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3.5">
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${
                               u.licensed
@@ -653,7 +797,7 @@ export default function UsersPage() {
                       </Tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </HScrollArea>
             </div>
           )}
@@ -746,7 +890,7 @@ export default function UsersPage() {
               </div>
 
               {/* Role + SBU */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                     Access Role
@@ -755,7 +899,7 @@ export default function UsersPage() {
                     <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <select
                       value={editRole}
-                      onChange={(e) => setEditRole(e.target.value as UserRole)}
+                      onChange={(e) => handleEditRoleChange(e.target.value as UserRole)}
                       className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
                     >
                       {ROLES.map((r) => (
@@ -775,13 +919,37 @@ export default function UsersPage() {
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <select
                       value={editSbu}
-                      onChange={(e) => setEditSbu(e.target.value)}
+                      onChange={(e) => handleEditSbuChange(e.target.value)}
+                      required={editRole === "UNIT_STAFF"}
                       className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
                     >
                       <option value="">— Independent —</option>
                       {sbus.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name} ({s.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    Unit Assignment
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={editUnit}
+                      onChange={(e) => setEditUnit(e.target.value)}
+                      required={editRole === "UNIT_STAFF"}
+                      disabled={!editSbu || editRole !== "UNIT_STAFF"}
+                      className="w-full pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-xs bg-white disabled:bg-slate-50 disabled:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#005c55] focus:border-[#005c55] font-bold text-slate-800 cursor-pointer appearance-none"
+                    >
+                      <option value="">— Select unit —</option>
+                      {editUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name} ({unit.code})
                         </option>
                       ))}
                     </select>

@@ -14,6 +14,18 @@ interface AtomicSupplierGrnResult {
   has_packing_variance: boolean;
 }
 
+type SupplierGrnItemInput = SupplierGRNCreateInput["items"][number];
+
+interface SupplierGrnFallbackInput {
+  purchase_request_id?: string | null;
+  supplier_name: string;
+  supplier_invoice_reference?: string | null;
+  invoice_amount?: number | null;
+  date_received?: string | null;
+  sbu_id?: string | null;
+  items: SupplierGrnItemInput[];
+}
+
 function generateSupplierGRNReference(): string {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 90000 + 10000);
@@ -25,6 +37,104 @@ function statusForRpcError(message: string): number {
   if (message.includes("forbidden")) return 403;
   if (message.includes("required") || message.includes("at least one")) return 400;
   return 500;
+}
+
+function isMissingCreateSupplierGrnRpc(message: string): boolean {
+  return (
+    message.includes("create_supplier_grn_atomic") &&
+    (message.includes("schema cache") || message.includes("Could not find the function"))
+  );
+}
+
+function hasPackingVariance(items: SupplierGrnItemInput[]): boolean {
+  return items.some(
+    (item) =>
+      item.quantity_expected !== undefined && item.quantity_expected !== item.quantity_received,
+  );
+}
+
+function buildLineItems(grnId: string, items: SupplierGrnItemInput[], includeExpiryDate: boolean) {
+  return items.map((item) => ({
+    supplier_grn_id: grnId,
+    product_id: item.product_id,
+    quantity_received: item.quantity_received,
+    unit_cost: item.unit_cost ?? null,
+    ...(includeExpiryDate ? { expiry_date: item.expiry_date ?? null } : {}),
+  }));
+}
+
+async function createSupplierGrnFallback(
+  input: SupplierGrnFallbackInput,
+  actorId: string,
+  referenceNumber: string,
+): Promise<AtomicSupplierGrnResult> {
+  const { data: createdGrn, error: grnError } = await supabaseAdmin
+    .from("supplier_grns")
+    .insert([
+      {
+        reference_number: referenceNumber,
+        supplier_name: input.supplier_name.trim(),
+        supplier_invoice_reference: input.supplier_invoice_reference ?? null,
+        invoice_amount: input.invoice_amount ?? null,
+        received_by: actorId,
+        date_received: input.date_received ?? new Date().toISOString().slice(0, 10),
+        status: "AWAITING_FINANCE_APPROVAL",
+        sbu_id: input.sbu_id ?? null,
+        purchase_request_id: input.purchase_request_id ?? null,
+      },
+    ])
+    .select("id, reference_number")
+    .single();
+
+  if (grnError) throw grnError;
+
+  const grn = createdGrn as { id: string; reference_number: string };
+  const lineItemsWithExpiry = buildLineItems(grn.id, input.items, true);
+  let lineInsertError = (
+    await supabaseAdmin.from("supplier_grn_line_items").insert(lineItemsWithExpiry)
+  ).error;
+
+  if (
+    lineInsertError &&
+    lineInsertError.message?.includes("expiry_date") &&
+    lineInsertError.message?.includes("schema cache")
+  ) {
+    const retry = await supabaseAdmin
+      .from("supplier_grn_line_items")
+      .insert(buildLineItems(grn.id, input.items, false));
+    lineInsertError = retry.error;
+  }
+
+  if (lineInsertError) {
+    await supabaseAdmin.from("supplier_grns").delete().eq("id", grn.id);
+    throw lineInsertError;
+  }
+
+  const { error: auditError } = await supabaseAdmin.from("audit_logs").insert([
+    {
+      entity_type: "supplier_grn",
+      entity_id: grn.id,
+      action: "create",
+      performed_by: actorId,
+      new_value: {
+        reference_number: referenceNumber,
+        status: "AWAITING_FINANCE_APPROVAL",
+        supplier_name: input.supplier_name,
+        has_packing_variance: hasPackingVariance(input.items),
+        fallback: "direct_insert_missing_rpc",
+      },
+    },
+  ]);
+
+  if (auditError) {
+    console.error("[supplier-grns] audit log insert failed (fallback create)", auditError);
+  }
+
+  return {
+    id: grn.id,
+    reference_number: grn.reference_number,
+    has_packing_variance: hasPackingVariance(input.items),
+  };
 }
 
 /**
@@ -43,6 +153,7 @@ export async function POST(req: Request) {
 
   const body: SupplierGRNCreateInput = await req.json();
   const {
+    purchase_request_id,
     supplier_name,
     supplier_invoice_reference,
     invoice_amount,
@@ -71,14 +182,46 @@ export async function POST(req: Request) {
     p_items: items,
   });
 
-  if (rpcError) {
+  let created: AtomicSupplierGrnResult;
+  if (rpcError && isMissingCreateSupplierGrnRpc(rpcError.message)) {
+    const trimmedSupplierName = supplier_name.trim();
+    if (!trimmedSupplierName) {
+      return NextResponse.json({ error: "supplier_name is required" }, { status: 400 });
+    }
+
+    created = await createSupplierGrnFallback(
+      {
+        supplier_name: trimmedSupplierName,
+        supplier_invoice_reference,
+        invoice_amount,
+        date_received,
+        sbu_id,
+        purchase_request_id,
+        items,
+      },
+      user.id,
+      reference_number,
+    );
+  } else if (rpcError) {
     return NextResponse.json(
       { error: rpcError.message },
       { status: statusForRpcError(rpcError.message) },
     );
+  } else {
+    created = data as AtomicSupplierGrnResult;
+
+    if (purchase_request_id) {
+      const { error: linkError } = await supabaseAdmin
+        .from("supplier_grns")
+        .update({ purchase_request_id })
+        .eq("id", created.id);
+
+      if (linkError) {
+        return NextResponse.json({ error: linkError.message }, { status: 500 });
+      }
+    }
   }
 
-  const created = data as AtomicSupplierGrnResult;
   const grnId = created.id;
 
   const baseMessage = await buildSupplierGrnNotificationMessage({
@@ -95,6 +238,7 @@ export async function POST(req: Request) {
     message: baseMessage,
     related_entity_id: grnId,
     dispatchChannels: true,
+    actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
   });
 
   // Notify Admin + Finance silently if there was a packing variance
@@ -113,6 +257,7 @@ export async function POST(req: Request) {
         message: varianceMessage,
         related_entity_id: grnId,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/supplier-grn`,
       }),
       createNotification({
         user_role: "FINANCE_MANAGER",
@@ -120,6 +265,7 @@ export async function POST(req: Request) {
         message: varianceMessage,
         related_entity_id: grnId,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
       }),
     ]);
   }

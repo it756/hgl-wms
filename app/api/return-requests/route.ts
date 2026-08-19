@@ -119,6 +119,7 @@ export async function POST(req: Request) {
     message,
     related_entity_id: returnId,
     dispatchChannels: true,
+    actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns/approvals`,
   });
 
   await writeAuditLog({
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
  * GET /api/return-requests
  * List return requests scoped by role.
  * UNIT_STAFF / BU_MANAGER → their SBU only
- * WAREHOUSE_MANAGER / ADMIN → all
+ * WAREHOUSE_MANAGER / FINANCE_MANAGER / ADMIN → all
  * Optional ?status= filter
  */
 export async function GET(req: Request) {
@@ -144,7 +145,13 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const role = (user.user_metadata as any)?.role ?? "";
-  const allowedRoles = ["UNIT_STAFF", "BU_MANAGER", "WAREHOUSE_MANAGER", "ADMIN"];
+  const allowedRoles = [
+    "UNIT_STAFF",
+    "BU_MANAGER",
+    "WAREHOUSE_MANAGER",
+    "FINANCE_MANAGER",
+    "ADMIN",
+  ];
   if (!allowedRoles.includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -175,7 +182,16 @@ export async function GET(req: Request) {
   }
 
   if (statusFilter) {
-    query = query.eq("status", statusFilter);
+    const statuses = statusFilter
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (statuses.length > 1) {
+      query = query.in("status", statuses);
+    } else if (statuses.length === 1) {
+      query = query.eq("status", statuses[0]);
+    }
   }
 
   const { data, error } = await query;

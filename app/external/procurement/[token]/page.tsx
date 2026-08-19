@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, RefreshCw, FileText, AlertTriangle } from "lucide-react";
+import { use, useEffect, useState } from "react";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
+import {
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  FileText,
+  AlertTriangle,
+  Paperclip,
+  Upload,
+  X,
+} from "lucide-react";
 
 interface LineItem {
   id: string;
@@ -25,6 +35,24 @@ interface PurchaseRequest {
   purchase_request_line_items: LineItem[];
 }
 
+interface ProcurementDocument {
+  id: string;
+  file_name: string;
+  file_size: number | null;
+  mime_type: string;
+  document_label: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+  url: string | null;
+}
+
+interface StagedDocument {
+  file: File;
+  label: string;
+  uploading: boolean;
+  error: string | null;
+}
+
 type ActionType = "APPROVE" | "REJECT" | "CHANGES_REQUESTED";
 
 interface PageState {
@@ -39,7 +67,8 @@ interface PageState {
   submitError: string | null;
 }
 
-export default function ProcurementReviewPage({ params }: { params: { token: string } }) {
+export default function ProcurementReviewPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params);
   const [state, setState] = useState<PageState>({
     loading: true,
     error: null,
@@ -53,18 +82,32 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
   });
 
   const [notes, setNotes] = useState("");
-  const [documentUrl, setDocumentUrl] = useState("");
   const [activeAction, setActiveAction] = useState<ActionType | null>(null);
+  const [documents, setDocuments] = useState<ProcurementDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [stagedDocuments, setStagedDocuments] = useState<StagedDocument[]>([]);
+
+  const {
+    loading,
+    error,
+    purchaseRequest: pr,
+    allowedActions,
+    expiresAt,
+    submitted,
+    submittedAction,
+    submitting,
+    submitError,
+  } = state;
+  const canUpload = allowedActions.includes("UPLOAD");
 
   useEffect(() => {
-    loadRequest();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.token]);
+    let cancelled = false;
 
-  async function loadRequest() {
-    try {
-      const res = await fetch(`/api/external/procurement/${params.token}`);
+    async function loadRequest() {
+      const res = await fetch(`/api/external/procurement/${token}`);
       const data = await res.json();
+      if (cancelled) return;
+
       if (!res.ok) {
         setState((prev) => ({ ...prev, loading: false, error: data.error ?? "Invalid link." }));
         return;
@@ -76,25 +119,132 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
         allowedActions: data.token.allowedActions,
         expiresAt: data.token.expiresAt,
       }));
-    } catch {
+    }
+
+    loadRequest().catch(() => {
+      if (cancelled) return;
+
       setState((prev) => ({
         ...prev,
         loading: false,
         error: "Could not load this purchase request. Please try again.",
       }));
-    }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    if (!canUpload) return;
+
+    let cancelled = false;
+
+    fetch(`/api/external/procurement/${token}/documents`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (cancelled) return;
+
+        setDocuments(res.ok && Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+
+        setDocuments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDocumentsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canUpload, token]);
+
+  function formatBytes(bytes: number | null): string {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function stageDocuments(files: FileList | null) {
+    const nextFiles = Array.from(files ?? []);
+    setStagedDocuments((prev) => [
+      ...prev,
+      ...nextFiles.map((file) => ({
+        file,
+        label: "Proforma / Invoice",
+        uploading: false,
+        error: null,
+      })),
+    ]);
+  }
+
+  function removeStagedDocument(index: number) {
+    setStagedDocuments((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function uploadDocuments() {
+    if (stagedDocuments.length === 0) return;
+
+    const results = await Promise.all(
+      stagedDocuments.map(async (item, index) => {
+        setStagedDocuments((prev) =>
+          prev.map((doc, i) => (i === index ? { ...doc, uploading: true, error: null } : doc)),
+        );
+
+        const form = new FormData();
+        form.append("file", item.file);
+        form.append("document_label", item.label.trim() || "Proforma / Invoice");
+
+        const res = await fetch(`/api/external/procurement/${token}/documents`, {
+          method: "POST",
+          body: form,
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setStagedDocuments((prev) =>
+            prev.map((doc, i) =>
+              i === index
+                ? { ...doc, uploading: false, error: data.error ?? "Upload failed" }
+                : doc,
+            ),
+          );
+          return null;
+        }
+
+        return { document: (await res.json()) as ProcurementDocument, index };
+      }),
+    );
+
+    const successfulIndices = new Set(results.filter(Boolean).map((result) => result!.index));
+    setStagedDocuments((prev) => prev.filter((_, index) => !successfulIndices.has(index)));
+    setDocuments((prev) => [
+      ...prev,
+      ...results.filter(Boolean).map((result) => result!.document),
+    ]);
   }
 
   async function submitAction(action: ActionType) {
+    if (stagedDocuments.length > 0) {
+      setState((prev) => ({
+        ...prev,
+        submitError: "Upload or remove the selected document before submitting your decision.",
+      }));
+      return;
+    }
+
     setState((prev) => ({ ...prev, submitting: true, submitError: null }));
     try {
-      const res = await fetch(`/api/external/procurement/${params.token}/action`, {
+      const res = await fetch(`/api/external/procurement/${token}/action`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
           notes: notes.trim() || undefined,
-          document_url: documentUrl.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -120,18 +270,6 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
       }));
     }
   }
-
-  const {
-    loading,
-    error,
-    purchaseRequest: pr,
-    allowedActions,
-    expiresAt,
-    submitted,
-    submittedAction,
-    submitting,
-    submitError,
-  } = state;
 
   if (loading) {
     return (
@@ -200,7 +338,8 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
 
   if (!pr) return null;
 
-  const currency = "KES";
+  const currency = "ZMW";
+  const uploadInProgress = stagedDocuments.some((document) => document.uploading);
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4">
@@ -259,53 +398,52 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
         {/* Line Items */}
         <div className="bg-white rounded-xl border border-slate-200 px-6 py-5">
           <h2 className="font-semibold text-slate-700 mb-3">Requested Items</h2>
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-              <tr>
-                <th className="px-3 py-2 text-left">Item</th>
-                <th className="px-3 py-2 text-center">Qty</th>
-                <th className="px-3 py-2 text-right">Unit Cost</th>
-                <th className="px-3 py-2 text-right">Line Total</th>
-              </tr>
-            </thead>
+          <Table>
+            <TableHead>
+              <Th className="px-3 py-2">Item</Th>
+              <Th align="center" className="px-3 py-2">Qty</Th>
+              <Th align="right" className="px-3 py-2">Unit Cost</Th>
+              <Th align="right" className="px-3 py-2">Line Total</Th>
+            </TableHead>
             <tbody className="divide-y divide-slate-100">
               {pr.purchase_request_line_items.map((l) => (
-                <tr key={l.id}>
-                  <td className="px-3 py-2.5">
+                <Tr key={l.id}>
+                  <Td className="px-3 py-2.5">
                     <span className="font-medium text-slate-700">{l.product_name}</span>
                     {l.sku && <span className="ml-1.5 text-xs text-slate-400">({l.sku})</span>}
                     {l.notes && <p className="text-xs text-slate-400 mt-0.5">{l.notes}</p>}
-                  </td>
-                  <td className="px-3 py-2.5 text-center text-slate-600">
+                  </Td>
+                  <Td align="center" className="px-3 py-2.5 text-slate-600">
                     {l.quantity_requested} {l.unit_of_measure}
-                  </td>
-                  <td className="px-3 py-2.5 text-right text-slate-600">
+                  </Td>
+                  <Td align="right" className="px-3 py-2.5 text-slate-600">
                     {l.unit_cost != null ? `${currency} ${l.unit_cost.toLocaleString()}` : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
+                  </Td>
+                  <Td align="right" className="px-3 py-2.5 font-medium text-slate-700">
                     {l.unit_cost != null
                       ? `${currency} ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
                       : "—"}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
             </tbody>
             {pr.estimated_total != null && (
               <tfoot>
-                <tr className="bg-slate-50">
-                  <td
+                <Tr className="bg-slate-50 hover:bg-slate-50">
+                  <Td
                     colSpan={3}
-                    className="px-3 py-2 text-right text-sm font-medium text-slate-600"
+                    align="right"
+                    className="px-3 py-2 text-sm font-medium text-slate-600"
                   >
                     Estimated Total
-                  </td>
-                  <td className="px-3 py-2 text-right font-bold text-slate-800">
+                  </Td>
+                  <Td align="right" className="px-3 py-2 font-bold text-slate-800">
                     {currency} {pr.estimated_total.toLocaleString()}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               </tfoot>
             )}
-          </table>
+          </Table>
         </div>
 
         {/* Action Panel */}
@@ -331,29 +469,118 @@ export default function ProcurementReviewPage({ params }: { params: { token: str
             />
           </div>
 
-          {allowedActions.includes("UPLOAD") && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                <FileText className="inline w-4 h-4 mr-1 text-slate-400" />
-                Attach Proforma / Quotation URL (optional)
-              </label>
-              <input
-                type="url"
-                value={documentUrl}
-                onChange={(e) => setDocumentUrl(e.target.value)}
-                placeholder="https://…"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                Paste a shareable link to a proforma invoice, quotation, or supporting document.
-              </p>
+          {canUpload && (
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    <FileText className="inline w-4 h-4 mr-1 text-slate-400" />
+                    Proforma / Invoice Documents
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Optional PDF, JPEG, or PNG supporting files.
+                  </p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <Paperclip className="w-4 h-4" />
+                  Attach
+                  <input
+                    type="file"
+                    accept="application/pdf,image/jpeg,image/png"
+                    multiple
+                    className="sr-only"
+                    onChange={(event) => {
+                      stageDocuments(event.target.files);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+
+              {documentsLoading ? (
+                <p className="text-sm text-slate-400">Loading documents…</p>
+              ) : documents.length > 0 ? (
+                <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  {documents.map((document) => (
+                    <li key={document.id} className="flex items-center gap-3 px-3 py-2.5">
+                      <FileText className="w-4 h-4 shrink-0 text-slate-400" />
+                      <div className="min-w-0 flex-1">
+                        {document.url ? (
+                          <a
+                            href={document.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block truncate text-sm font-medium text-blue-700 hover:underline"
+                          >
+                            {document.file_name}
+                          </a>
+                        ) : (
+                          <p className="truncate text-sm font-medium text-slate-700">
+                            {document.file_name}
+                          </p>
+                        )}
+                        <p className="text-xs text-slate-400">
+                          {document.document_label ?? "Supporting document"}
+                          {document.file_size ? ` · ${formatBytes(document.file_size)}` : ""}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm italic text-slate-400">No documents uploaded.</p>
+              )}
+
+              {stagedDocuments.length > 0 && (
+                <div className="space-y-2">
+                  {stagedDocuments.map((document, index) => (
+                    <div
+                      key={`${document.file.name}-${index}`}
+                      className="flex items-start gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50 px-3 py-2.5"
+                    >
+                      <FileText className="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-700">
+                          {document.file.name}
+                        </p>
+                        <p className="text-xs text-slate-400">{formatBytes(document.file.size)}</p>
+                        {document.error && <p className="text-xs text-rose-600">{document.error}</p>}
+                      </div>
+                      {!document.uploading ? (
+                        <button
+                          type="button"
+                          onClick={() => removeStagedDocument(index)}
+                          className="rounded p-1 text-slate-400 hover:bg-white hover:text-slate-600"
+                          aria-label={`Remove ${document.file.name}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <span className="text-xs text-blue-600">Uploading…</span>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={uploadDocuments}
+                    disabled={uploadInProgress}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {uploadInProgress ? "Uploading…" : "Upload Selected"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             {allowedActions.includes("APPROVE") && (
               <button
-                onClick={() => submitAction("APPROVE")}
+                onClick={() => {
+                  setActiveAction("APPROVE");
+                  submitAction("APPROVE");
+                }}
                 disabled={submitting}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
               >

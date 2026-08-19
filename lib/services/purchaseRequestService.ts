@@ -1,9 +1,10 @@
 import { supabaseAdmin } from "../supabaseServer";
 import type {
   PurchaseRequest,
+  PurchaseRequestLineItem,
+  PurchaseRequestStatus,
   PurchaseRequestCreateInput,
   PurchaseRequestUpdateInput,
-  EDITABLE_STATUSES,
 } from "../models/purchaseRequest";
 import { writeAuditLog } from "./auditService";
 import { createNotification } from "./notificationService";
@@ -246,6 +247,7 @@ export async function submitToProcurement(
     type: "purchase_request_submitted",
     message: `Purchase request ${pr.reference_number} has been submitted to procurement for approval.`,
     related_entity_id: id,
+    actionUrl: `${appBaseUrl}/admin/purchase-requests`,
   });
 
   return { purchaseRequest: updated as PurchaseRequest, procurementLink };
@@ -257,7 +259,7 @@ export async function submitToProcurement(
 export async function applyProcurementAction(
   id: string,
   action: "APPROVED" | "REJECTED" | "CHANGES_REQUESTED",
-  opts: { notes?: string; documentUrl?: string; actorEmail: string },
+  opts: { notes?: string; actorEmail: string },
 ): Promise<PurchaseRequest> {
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("purchase_requests")
@@ -285,7 +287,7 @@ export async function applyProcurementAction(
       procurement_actioned_at: new Date().toISOString(),
       procurement_action: action,
       procurement_notes: opts.notes ?? null,
-      procurement_document_url: opts.documentUrl ?? null,
+      procurement_document_url: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -306,6 +308,7 @@ export async function applyProcurementAction(
       type: "purchase_request_pending_internal_control",
       message: `Purchase request ${pr.reference_number} was approved by procurement and is awaiting internal control review.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/purchase-requests`,
     });
   } else if (action === "CHANGES_REQUESTED") {
     await createNotification({
@@ -313,6 +316,7 @@ export async function applyProcurementAction(
       type: "purchase_request_changes_requested",
       message: `Procurement has requested changes to purchase request ${pr.reference_number}. Please review and resubmit.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   } else {
     await createNotification({
@@ -320,6 +324,7 @@ export async function applyProcurementAction(
       type: "purchase_request_rejected_procurement",
       message: `Purchase request ${pr.reference_number} was rejected by procurement.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   }
 
@@ -381,6 +386,7 @@ export async function applyInternalControlAction(
       type: "purchase_request_expected_order",
       message: `Purchase request ${pr.reference_number} has been approved. Goods are expected to arrive.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/expected-orders`,
     });
     // Notify creator
     await createNotification({
@@ -388,6 +394,7 @@ export async function applyInternalControlAction(
       type: "purchase_request_approved",
       message: `Your purchase request ${pr.reference_number} has been fully approved and is now an expected warehouse order.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   } else {
     await createNotification({
@@ -395,8 +402,71 @@ export async function applyInternalControlAction(
       type: "purchase_request_rejected_internal_control",
       message: `Purchase request ${pr.reference_number} was rejected by internal control.`,
       related_entity_id: id,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/purchase-requests/${id}`,
     });
   }
 
   return updated as PurchaseRequest;
+}
+
+// ─────────────────────────────────────────────
+// Print (mark as printed, write audit)
+// ─────────────────────────────────────────────
+
+/** Statuses from which a PR may be printed/exported. */
+const PRINTABLE_STATUSES: PurchaseRequestStatus[] = [
+  "APPROVED_FOR_PURCHASE",
+  "EXPECTED_ORDER",
+  "PARTIALLY_RECEIVED",
+  "RECEIVED",
+];
+
+export async function printPurchaseRequest(
+  id: string,
+  printedBy: string,
+): Promise<PurchaseRequest & { purchase_request_line_items: PurchaseRequestLineItem[] }> {
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("purchase_requests")
+    .select(
+      `*, purchase_request_line_items(
+        id, product_id, product_name, sku,
+        quantity_requested, unit_cost, unit_of_measure, notes
+      )`,
+    )
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !existing) throw new Error("Purchase request not found");
+
+  const pr = existing as PurchaseRequest & {
+    purchase_request_line_items: PurchaseRequestLineItem[];
+  };
+  if (!(PRINTABLE_STATUSES as string[]).includes(pr.status)) {
+    throw new Error(
+      `Purchase request cannot be printed in status: ${pr.status}. ` +
+        `Must be one of: ${PRINTABLE_STATUSES.join(", ")}.`,
+    );
+  }
+
+  const printedAt = new Date().toISOString();
+
+  const { error: updateError } = await supabaseAdmin
+    .from("purchase_requests")
+    .update({ printed_at: printedAt, updated_at: printedAt })
+    .eq("id", id);
+
+  if (updateError) throw updateError;
+
+  await writeAuditLog({
+    entity_type: "purchase_request",
+    entity_id: id,
+    action: "PRINTED",
+    performed_by: printedBy,
+    new_value: { printed_at: printedAt },
+  });
+
+  // Return enriched PR (with line items) for use in the print template
+  return { ...pr, printed_at: printedAt } as PurchaseRequest & {
+    purchase_request_line_items: PurchaseRequestLineItem[];
+  };
 }
