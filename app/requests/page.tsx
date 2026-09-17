@@ -43,10 +43,10 @@ type OptimisticPending = {
     required_date?: string;
     estimated_value?: number;
     notes?: string;
-    lines: { product_id: string; requested_quantity: number }[];
+    lines: { product_id: string; requested_quantity: number; destination_unit_id: string }[];
   };
   snapshot: {
-    unit: { id: string; name: string; code: string } | null;
+    units: { id: string; name: string; code: string }[];
     estimated_value: number | null;
     required_date: string | null;
   };
@@ -60,6 +60,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING_APPROVAL: "bg-orange-50 text-orange-700 border border-orange-200",
   APPROVED_FOR_ISSUE: "bg-blue-50 text-sky-700 border border-blue-200",
   ISSUED: "bg-purple-50 text-purple-700 border border-purple-200",
+  PARTIALLY_RECEIVED: "bg-indigo-50 text-indigo-700 border border-indigo-200",
   COMPLETED: "bg-teal-50 text-emerald-700 border border-teal-200",
   COMPLETED_WITH_VARIANCE: "bg-red-50 text-rose-700 border border-red-200",
   CANCELLED: "bg-slate-100 text-slate-400 border border-slate-200",
@@ -318,6 +319,7 @@ function RequestsListContent() {
             <option value="Pending_Approval">Pending Finance Approval</option>
             <option value="Approved_For_Issue">Approved</option>
             <option value="Issued">In Progress</option>
+            <option value="Partially_Received">Partially Received</option>
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
           </select>
@@ -372,12 +374,16 @@ function RequestsListContent() {
                       </span>
                     </td>
                     <td className="px-6 py-3.5 text-sm font-semibold text-slate-500">
-                      {pending.snapshot.unit ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                            {pending.snapshot.unit.code}
-                          </span>
-                          <span>{pending.snapshot.unit.name}</span>
+                      {pending.snapshot.units.length > 0 ? (
+                        <span className="inline-flex flex-wrap items-center gap-1">
+                          {pending.snapshot.units.map((u) => (
+                            <span
+                              key={u.id}
+                              className="inline-flex items-center gap-1 font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
+                            >
+                              {u.code}
+                            </span>
+                          ))}
                         </span>
                       ) : (
                         "—"
