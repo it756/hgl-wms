@@ -133,6 +133,19 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     });
 
+    // Give the user a matching role assignment as their initial active context.
+    const { data: assignment } = await supabaseAdmin
+      .from("user_role_assignments")
+      .insert({ user_id: userId, role, sbu_id, unit_id })
+      .select("id")
+      .single();
+    if (assignment) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ active_assignment_id: assignment.id })
+        .eq("id", userId);
+    }
+
     results.push({ email, success: true, id: userId });
   }
 

@@ -28,7 +28,21 @@ import {
   CheckCircle2,
   Pencil,
   KeyRound,
+  Plus,
+  Trash2,
+  Layers,
 } from "lucide-react";
+
+interface RoleAssignment {
+  id: string;
+  role: UserRole;
+  sbu_id: string | null;
+  sbu_name: string | null;
+  unit_id: string | null;
+  unit_name: string | null;
+  is_active: boolean;
+  is_current: boolean;
+}
 
 interface UserRow {
   id: string;
@@ -127,6 +141,15 @@ export default function UsersPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
 
+  // Role assignments (multi-SBU/multi-role support) for the user being edited
+  const [assignments, setAssignments] = useState<RoleAssignment[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [newAssignRole, setNewAssignRole] = useState<UserRole>("UNIT_STAFF");
+  const [newAssignSbu, setNewAssignSbu] = useState("");
+  const [newAssignUnit, setNewAssignUnit] = useState("");
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+
   const token = () => localStorage.getItem("access_token") ?? "";
 
   async function load() {
@@ -205,6 +228,100 @@ export default function UsersPage() {
     setEditPassword("");
     setShowEditPassword(false);
     setEditError(null);
+    setAssignmentError(null);
+    setNewAssignRole("UNIT_STAFF");
+    setNewAssignSbu("");
+    setNewAssignUnit("");
+    loadAssignments(u.id);
+  }
+
+  async function loadAssignments(userId: string) {
+    setAssignmentsLoading(true);
+    setAssignmentError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/assignments`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load role assignments");
+      setAssignments(data);
+    } catch (e: any) {
+      setAssignmentError(e.message);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  }
+
+  async function handleAddAssignment() {
+    if (!editUser) return;
+    setAssignmentSaving(true);
+    setAssignmentError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${editUser.id}/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({
+          role: newAssignRole,
+          sbu_id: newAssignSbu || null,
+          unit_id: newAssignRole === "UNIT_STAFF" ? newAssignUnit || null : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add role assignment");
+      setNewAssignRole("UNIT_STAFF");
+      setNewAssignSbu("");
+      setNewAssignUnit("");
+      await loadAssignments(editUser.id);
+      load();
+    } catch (e: any) {
+      setAssignmentError(e.message);
+    } finally {
+      setAssignmentSaving(false);
+    }
+  }
+
+  async function handleToggleAssignment(assignmentId: string, nextActive: boolean) {
+    if (!editUser) return;
+    setAssignmentError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${editUser.id}/assignments/${assignmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ is_active: nextActive }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update role assignment");
+      await loadAssignments(editUser.id);
+    } catch (e: any) {
+      setAssignmentError(e.message);
+    }
+  }
+
+  async function handleDeleteAssignment(assignmentId: string) {
+    if (!editUser) return;
+    setAssignmentError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${editUser.id}/assignments/${assignmentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove role assignment");
+      await loadAssignments(editUser.id);
+      load();
+    } catch (e: any) {
+      setAssignmentError(e.message);
+    }
+  }
+
+  function handleNewAssignRoleChange(role: UserRole) {
+    setNewAssignRole(role);
+    if (role !== "UNIT_STAFF") setNewAssignUnit("");
+  }
+
+  function handleNewAssignSbuChange(sbuId: string) {
+    setNewAssignSbu(sbuId);
+    setNewAssignUnit("");
   }
 
   async function handleEditUser(e: React.FormEvent) {
@@ -290,6 +407,7 @@ export default function UsersPage() {
 
   const createUnits = units.filter((unit) => unit.sbu_id === createSbu);
   const editUnits = units.filter((unit) => unit.sbu_id === editSbu);
+  const newAssignUnits = units.filter((unit) => unit.sbu_id === newAssignSbu);
 
   function handleCreateRoleChange(role: UserRole) {
     setCreateRole(role);
@@ -954,6 +1072,142 @@ export default function UsersPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+              </div>
+
+              {/* Additional Role Assignments — lets one person hold multiple roles across SBUs */}
+              <div className="flex flex-col gap-2 border-t border-slate-100 pt-4">
+                <label className="text-slate-500 font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#005c55]" />
+                  Role Assignments
+                </label>
+                <p className="text-[10px] text-slate-400 font-medium -mt-1">
+                  A user can hold multiple roles across different SBUs (e.g. BU Manager in one SBU
+                  and Unit Staff in another). The role above is their current active context; manage
+                  the full set here.
+                </p>
+
+                {assignmentError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-3.5 py-2 text-xs font-bold flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                    {assignmentError}
+                  </div>
+                )}
+
+                {assignmentsLoading ? (
+                  <div className="text-[11px] text-slate-400 font-semibold py-2">
+                    Loading assignments…
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {assignments.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex items-center justify-between gap-2 border border-slate-200 rounded-lg px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${ROLE_COLORS[a.role]}`}
+                          >
+                            {a.role.replace("_", " ")}
+                          </span>
+                          <span className="text-[11px] text-slate-600 font-semibold">
+                            {a.sbu_name ? a.sbu_name : "Independent"}
+                            {a.unit_name ? ` · ${a.unit_name}` : ""}
+                          </span>
+                          {a.is_current && (
+                            <span className="text-[9px] font-bold uppercase text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-1.5 py-0.5">
+                              Active now
+                            </span>
+                          )}
+                          {!a.is_active && (
+                            <span className="text-[9px] font-bold uppercase text-slate-400 bg-slate-50 border border-slate-200 rounded-full px-1.5 py-0.5">
+                              Disabled
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAssignment(a.id, !a.is_active)}
+                            className="text-[10px] font-bold text-slate-500 hover:text-slate-700 px-2 py-1 rounded border border-slate-200 hover:bg-slate-50"
+                          >
+                            {a.is_active ? "Disable" : "Enable"}
+                          </button>
+                          <IconButton
+                            icon={<Trash2 className="w-3.5 h-3.5" />}
+                            label="Remove assignment"
+                            variant="danger"
+                            onClick={() => handleDeleteAssignment(a.id)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add assignment inline form */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end bg-slate-50/60 border border-slate-100 rounded-lg p-3 mt-1">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                      Role
+                    </label>
+                    <select
+                      value={newAssignRole}
+                      onChange={(e) => handleNewAssignRoleChange(e.target.value as UserRole)}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white font-bold text-slate-800 cursor-pointer"
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_DISPLAY_NAMES[r]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                      SBU
+                    </label>
+                    <select
+                      value={newAssignSbu}
+                      onChange={(e) => handleNewAssignSbuChange(e.target.value)}
+                      disabled={newAssignRole !== "UNIT_STAFF" && newAssignRole !== "BU_MANAGER"}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white disabled:bg-slate-100 disabled:text-slate-400 font-bold text-slate-800 cursor-pointer"
+                    >
+                      <option value="">— Independent —</option>
+                      {sbus.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                      Unit
+                    </label>
+                    <select
+                      value={newAssignUnit}
+                      onChange={(e) => setNewAssignUnit(e.target.value)}
+                      disabled={newAssignRole !== "UNIT_STAFF" || !newAssignSbu}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white disabled:bg-slate-100 disabled:text-slate-400 font-bold text-slate-800 cursor-pointer"
+                    >
+                      <option value="">— Select unit —</option>
+                      {newAssignUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name} ({unit.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={assignmentSaving}
+                    onClick={handleAddAssignment}
+                    className="px-3 py-1.5 bg-[#005c55] hover:bg-[#004740] disabled:opacity-55 text-white text-[11px] font-bold rounded-md cursor-pointer transition-all flex items-center justify-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
                 </div>
               </div>
 

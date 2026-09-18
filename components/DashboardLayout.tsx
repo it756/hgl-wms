@@ -34,8 +34,13 @@ import {
   Truck,
   ShieldCheck,
   UserPlus,
+  ChevronDown,
+  Check,
+  Upload,
+  BarChart3,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { routeForRole, type UserRole } from "@/lib/models/user";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -63,6 +68,17 @@ interface AuthSessionProfile {
   license_expires_at: string | null;
 }
 
+interface RoleContextOption {
+  id: string;
+  role: string;
+  sbu_id: string | null;
+  sbu_name: string | null;
+  unit_id: string | null;
+  unit_name: string | null;
+  is_active: boolean;
+  is_current: boolean;
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -75,6 +91,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [contexts, setContexts] = useState<RoleContextOption[]>([]);
+  const [contextSwitcherOpen, setContextSwitcherOpen] = useState(false);
+  const [switchingContext, setSwitchingContext] = useState(false);
+  const contextSwitcherRef = useRef<HTMLDivElement>(null);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportName, setSupportName] = useState("");
   const [supportIssue, setSupportIssue] = useState("");
@@ -202,6 +222,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         if (profile.license_expires_at) {
           localStorage.setItem("user_license_expires_at", profile.license_expires_at);
         }
+
+        // Fetch the user's full set of role/SBU assignments so we can offer a
+        // context switcher when they hold more than one (e.g. BU Manager in one
+        // SBU and Unit Staff in another).
+        try {
+          const assignmentsRes = await fetch("/api/auth/assignments", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (assignmentsRes.ok) {
+            setContexts(await assignmentsRes.json());
+          }
+        } catch {
+          // Non-critical: the switcher simply won't be shown.
+        }
       }
 
       // Read cached metadata or session
@@ -233,10 +267,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
         setAvatarMenuOpen(false);
       }
+      if (contextSwitcherRef.current && !contextSwitcherRef.current.contains(e.target as Node)) {
+        setContextSwitcherOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  async function handleSwitchContext(assignmentId: string) {
+    setSwitchingContext(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("/api/auth/assignments/active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ assignment_id: assignmentId }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error);
+      // Navigate to the new role's dashboard (full reload so every page refetches under the new context).
+      const target = contexts.find((c) => c.id === assignmentId);
+      const destination = target ? routeForRole(target.role as UserRole) : pathname;
+      window.location.assign(destination);
+    } catch {
+      setSwitchingContext(false);
+      setContextSwitcherOpen(false);
+    }
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -312,6 +369,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
           { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
           { href: "/admin/purchase-requests", label: "Internal Control", icon: ShoppingCart },
+          { href: "/reports/quantity-issued", label: "Quantity Issued Report", icon: BarChart3 },
         ];
       case "BU_MANAGER":
         return [
@@ -321,6 +379,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/requests/units", label: "Units & Staff", icon: Users },
           { href: "/returns/approvals", label: "Returns Approval", icon: ClipboardCheck },
           { href: "/bu/stock", label: "My Stock", icon: Layers },
+          { href: "/bu/sales/import", label: "Record Sales", icon: Upload },
+          { href: "/reports/quantity-issued", label: "Quantity Issued Report", icon: BarChart3 },
           { href: "/purchase-requests", label: "Purchase Requests", icon: ShoppingCart },
           { href: "/users/request", label: "Request New User", icon: UserPlus },
         ];
@@ -343,6 +403,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/finance/queue", label: "Pending Approvals", icon: ClipboardList },
           { href: "/finance/history", label: "Approval History", icon: History },
           { href: "/finance/catalogue", label: "Catalogue", icon: Layers },
+          { href: "/reports/quantity-issued", label: "Quantity Issued Report", icon: BarChart3 },
           { href: "/admin/damage", label: "Damage Ledger", icon: Flame },
           { href: "/admin/expiry", label: "Expiry Ledger", icon: AlertTriangle },
           { href: "/users/request", label: "Request New User", icon: UserPlus },
@@ -436,6 +497,52 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <Building className="w-4 h-4 text-primary" />
               {sbuName}
             </div>
+            {contexts.length > 1 && (
+              <div className="relative" ref={contextSwitcherRef}>
+                <button
+                  type="button"
+                  onClick={() => setContextSwitcherOpen((v) => !v)}
+                  disabled={switchingContext}
+                  className="flex items-center gap-1.5 text-[11px] md:text-xs font-bold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 px-3 py-1 rounded-full transition-colors disabled:opacity-50"
+                >
+                  {userRole.replace("_", " ")} · {sbuName}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+                {contextSwitcherOpen && (
+                  <div className="absolute left-0 top-9 w-72 bg-white border border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                        Switch working context
+                      </p>
+                    </div>
+                    <div className="py-1 max-h-72 overflow-y-auto">
+                      {contexts
+                        .filter((c) => c.is_active)
+                        .map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => handleSwitchContext(c.id)}
+                            disabled={switchingContext}
+                            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left text-xs hover:bg-slate-50 transition-colors disabled:opacity-50"
+                          >
+                            <span className="flex flex-col">
+                              <span className="font-bold text-slate-700">
+                                {c.role.replace("_", " ")}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-semibold">
+                                {c.sbu_name ?? "Independent"}
+                                {c.unit_name ? ` · ${c.unit_name}` : ""}
+                              </span>
+                            </span>
+                            {c.is_current && <Check className="w-4 h-4 text-primary shrink-0" />}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3 md:gap-5">

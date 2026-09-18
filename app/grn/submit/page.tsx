@@ -80,7 +80,7 @@ export default function SubmitGRNPage() {
       try {
         const token = localStorage.getItem("access_token");
         const [transfersRes, grnsRes] = await Promise.all([
-          fetch("/api/transfer-requests?status=ISSUED", {
+          fetch("/api/grns/available", {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch("/api/grns?mine=true", {
@@ -306,7 +306,7 @@ export default function SubmitGRNPage() {
                         {grn.transfer_requests?.reference_number ?? grn.id}
                       </p>
                       <p className="text-xs font-semibold text-slate-500">
-                        {grn.transfer_requests?.sbus?.name ?? "Assigned SBU"} · Received {" "}
+                        {grn.transfer_requests?.sbus?.name ?? "Assigned SBU"} · Received{" "}
                         {new Date(grn.date_received).toLocaleDateString()}
                       </p>
                     </div>

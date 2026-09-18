@@ -166,10 +166,11 @@ export async function GET(req: Request) {
        raised_by, approved_by, approved_at, received_by, received_at,
        created_at, updated_at,
        original_transfer_request_id,
+       sbus ( id, name ),
        transfer_requests ( reference_number ),
        return_line_items (
          id, product_id, quantity_to_return, quantity_received,
-         products ( name, sku, unit_of_measure )
+         products ( name, sku, unit_of_measure, unit_cost )
        )`,
     )
     .order("created_at", { ascending: false });

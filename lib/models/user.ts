@@ -29,3 +29,13 @@ export interface UserCreateInput {
   role: UserRole;
   sbu_id?: string;
 }
+
+/** Dashboard landing route for a role, used after login and after switching active context. */
+export function routeForRole(role: UserRole): string {
+  if (role === "ADMIN") return "/admin";
+  if (role === "BU_MANAGER" || role === "UNIT_STAFF") return "/requests";
+  if (role === "WAREHOUSE_MANAGER") return "/warehouse/queue";
+  if (role === "FINANCE_MANAGER") return "/finance/queue";
+  if (role === "INTERNAL_CONTROL_OFFICER") return "/internal-control";
+  return "/requests";
+}

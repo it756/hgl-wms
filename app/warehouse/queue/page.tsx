@@ -39,6 +39,8 @@ interface PendingRequest {
   transfer_line_items: {
     product_id: string;
     requested_quantity: number;
+    destination_unit_id: string;
+    destination?: { id: string; name: string; code: string } | null;
     product_name?: string;
     sku?: string;
     stock_qty?: number;
@@ -60,6 +62,8 @@ interface IssuanceItem {
   product_name: string;
   sku: string;
   location: string;
+  destination_unit_id: string;
+  destination_name: string;
   requested: number;
   stock: number;
   quantity_issued: number;
@@ -169,6 +173,8 @@ export default function WarehouseQueuePage() {
           product_name: l.product_name || "Unknown Product",
           sku: l.sku || "SKU-UNKNOWN",
           location: l.location || "—",
+          destination_unit_id: l.destination_unit_id,
+          destination_name: l.destination?.name ?? l.destination?.code ?? "Unknown unit",
           requested: requested,
           stock: stock,
           quantity_issued: initialQty,
@@ -243,6 +249,7 @@ export default function WarehouseQueuePage() {
       const payloadItems = issuanceItems.map((item) => ({
         product_id: item.product_id,
         quantity_issued: item.quantity_issued,
+        destination_unit_id: item.destination_unit_id,
         shortfall_reason: item.quantity_issued < item.requested ? item.shortfall_reason : undefined,
       }));
 
@@ -859,6 +866,7 @@ export default function WarehouseQueuePage() {
                       <th className="py-3.5 pr-4">Product / Description</th>
                       <th className="py-3.5 px-4 font-mono">Sku ID</th>
                       <th className="py-3.5 px-3 text-center">Location</th>
+                      <th className="py-3.5 px-3 text-center">Destination</th>
                       <th className="py-3.5 px-4 text-center">Requested</th>
                       <th className="py-3.5 px-4 text-center">Stock</th>
                       <th className="py-3.5 px-4 text-left w-36">Issue Qty</th>
@@ -914,6 +922,11 @@ export default function WarehouseQueuePage() {
                           <td className="py-4 px-3 text-center">
                             <span className="inline-flex items-center justify-center w-9 h-6 rounded font-mono font-extrabold text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 tracking-wider">
                               {item.location}
+                            </span>
+                          </td>
+                          <td className="py-4 px-3 text-center">
+                            <span className="inline-flex items-center justify-center px-2 h-6 rounded font-bold text-[11px] bg-slate-100 border border-slate-200 text-slate-700 whitespace-nowrap">
+                              {item.destination_name}
                             </span>
                           </td>
                           <td className="py-4 px-4 text-center font-mono font-bold text-slate-600">

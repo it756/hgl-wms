@@ -298,7 +298,9 @@ export async function GET(req: Request) {
 
   let query = supabaseAdmin
     .from("supplier_grns")
-    .select("*, supplier_grn_line_items(*)")
+    .select(
+      "*, sbus(id, name), supplier_grn_line_items(*, products(id, name, sku, unit_of_measure))",
+    )
     .order("created_at", { ascending: false });
 
   if (status) query = query.eq("status", status);

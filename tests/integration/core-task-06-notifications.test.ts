@@ -53,7 +53,10 @@ describe("core-task-06-notifications", () => {
     mockGetUser.mockResolvedValue(BU_MANAGER);
 
     const profileChain = makeChain({ data: { sbu_id: "sbu-001" }, error: null });
-    const unitChain = makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
+    const unitChain = makeChain({
+      data: [{ id: "unit-001", sbu_id: "sbu-001", is_active: true }],
+      error: null,
+    });
     const productsChain = makeChain({
       data: [{ id: "prod-001", name: "Product One", stock_quantity: 10, unit_cost: 600 }],
       error: null,
@@ -89,7 +92,9 @@ describe("core-task-06-notifications", () => {
         headers: { "Content-Type": "application/json", Authorization: "Bearer token" },
         body: JSON.stringify({
           requesting_unit_id: "unit-001",
-          lines: [{ product_id: "prod-001", requested_quantity: 2 }],
+          lines: [
+            { product_id: "prod-001", requested_quantity: 2, destination_unit_id: "unit-001" },
+          ],
           estimated_value: 500,
         }),
       }),

@@ -51,6 +51,12 @@ export async function POST(req: Request) {
     if (!requesting_unit_id)
       return NextResponse.json({ error: "requesting_unit_id is required." }, { status: 422 });
 
+    if (lines.some((l: any) => !l.destination_unit_id))
+      return NextResponse.json(
+        { error: "Every line item must have a destination unit selected." },
+        { status: 422 },
+      );
+
     // Resolve the user's real sbu_id from their profile (never trust client-sent value)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -64,21 +70,29 @@ export async function POST(req: Request) {
       );
     const sbu_id = profile.sbu_id;
 
-    // Verify the requesting unit belongs to the user's SBU
-    const { data: unitCheck, error: unitCheckError } = await supabaseAdmin
+    // Verify the requesting unit and every line's destination unit (a request
+    // may fan out to several destinations) belong to the user's SBU and are active.
+    const destinationUnitIds = Array.from(
+      new Set<string>([requesting_unit_id, ...lines.map((l: any) => l.destination_unit_id)]),
+    );
+    const { data: unitRows, error: unitCheckError } = await supabaseAdmin
       .from("sbu_units")
-      .select("sbu_id, is_active")
-      .eq("id", requesting_unit_id)
-      .single();
-    if (unitCheckError || !unitCheck)
-      return NextResponse.json({ error: "Requesting unit not found." }, { status: 422 });
-    if (unitCheck.sbu_id !== sbu_id)
-      return NextResponse.json(
-        { error: "Requesting unit does not belong to your SBU." },
-        { status: 422 },
-      );
-    if (!unitCheck.is_active)
-      return NextResponse.json({ error: "Requesting unit is inactive." }, { status: 422 });
+      .select("id, sbu_id, is_active")
+      .in("id", destinationUnitIds);
+    if (unitCheckError) throw unitCheckError;
+
+    const unitMap = new Map((unitRows ?? []).map((u: any) => [u.id, u]));
+    for (const unitId of destinationUnitIds) {
+      const unit = unitMap.get(unitId);
+      if (!unit) return NextResponse.json({ error: "Requesting unit not found." }, { status: 422 });
+      if (unit.sbu_id !== sbu_id)
+        return NextResponse.json(
+          { error: "Requesting unit does not belong to your SBU." },
+          { status: 422 },
+        );
+      if (!unit.is_active)
+        return NextResponse.json({ error: "Requesting unit is inactive." }, { status: 422 });
+    }
 
     // Validate stock availability for each requested line item
     const productIds: string[] = lines.map((l: any) => l.product_id);
@@ -109,10 +123,24 @@ export async function POST(req: Request) {
           { status: 422 },
         );
       }
-      if (line.requested_quantity > product.stock_quantity) {
+    }
+
+    // The same product can appear on several lines targeting different
+    // destination units, so the stock check must be against the sum across
+    // all destinations rather than each line in isolation.
+    const requestedTotalsByProduct = new Map<string, number>();
+    for (const line of lines) {
+      requestedTotalsByProduct.set(
+        line.product_id,
+        (requestedTotalsByProduct.get(line.product_id) ?? 0) + line.requested_quantity,
+      );
+    }
+    for (const [productId, totalRequested] of requestedTotalsByProduct) {
+      const product = stockMap.get(productId)!;
+      if (totalRequested > product.stock_quantity) {
         return NextResponse.json(
           {
-            error: `Insufficient stock for "${product.name}": requested ${line.requested_quantity}, available ${product.stock_quantity}.`,
+            error: `Insufficient stock for "${product.name}": requested ${totalRequested} across destinations, available ${product.stock_quantity}.`,
           },
           { status: 422 },
         );
@@ -171,11 +199,13 @@ export async function POST(req: Request) {
 
     const transferId = (trData as any).id;
 
-    // insert line items
+    // insert line items — each line carries its own destination unit so a
+    // single request can fan out to several destination units.
     const lineInserts = lines.map((l: any) => ({
       transfer_request_id: transferId,
       product_id: l.product_id,
       requested_quantity: l.requested_quantity,
+      destination_unit_id: l.destination_unit_id,
     }));
     const { error: liError } = await supabaseAdmin.from("transfer_line_items").insert(lineInserts);
     if (liError) throw liError;
@@ -235,7 +265,7 @@ export async function GET(req: Request) {
     let query = supabaseAdmin
       .from("transfer_requests")
       .select(
-        "*, sbus(id, name), sbu_units(id, name, code), transfer_line_items(*, products(id, name, sku, stock_quantity, unit_of_measure, unit_cost, warehouse_location))",
+        "*, sbus(id, name), sbu_units(id, name, code), transfer_line_items(*, products(id, name, sku, stock_quantity, unit_of_measure, unit_cost, warehouse_location), destination:sbu_units!destination_unit_id(id, name, code))",
       )
       .order("created_at", { ascending: false });
 

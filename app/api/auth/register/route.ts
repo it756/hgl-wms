@@ -75,5 +75,19 @@ export async function POST(req: Request) {
     updated_at: new Date().toISOString(),
   });
 
+  // Give the user a matching role assignment as their initial active context
+  // (lets an admin grant them further roles/SBUs later without re-provisioning).
+  const { data: assignment } = await supabaseAdmin
+    .from("user_role_assignments")
+    .insert({ user_id: userId, role, sbu_id: sbu_id ?? null, unit_id: unit_id ?? null })
+    .select("id")
+    .single();
+  if (assignment) {
+    await supabaseAdmin
+      .from("profiles")
+      .update({ active_assignment_id: assignment.id })
+      .eq("id", userId);
+  }
+
   return NextResponse.json({ id: userId, email, role }, { status: 201 });
 }
