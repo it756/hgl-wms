@@ -11,6 +11,8 @@ export interface EmailTemplateData {
   type: string;
   role: string;
   message: string;
+  /** Absolute URL for the primary CTA button. Omit to suppress the button. */
+  actionUrl?: string;
 }
 
 function escapeHtml(value: string): string {
@@ -46,6 +48,13 @@ export function buildNotificationEmail(data: EmailTemplateData): string {
   const type = escapeHtml(humanizeLabel(data.type));
   const role = escapeHtml(humanizeLabel(data.role) || "Role notification");
   const message = renderMessage(data.message);
+  const actionUrl = data.actionUrl ? escapeHtml(data.actionUrl) : null;
+
+  const ctaBlock = actionUrl
+    ? `<div style="text-align:center;margin:0 0 24px 0">
+      <a href="${actionUrl}" style="display:inline-block;background:#1a4d2e;color:#fff;text-decoration:none;font-family:Arial,sans-serif;font-size:14px;font-weight:600;padding:12px 28px;border-radius:6px">View in App &rarr;</a>
+    </div>`
+    : "";
 
   return `
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
@@ -62,7 +71,7 @@ export function buildNotificationEmail(data: EmailTemplateData): string {
     <p style="margin:0 0 8px 0;color:#555;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Message</p>
     <div style="margin:0 0 24px 0">${message}</div>
 
-    <hr style="border:none;border-top:1px solid #e0e0e0;margin:0 0 16px 0"/>
+    ${ctaBlock}<hr style="border:none;border-top:1px solid #e0e0e0;margin:0 0 16px 0"/>
     <p style="margin:0;color:#999;font-size:11px">This is an automated alert from Harvest WMS. Please do not reply to this email.</p>
   </div>
 </div>`.trim();

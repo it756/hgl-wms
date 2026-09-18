@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Search, Loader2 } from "lucide-react";
+import HScrollArea from "@/components/HScrollArea";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 
 interface ExpiryRow {
   id: string;
@@ -152,65 +154,65 @@ export default function ExpiryLedgerPage() {
 
       {/* Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-slate-50 text-slate-500 uppercase text-[10px]">
-            <tr>
-              <th className="px-4 py-2 text-left">Reference</th>
-              <th className="px-4 py-2 text-left">Product</th>
-              <th className="px-4 py-2 text-right">Qty</th>
-              <th className="px-4 py-2 text-left">Expiry Date</th>
-              <th className="px-4 py-2 text-right">Unit Cost</th>
-              <th className="px-4 py-2 text-right">Value Lost</th>
-              <th className="px-4 py-2 text-left">Recorded By</th>
-              <th className="px-4 py-2 text-left">Recorded</th>
-            </tr>
-          </thead>
+        <HScrollArea>
+        <Table className="min-w-full divide-y divide-slate-100 text-xs">
+          <TableHead>
+            <Th pinned className="px-4 py-2">Reference</Th>
+            <Th className="px-4 py-2">Product</Th>
+            <Th align="right" className="px-4 py-2">Qty</Th>
+            <Th className="px-4 py-2">Expiry Date</Th>
+            <Th align="right" className="px-4 py-2">Unit Cost</Th>
+            <Th align="right" className="px-4 py-2">Value Lost</Th>
+            <Th className="px-4 py-2">Recorded By</Th>
+            <Th className="px-4 py-2">Recorded</Th>
+          </TableHead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-6 text-slate-400">
+              <Tr>
+                <Td colSpan={8} align="center" className="py-6 text-slate-400">
                   <Loader2 className="w-4 h-4 inline animate-spin" /> Loading…
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-6 text-slate-400">
+              <Tr>
+                <Td colSpan={8} align="center" className="py-6 text-slate-400">
                   No expiry entries
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             ) : (
               filtered.map((r) => (
-                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/40">
-                  <td className="px-4 py-2 font-mono font-bold text-primary">
+                <Tr key={r.id}>
+                  <Td pinned className="px-4 py-2 font-mono font-bold text-primary">
                     {r.reference_number}
-                  </td>
-                  <td className="px-4 py-2">
+                  </Td>
+                  <Td className="px-4 py-2">
                     <div className="font-semibold text-slate-700">{r.products?.name ?? "—"}</div>
                     <div className="text-[10px] text-slate-400 font-mono">
                       {r.products?.sku ?? ""}
                     </div>
-                  </td>
-                  <td className="px-4 py-2 text-right font-bold">{r.quantity_expired}</td>
-                  <td className="px-4 py-2">{r.expiry_date ?? "—"}</td>
-                  <td className="px-4 py-2 text-right">
+                  </Td>
+                  <Td align="right" className="px-4 py-2 font-bold">{r.quantity_expired}</Td>
+                  <Td className="px-4 py-2">{r.expiry_date ?? "—"}</Td>
+                  <Td align="right" className="px-4 py-2">
                     {r.unit_cost_at_expiry != null
                       ? `${r.currency} ${Number(r.unit_cost_at_expiry).toFixed(2)}`
                       : "—"}
-                  </td>
-                  <td className="px-4 py-2 text-right font-bold text-rose-700">
+                  </Td>
+                  <Td align="right" className="px-4 py-2 font-bold text-rose-700">
                     {r.value_expired != null
                       ? `${r.currency} ${Number(r.value_expired).toFixed(2)}`
                       : "—"}
-                  </td>
-                  <td className="px-4 py-2">{r.expired_by_name ?? "—"}</td>
-                  <td className="px-4 py-2 text-slate-500">
+                  </Td>
+                  <Td className="px-4 py-2">{r.expired_by_name ?? "—"}</Td>
+                  <Td className="px-4 py-2 text-slate-500">
                     {new Date(r.expired_at).toLocaleDateString()}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))
             )}
           </tbody>
-        </table>
+        </Table>
+        </HScrollArea>
       </div>
     </div>
   );

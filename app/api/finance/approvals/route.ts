@@ -38,8 +38,83 @@ interface ProposalRow extends Record<string, unknown> {
   proposed_by?: string | null;
 }
 
+interface SupplierGrnRow extends StatusReferenceRow {
+  purchase_request_id?: string | null;
+}
+
 interface IntraTransferListRow extends Record<string, unknown> {
   transferred_by?: string | null;
+}
+
+/**
+ * Updates the linked purchase request's status after a supplier GRN is approved.
+ *
+ * Tallies received quantities across all GRN_APPROVED GRNs linked to the PR and
+ * transitions:
+ *   EXPECTED_ORDER | PARTIALLY_RECEIVED → PARTIALLY_RECEIVED  (if partial)
+ *   EXPECTED_ORDER | PARTIALLY_RECEIVED → RECEIVED             (if fully received)
+ *
+ * Non-fatal: failures are caught by the caller so the GRN approval itself is not rolled back.
+ */
+async function updateLinkedPurchaseRequestStatus(
+  prId: string,
+  approvedGrnId: string,
+): Promise<void> {
+  // Fetch PR line items (requested quantities per product)
+  const { data: prLines, error: prLinesError } = await supabaseAdmin
+    .from("purchase_request_line_items")
+    .select("product_id, quantity_requested")
+    .eq("purchase_request_id", prId);
+
+  if (prLinesError) throw prLinesError;
+  if (!prLines?.length) return;
+
+  // All GRN_APPROVED GRNs linked to this PR (including the one just approved)
+  const { data: linkedGrns, error: linkedGrnsError } = await supabaseAdmin
+    .from("supplier_grns")
+    .select("id")
+    .eq("purchase_request_id", prId)
+    .eq("status", "GRN_APPROVED");
+
+  if (linkedGrnsError) throw linkedGrnsError;
+
+  const grnIds = (linkedGrns ?? []).map((g: { id: string }) => g.id);
+  // Ensure the just-approved GRN is included (status update is in the same transaction)
+  if (!grnIds.includes(approvedGrnId)) grnIds.push(approvedGrnId);
+
+  const { data: grnLines, error: grnLinesError } = await supabaseAdmin
+    .from("supplier_grn_line_items")
+    .select("product_id, quantity_received")
+    .in("supplier_grn_id", grnIds);
+
+  if (grnLinesError) throw grnLinesError;
+  // Tally total received per product_id across all linked approved GRNs
+  const receivedByProduct: Record<string, number> = {};
+  for (const line of grnLines ?? []) {
+    const l = line as { product_id: string; quantity_received: number };
+    receivedByProduct[l.product_id] = (receivedByProduct[l.product_id] ?? 0) + l.quantity_received;
+  }
+
+  const prLinesTyped = prLines as { product_id: string | null; quantity_requested: number }[];
+
+  // If any PR line item has no product_id, we cannot reliably reconcile receipts to requests.
+  if (prLinesTyped.some((l) => !l.product_id)) return;
+
+  const fullyReceived = prLinesTyped.every(
+    (l) => (receivedByProduct[l.product_id!] ?? 0) >= l.quantity_requested,
+  );
+
+  const anyReceived = prLinesTyped.some((l) => (receivedByProduct[l.product_id!] ?? 0) > 0);
+  if (!anyReceived) return;
+
+  const newStatus = fullyReceived ? "RECEIVED" : "PARTIALLY_RECEIVED";
+  const { error: prUpdateError } = await supabaseAdmin
+    .from("purchase_requests")
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq("id", prId)
+    .in("status", ["EXPECTED_ORDER", "PARTIALLY_RECEIVED"]);
+
+  if (prUpdateError) throw prUpdateError;
 }
 
 /**
@@ -132,6 +207,7 @@ export async function POST(req: Request) {
       message,
       related_entity_id: entity_id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/queue`,
     });
 
     await writeAuditLog({
@@ -148,14 +224,14 @@ export async function POST(req: Request) {
   if (entity_type === "supplier_grn") {
     const { data: grn, error: fetchError } = await supabaseAdmin
       .from("supplier_grns")
-      .select("status, reference_number")
+      .select("status, reference_number, purchase_request_id")
       .eq("id", entity_id)
       .single();
 
     if (fetchError || !grn) {
       return NextResponse.json({ error: "Supplier GRN not found" }, { status: 404 });
     }
-    const supplierGrn = grn as StatusReferenceRow;
+    const supplierGrn = grn as SupplierGrnRow;
     if (supplierGrn.status !== "AWAITING_FINANCE_APPROVAL") {
       return NextResponse.json(
         { error: `Supplier GRN is not awaiting approval. Current status: ${supplierGrn.status}` },
@@ -181,6 +257,16 @@ export async function POST(req: Request) {
           );
         }
         throw rpcError;
+      }
+
+      // Update linked purchase request status (EXPECTED_ORDER → PARTIALLY_RECEIVED or RECEIVED)
+      if (supplierGrn.purchase_request_id) {
+        try {
+          await updateLinkedPurchaseRequestStatus(supplierGrn.purchase_request_id, entity_id);
+        } catch (prUpdateErr) {
+          // Non-fatal: GRN is already approved and stock incremented.
+          console.error("[finance/approvals] PR status update failed", prUpdateErr);
+        }
       }
     } else {
       // Conditional transition: a concurrent decision on the same GRN cannot
@@ -226,6 +312,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/supplier-grn`,
         });
       } catch (notifErr) {
         console.error(`[finance/approvals] notification failed for ${r}`, notifErr);
@@ -291,6 +378,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
         });
       }
     } else {
@@ -332,6 +420,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
         });
       }
     }
@@ -405,6 +494,7 @@ export async function POST(req: Request) {
           message,
           related_entity_id: entity_id,
           dispatchChannels: true,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/intra-transfer`,
         }),
         createNotification({
           user_role: "BU_MANAGER",
@@ -451,6 +541,7 @@ export async function POST(req: Request) {
         message,
         related_entity_id: entity_id,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/intra-transfer`,
       });
     }
 

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   ArrowLeft,
@@ -302,7 +302,7 @@ export default function TransferRequestDetailPage() {
               </div>
             ) : (
               <HScrollArea>
-                <table className="w-full border-collapse text-left">
+                <Table className="w-full border-collapse text-left">
                   <TableHead>
                     <Th pinned>#</Th>
                     <Th>Product</Th>
@@ -365,7 +365,7 @@ export default function TransferRequestDetailPage() {
                       </tr>
                     </tfoot>
                   )}
-                </table>
+                </Table>
               </HScrollArea>
             )}
           </div>

@@ -64,6 +64,7 @@ export async function POST(req: Request) {
         message: goodsIssuedMessage,
         user_role: "BU_MANAGER",
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/requests/${transfer_request_id}`,
       }),
       createNotification({
         related_entity_id: transfer_request_id,
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
         message: goodsIssuedMessage,
         user_role: "UNIT_STAFF",
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/requests/${transfer_request_id}`,
       }),
       createNotification({
         related_entity_id: transfer_request_id,
@@ -78,6 +80,7 @@ export async function POST(req: Request) {
         message: goodsIssuedMessage,
         user_role: "FINANCE_MANAGER",
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
       }),
     ]);
 

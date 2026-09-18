@@ -95,6 +95,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       message: rejectMessage,
       related_entity_id: proposalId,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/variance`,
     });
 
     await writeAuditLog({
@@ -176,6 +177,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     message: approveMessage,
     related_entity_id: proposalId,
     dispatchChannels: true,
+    actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/variance`,
   });
 
   return NextResponse.json({ id: proposalId, status: "APPROVED" });

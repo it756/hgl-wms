@@ -9,8 +9,6 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  RotateCcw,
-  User,
   Paperclip,
 } from "lucide-react";
 import DocumentUpload from "@/components/DocumentUpload";
@@ -39,6 +37,7 @@ export default function ReturnsApprovalPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
 
   // Per-card approval state
   const [actionId, setActionId] = useState<string | null>(null);
@@ -52,7 +51,7 @@ export default function ReturnsApprovalPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/return-requests?status=PENDING_APPROVAL", {
+      const res = await fetch("/api/return-requests", {
         headers: { Authorization: `Bearer ${token()}` },
       });
       const data = await res.json();
@@ -98,13 +97,41 @@ export default function ReturnsApprovalPage() {
     }
   }
 
+  const pendingReturns = returns.filter((r) => r.status === "PENDING_APPROVAL");
+  const visibleReturns = activeTab === "queue" ? pendingReturns : returns;
+
   return (
     <div className="flex flex-col gap-6 w-full text-slate-800">
       {/* Header */}
       <PageHeader
         title="Returns Approval Queue"
-        description="Review return requests raised by unit staff and provide sign-off before the warehouse can receive the goods."
+        description="Review pending return requests and keep SBU return approval history visible after action."
       />
+
+      <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setActiveTab("queue")}
+          className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+            activeTab === "queue"
+              ? "bg-primary text-white"
+              : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          Pending Approval ({pendingReturns.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("history")}
+          className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+            activeTab === "history"
+              ? "bg-primary text-white"
+              : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          Return History ({returns.length})
+        </button>
+      </div>
 
       {/* KPI strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -113,7 +140,7 @@ export default function ReturnsApprovalPage() {
             Awaiting Sign-Off
           </span>
           <span className="text-3xl font-extrabold text-amber-600 font-mono">
-            {String(returns.length).padStart(2, "0")}
+            {String(pendingReturns.length).padStart(2, "0")}
           </span>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-1">
@@ -155,17 +182,21 @@ export default function ReturnsApprovalPage() {
             Loading pending returns…
           </p>
         </div>
-      ) : returns.length === 0 ? (
+      ) : visibleReturns.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-14 text-center flex flex-col items-center gap-3">
           <CheckCircle2 className="w-10 h-10 text-emerald-100" />
-          <p className="font-extrabold text-slate-700">No Pending Returns</p>
+          <p className="font-extrabold text-slate-700">
+            {activeTab === "queue" ? "No Pending Returns" : "No Return History"}
+          </p>
           <p className="text-xs text-slate-400 max-w-xs">
-            All return requests from your SBU have been actioned.
+            {activeTab === "queue"
+              ? "All return requests from your SBU have been actioned."
+              : "Return requests from your SBU will stay here after action."}
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          {returns.map((r) => (
+          {visibleReturns.map((r) => (
             <div
               key={r.id}
               className="bg-white border border-slate-200 hover:border-amber-300 rounded-xl p-5 shadow-sm transition-all flex flex-col gap-4"
@@ -177,8 +208,18 @@ export default function ReturnsApprovalPage() {
                     <span className="font-mono font-black text-slate-900 text-sm">
                       {r.reference_number}
                     </span>
-                    <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">
-                      Pending Approval
+                    <span
+                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${
+                        r.status === "PENDING_APPROVAL"
+                          ? "bg-amber-50 border-amber-200 text-amber-800"
+                          : r.status === "APPROVED"
+                            ? "bg-blue-50 border-blue-200 text-blue-800"
+                            : r.status === "REJECTED"
+                              ? "bg-rose-50 border-rose-200 text-rose-700"
+                              : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      }`}
+                    >
+                      {r.status.replace(/_/g, " ")}
                     </span>
                   </div>
                   {r.transfer_requests && (
@@ -260,7 +301,11 @@ export default function ReturnsApprovalPage() {
               </div>
 
               {/* Decision panel */}
-              {actionId === r.id ? (
+              {r.status !== "PENDING_APPROVAL" ? (
+                <div className="border-t border-slate-100 pt-3 text-xs font-semibold text-slate-500">
+                  This return has already moved out of the BU approval queue.
+                </div>
+              ) : actionId === r.id ? (
                 <div className="border-t border-slate-100 pt-4 flex flex-col gap-3">
                   <textarea
                     rows={2}

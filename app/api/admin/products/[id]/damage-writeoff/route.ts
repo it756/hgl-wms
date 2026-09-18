@@ -83,6 +83,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message,
       user_role: "ADMIN",
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/damage`,
     }),
     createNotification({
       related_entity_id: ledgerId as string,
@@ -90,6 +91,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message,
       user_role: "FINANCE_MANAGER",
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/damage`,
     }),
   ]);
 

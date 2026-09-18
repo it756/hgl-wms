@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   CheckCircle2,
@@ -683,7 +683,7 @@ export default function FinanceQueuePage() {
                             className="rounded-xl border border-slate-100"
                             maxHeightClassName="max-h-[40vh]"
                           >
-                            <table className="min-w-full divide-y divide-slate-100 text-xs">
+                            <Table className="min-w-full divide-y divide-slate-100 text-xs">
                               <TableHead>
                                 <Th pinned>Product</Th>
                                 <Th align="center">Delta</Th>
@@ -756,7 +756,7 @@ export default function FinanceQueuePage() {
                                   </Tr>
                                 ))}
                               </tbody>
-                            </table>
+                            </Table>
                           </HScrollArea>
 
                           {/* Review notes + actions */}

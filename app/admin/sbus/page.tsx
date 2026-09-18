@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import {
   Building2,
   Plus,
@@ -257,7 +257,7 @@ export default function SBUsPage() {
           </div>
         ) : (
           <HScrollArea>
-            <table className="min-w-full divide-y divide-slate-100 text-xs">
+            <Table className="min-w-full divide-y divide-slate-100 text-xs">
               <TableHead>
                 <Th pinned className="w-2/5">
                   Business Unit Name
@@ -375,7 +375,7 @@ export default function SBUsPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
           </HScrollArea>
         )}
       </div>

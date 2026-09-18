@@ -81,6 +81,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message,
       related_entity_id: id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/returns`,
     });
   } else {
     // Notify Unit Staff that their return was rejected
@@ -97,6 +98,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message,
       related_entity_id: id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
     });
   }
 

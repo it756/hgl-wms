@@ -106,6 +106,7 @@ export async function POST(req: Request) {
       message,
       related_entity_id: transferId,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
     });
   } catch (e) {
     console.error("intra-transfer notify failed", e);
@@ -139,7 +140,7 @@ export async function GET(req: Request) {
     .select(
       `id, reference_number, product_id, quantity, from_sbu_id, to_sbu_id,
        transfer_date, status, notes, transferred_by, created_at, updated_at,
-       products ( id, name, sku, unit_of_measure ),
+       products ( id, name, sku, unit_of_measure, unit_cost ),
        to_sbu:sbus!intra_warehouse_transfers_to_sbu_id_fkey ( id, name, code ),
        from_sbu:sbus!intra_warehouse_transfers_from_sbu_id_fkey ( id, name, code )`,
     )

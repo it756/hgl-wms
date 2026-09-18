@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import DamageWriteOffModal from "@/components/DamageWriteOffModal";
 import IconButton from "@/components/IconButton";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Package,
@@ -559,7 +559,7 @@ export default function ProductsPage() {
             </div>
           ) : (
             <HScrollArea className="text-[#1E293B]">
-              <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <Table className="min-w-full divide-y divide-slate-100 text-xs">
                 <TableHead>
                   <Th pinned className="w-[16%]">
                     SKU
@@ -669,7 +669,7 @@ export default function ProductsPage() {
                     );
                   })}
                 </tbody>
-              </table>
+              </Table>
             </HScrollArea>
           )}
         </div>

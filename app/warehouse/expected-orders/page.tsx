@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import { Truck, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ExpectedOrder {
@@ -29,152 +30,198 @@ export default function WarehouseExpectedOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
 
   useEffect(() => {
-    fetchOrders();
+    let cancelled = false;
+
+    async function loadOrders() {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(
+          "/api/purchase-requests?status=EXPECTED_ORDER,PARTIALLY_RECEIVED,RECEIVED",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load expected orders");
+        if (!cancelled) setOrders(data);
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadOrders();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function fetchOrders() {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch("/api/purchase-requests?status=EXPECTED_ORDER", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load expected orders");
-      setOrders(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const activeOrders = orders.filter((order) => order.status !== "RECEIVED");
+  const visibleOrders = activeTab === "queue" ? activeOrders : orders;
 
   return (
-    <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Expected Inbound Orders</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Approved purchase requests awaiting supplier delivery. Receive against one by creating a
-          Supplier GRN.
-        </p>
-      </div>
-
-      {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
-          {error}
+    <div className="flex flex-col gap-4 w-full text-slate-800">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Expected Inbound Orders</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Approved purchase requests awaiting supplier delivery. Receive against one by creating a
+            Supplier GRN.
+          </p>
         </div>
-      )}
 
-      {loading ? (
-        <div className="text-center py-12 text-slate-500 text-sm">Loading expected orders…</div>
-      ) : orders.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 text-sm">
-          No expected orders at this time.
+        <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setActiveTab("queue")}
+            className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+              activeTab === "queue"
+                ? "bg-primary text-white"
+                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Awaiting Receipt ({activeOrders.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`rounded-lg px-4 py-2 text-xs font-extrabold uppercase tracking-wider transition ${
+              activeTab === "history"
+                ? "bg-primary text-white"
+                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Order History ({orders.length})
+          </button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-white rounded-xl border border-slate-200 overflow-hidden"
-            >
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
-                aria-expanded={expanded === order.id}
-                onClick={() => setExpanded(expanded === order.id ? null : order.id)}
+
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-12 text-slate-500 text-sm">Loading expected orders…</div>
+        ) : visibleOrders.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 text-sm">
+            {activeTab === "queue"
+              ? "No expected orders at this time."
+              : "No expected order history found."}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {visibleOrders.map((order) => (
+              <div
+                key={order.id}
+                className="bg-white rounded-xl border border-slate-200 overflow-hidden"
               >
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-emerald-50 rounded-lg">
-                    <Truck className="w-4 h-4 text-emerald-600" />
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
+                  aria-expanded={expanded === order.id}
+                  onClick={() => setExpanded(expanded === order.id ? null : order.id)}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-emerald-50 rounded-lg">
+                      <Truck className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-mono font-semibold text-slate-700">
+                        {order.reference_number}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {order.sbus?.name ?? "Unknown SBU"}
+                        {order.supplier_name && ` · ${order.supplier_name}`}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-mono font-semibold text-slate-700">
-                      {order.reference_number}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {order.sbus?.name ?? "Unknown SBU"}
-                      {order.supplier_name && ` · ${order.supplier_name}`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  {order.estimated_total != null && (
-                    <span className="text-sm font-medium text-slate-600">
-                      KES {order.estimated_total.toLocaleString()}
+                  <div className="flex items-center gap-4">
+                    {order.estimated_total != null && (
+                      <span className="text-sm font-medium text-slate-600">
+                        ZMW {order.estimated_total.toLocaleString()}
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium">
+                      {order.status === "RECEIVED"
+                        ? "Received"
+                        : order.status === "PARTIALLY_RECEIVED"
+                          ? "Partially Received"
+                          : "Expected"}
                     </span>
-                  )}
-                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium">
-                    Expected
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </span>
-                  {expanded === order.id ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
-                  )}
-                </div>
-              </button>
-
-              {expanded === order.id && (
-                <div className="border-t border-slate-100 px-5 py-4 space-y-4">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Item</th>
-                        <th className="px-3 py-2 text-center">Expected Qty</th>
-                        <th className="px-3 py-2 text-right">Unit Cost</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {order.purchase_request_line_items.map((l) => (
-                        <tr key={l.id}>
-                          <td className="px-3 py-2">
-                            {l.product_name}
-                            {l.sku && (
-                              <span className="ml-1 text-slate-400 text-xs">({l.sku})</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            {l.quantity_requested} {l.unit_of_measure}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {l.unit_cost != null ? `KES ${l.unit_cost.toLocaleString()}` : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {order.notes && (
-                    <p className="text-sm text-slate-600">
-                      <span className="font-medium">Notes:</span> {order.notes}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                    <Link
-                      href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      <Truck className="w-4 h-4" />
-                      Receive Goods (Create GRN)
-                    </Link>
                     <span className="text-xs text-slate-400">
-                      Creates a Supplier GRN linked to this expected order. Stock posts after
-                      Finance approval.
+                      {new Date(order.created_at).toLocaleDateString()}
                     </span>
+                    {expanded === order.id ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                </button>
+
+                {expanded === order.id && (
+                  <div className="border-t border-slate-100 px-5 py-4 space-y-4">
+                    <Table>
+                      <TableHead>
+                        <Th className="px-3 py-2">Item</Th>
+                        <Th align="center" className="px-3 py-2">Expected Qty</Th>
+                        <Th align="right" className="px-3 py-2">Unit Cost</Th>
+                      </TableHead>
+                      <tbody className="divide-y divide-slate-100">
+                        {order.purchase_request_line_items.map((l) => (
+                          <Tr key={l.id}>
+                            <Td className="px-3 py-2">
+                              {l.product_name}
+                              {l.sku && (
+                                <span className="ml-1 text-slate-400 text-xs">({l.sku})</span>
+                              )}
+                            </Td>
+                            <Td align="center" className="px-3 py-2">
+                              {l.quantity_requested} {l.unit_of_measure}
+                            </Td>
+                            <Td align="right" className="px-3 py-2">
+                              {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
+                            </Td>
+                          </Tr>
+                        ))}
+                      </tbody>
+                    </Table>
+
+                    {order.notes && (
+                      <p className="text-sm text-slate-600">
+                        <span className="font-medium">Notes:</span> {order.notes}
+                      </p>
+                    )}
+
+                    {order.status !== "RECEIVED" ? (
+                      <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                        <Link
+                          href={`/warehouse/supplier-grn?purchase_request_id=${order.id}&ref=${order.reference_number}`}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
+                        >
+                          <Truck className="w-4 h-4" />
+                          Receive Goods (Create GRN)
+                        </Link>
+                        <span className="text-xs text-slate-400">
+                          Creates a Supplier GRN linked to this expected order. Stock posts after
+                          Finance approval.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-100 text-xs font-semibold text-slate-500">
+                        This expected order has been fully received.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
   );
 }
