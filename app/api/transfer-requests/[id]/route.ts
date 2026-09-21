@@ -185,6 +185,34 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Stitch requesting + per-line destination unit info manually — PostgREST
+    // schema cache can lag on newly added FKs so we avoid the embed hint.
+    const unitIds = new Set<string>();
+    if ((data as any).requesting_unit_id) unitIds.add((data as any).requesting_unit_id);
+    for (const line of (data as any).transfer_line_items ?? []) {
+      if (line.destination_unit_id) unitIds.add(line.destination_unit_id);
+    }
+
+    let unitMap: Record<string, { id: string; name: string; code: string }> = {};
+    if (unitIds.size > 0) {
+      const { data: units, error: unitsError } = await supabaseAdmin
+        .from("sbu_units")
+        .select("id, name, code")
+        .in("id", Array.from(unitIds));
+      if (unitsError) throw unitsError;
+      unitMap = Object.fromEntries((units ?? []).map((u: any) => [u.id, u]));
+    }
+
+    (data as any).sbu_units = unitMap[(data as any).requesting_unit_id] ?? null;
+    (data as any).transfer_line_items = ((data as any).transfer_line_items ?? []).map(
+      (line: any) => ({
+        ...line,
+        destination_unit: line.destination_unit_id
+          ? (unitMap[line.destination_unit_id] ?? null)
+          : null,
+      }),
+    );
+
     return NextResponse.json(data);
   } catch (err: any) {
     console.error(err);

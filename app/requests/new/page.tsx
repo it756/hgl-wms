@@ -9,7 +9,9 @@ import Link from "next/link";
 interface LineItem {
   product_id: string;
   requested_quantity: number;
-  destination_unit_id: string;
+  // A single UI line can fan out to several destination units. Each entry
+  // becomes its own row in transfer_line_items on submit.
+  destination_unit_ids: string[];
 }
 
 interface Product {
@@ -37,7 +39,7 @@ export default function NewTransferRequestPage() {
   const [requiredDate, setRequiredDate] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineItem[]>([
-    { product_id: "", requested_quantity: 0, destination_unit_id: "" },
+    { product_id: "", requested_quantity: 0, destination_unit_ids: [] },
   ]);
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -82,10 +84,25 @@ export default function NewTransferRequestPage() {
     loadProductsAndUnits();
   }, []);
 
+  // Lines that have never been assigned a destination (e.g. the initial row,
+  // or ones created before units finished loading) broadcast to every
+  // currently selected unit as soon as we know what those are.
+  useEffect(() => {
+    if (selectedUnitIds.length === 0) return;
+    setLines((prev) =>
+      prev.map((l) =>
+        l.destination_unit_ids.length === 0
+          ? { ...l, destination_unit_ids: [...selectedUnitIds] }
+          : l,
+      ),
+    );
+  }, [selectedUnitIds]);
+
   const estimatedValue = lines.reduce((sum, line) => {
     const product = products.find((p) => p.id === line.product_id);
     const cost = product?.unit_cost ?? 0;
-    return sum + cost * line.requested_quantity;
+    const destinations = Math.max(1, line.destination_unit_ids.length);
+    return sum + cost * line.requested_quantity * destinations;
   }, 0);
 
   function availableStock(productId: string): number | null {
@@ -95,11 +112,14 @@ export default function NewTransferRequestPage() {
 
   // The same product can appear on several lines targeting different
   // destination units, so "exceeds stock" must compare against the sum
-  // requested for that product across all lines, not just this one line.
+  // requested for that product across all lines and destinations.
   function totalRequestedForProduct(productId: string): number {
     return lines
       .filter((l) => l.product_id === productId)
-      .reduce((sum, l) => sum + (l.requested_quantity || 0), 0);
+      .reduce(
+        (sum, l) => sum + (l.requested_quantity || 0) * Math.max(1, l.destination_unit_ids.length),
+        0,
+      );
   }
 
   function lineExceedsStock(line: LineItem): boolean {
@@ -111,13 +131,17 @@ export default function NewTransferRequestPage() {
 
   function toggleUnit(unitId: string) {
     setSelectedUnitIds((prev) => {
-      const next = prev.includes(unitId) ? prev.filter((id) => id !== unitId) : [...prev, unitId];
-      // Lines pointed at a unit that just got deselected fall back to the
-      // first remaining selected unit so they never end up unassigned.
+      const isAdding = !prev.includes(unitId);
+      const next = isAdding ? [...prev, unitId] : prev.filter((id) => id !== unitId);
+      // Keep each line's destinations in sync with the top-level selection:
+      // newly selected units are broadcast to every line by default;
+      // deselected units are dropped from any line still pointing at them.
       setLines((prevLines) =>
-        prevLines.map((l) =>
-          next.includes(l.destination_unit_id) ? l : { ...l, destination_unit_id: next[0] ?? "" },
-        ),
+        prevLines.map((l) => {
+          const filtered = l.destination_unit_ids.filter((id) => next.includes(id));
+          if (isAdding && !filtered.includes(unitId)) filtered.push(unitId);
+          return { ...l, destination_unit_ids: filtered };
+        }),
       );
       return next;
     });
@@ -129,7 +153,8 @@ export default function NewTransferRequestPage() {
       {
         product_id: "",
         requested_quantity: 0,
-        destination_unit_id: selectedUnitIds[0] ?? "",
+        // Default a fresh line to fan out to every currently selected unit.
+        destination_unit_ids: [...selectedUnitIds],
       },
     ]);
   }
@@ -138,8 +163,27 @@ export default function NewTransferRequestPage() {
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function updateLine(index: number, field: keyof LineItem, value: string | number) {
+  function updateLine(
+    index: number,
+    field: "product_id" | "requested_quantity",
+    value: string | number,
+  ) {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+  }
+
+  function toggleLineDestination(index: number, unitId: string) {
+    setLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== index) return l;
+        const has = l.destination_unit_ids.includes(unitId);
+        return {
+          ...l,
+          destination_unit_ids: has
+            ? l.destination_unit_ids.filter((id) => id !== unitId)
+            : [...l.destination_unit_ids, unitId],
+        };
+      }),
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -151,8 +195,14 @@ export default function NewTransferRequestPage() {
       return;
     }
 
-    if (lines.some((l) => !l.product_id || l.requested_quantity < 1 || !l.destination_unit_id)) {
-      setError("All line items must have a valid product, destination unit, and quantity ≥ 1.");
+    if (
+      lines.some(
+        (l) => !l.product_id || l.requested_quantity < 1 || l.destination_unit_ids.length === 0,
+      )
+    ) {
+      setError(
+        "All line items must have a valid product, at least one destination unit, and quantity ≥ 1.",
+      );
       return;
     }
 
@@ -160,7 +210,7 @@ export default function NewTransferRequestPage() {
     if (overStockLine) {
       const product = products.find((p) => p.id === overStockLine.product_id);
       setError(
-        `"${product?.name}" only has ${product?.stock_quantity} in stock across all destinations — reduce the quantity before submitting.`,
+        `"${product?.name}" only has ${product?.stock_quantity} in stock across all destinations — reduce the quantity or drop a destination before submitting.`,
       );
       return;
     }
@@ -177,6 +227,16 @@ export default function NewTransferRequestPage() {
         ? crypto.randomUUID()
         : `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+    // Fan each UI line out to one API line per selected destination so the
+    // backend records the transfer against every requested unit.
+    const expandedLines = lines.flatMap((l) =>
+      l.destination_unit_ids.map((destination_unit_id) => ({
+        product_id: l.product_id,
+        requested_quantity: l.requested_quantity,
+        destination_unit_id,
+      })),
+    );
+
     const optimistic = {
       clientId,
       status: "SUBMITTING" as const,
@@ -186,7 +246,7 @@ export default function NewTransferRequestPage() {
         required_date: requiredDate || undefined,
         estimated_value: estimatedValue > 0 ? estimatedValue : undefined,
         notes: notes || undefined,
-        lines,
+        lines: expandedLines,
       },
       snapshot: {
         units: selectedUnits.map((u) => ({ id: u.id, name: u.name, code: u.code })),
@@ -270,8 +330,8 @@ export default function NewTransferRequestPage() {
                 </div>
               )}
               <p className="text-[10px] text-slate-400 leading-normal font-semibold">
-                Select every unit this transfer should fan out to — each line item below can target
-                a different one of the selected units.
+                Every unit ticked here becomes a destination choice for each line item. Line items
+                broadcast to all ticked units by default — untick a chip on a line to skip it.
               </p>
             </div>
 
@@ -380,12 +440,7 @@ export default function NewTransferRequestPage() {
                     .filter(
                       (p) =>
                         p.id === line.product_id ||
-                        !lines.some(
-                          (l, j) =>
-                            j !== i &&
-                            l.product_id === p.id &&
-                            l.destination_unit_id === line.destination_unit_id,
-                        ),
+                        !lines.some((l, j) => j !== i && l.product_id === p.id),
                     )
                     .map((p) => (
                       <option key={p.id} value={p.id} disabled={p.stock_quantity <= 0}>
@@ -403,24 +458,42 @@ export default function NewTransferRequestPage() {
 
               <div className="sm:col-span-3 flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                  Destination
+                  Destinations
                 </label>
-                <select
-                  required
-                  value={line.destination_unit_id}
-                  onChange={(e) => updateLine(i, "destination_unit_id", e.target.value)}
-                  disabled={selectedUnitIds.length === 0}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer font-semibold text-slate-700 disabled:bg-slate-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">Select unit...</option>
-                  {units
-                    .filter((u) => selectedUnitIds.includes(u.id))
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.code})
-                      </option>
-                    ))}
-                </select>
+                {selectedUnitIds.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 font-semibold py-2">
+                    Select a destination unit above first.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {units
+                      .filter((u) => selectedUnitIds.includes(u.id))
+                      .map((u) => {
+                        const active = line.destination_unit_ids.includes(u.id);
+                        return (
+                          <button
+                            type="button"
+                            key={u.id}
+                            onClick={() => toggleLineDestination(i, u.id)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                              active
+                                ? "bg-primary/10 border-primary/40 text-primary"
+                                : "bg-white border-outline-variant text-slate-500 hover:bg-slate-50"
+                            }`}
+                            title={`${u.name} (${u.code})`}
+                          >
+                            {u.name}{" "}
+                            <span className="font-mono text-[10px] opacity-70">({u.code})</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+                {line.destination_unit_ids.length > 1 && (
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    Qty is applied to each of the {line.destination_unit_ids.length} destinations.
+                  </p>
+                )}
               </div>
 
               <div className="sm:col-span-3 flex flex-col gap-1">

@@ -265,7 +265,7 @@ export async function GET(req: Request) {
     let query = supabaseAdmin
       .from("transfer_requests")
       .select(
-        "*, sbus(id, name), sbu_units(id, name, code), transfer_line_items(*, products(id, name, sku, stock_quantity, unit_of_measure, unit_cost, warehouse_location), destination:sbu_units!destination_unit_id(id, name, code))",
+        "*, sbus(id, name), sbu_units(id, name, code), transfer_line_items(*, products(id, name, sku, stock_quantity, unit_of_measure, unit_cost, warehouse_location))",
       )
       .order("created_at", { ascending: false });
 
@@ -280,7 +280,38 @@ export async function GET(req: Request) {
 
     const { data, error } = await query;
     if (error) throw error;
-    return NextResponse.json(data ?? []);
+
+    // Stitch line-item destination sbu_units manually — PostgREST schema
+    // cache on hosted Supabase can lag on newly added FKs, so we avoid
+    // relying on the embedded `sbu_units!destination_unit_id` hint here.
+    const rows = data ?? [];
+    const destUnitIds = Array.from(
+      new Set(
+        rows.flatMap((t: any) =>
+          (t.transfer_line_items ?? []).map((l: any) => l.destination_unit_id).filter(Boolean),
+        ),
+      ),
+    ) as string[];
+
+    const unitMap: Record<string, { id: string; name: string; code: string }> = {};
+    if (destUnitIds.length > 0) {
+      const { data: units, error: unitsError } = await supabaseAdmin
+        .from("sbu_units")
+        .select("id, name, code")
+        .in("id", destUnitIds);
+      if (unitsError) throw unitsError;
+      for (const u of units ?? []) unitMap[u.id] = u;
+    }
+
+    const enriched = rows.map((t: any) => ({
+      ...t,
+      transfer_line_items: (t.transfer_line_items ?? []).map((l: any) => ({
+        ...l,
+        destination: l.destination_unit_id ? (unitMap[l.destination_unit_id] ?? null) : null,
+      })),
+    }));
+
+    return NextResponse.json(enriched);
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });
