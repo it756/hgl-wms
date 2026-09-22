@@ -137,7 +137,7 @@ async function main() {
 
   // ── 1b. SBU Units ──────────────────────────────────────────────────────────
   console.log("\n[1b] Seeding SBU units…");
-  // Branch locations shared across retail/FMCG SBUs
+  // Branch locations shared across non-JARA retail/FMCG SBUs
   const LOCS = [
     { name: "Twin Palms", code: "TP" },
     { name: "Airport Road", code: "AR" },
@@ -149,10 +149,10 @@ async function main() {
     { name: "Ngwere Road", code: "NR" },
     { name: "Energy Village", code: "EV" },
   ];
-  const LOCATION_SBUS = ["JARA", "LBMB", "HRFS", "EJBL"];
+  const LOCATION_SBUS = ["LBMB", "HRFS", "EJBL"];
 
   const unitDefs = [
-    // 9 branch locations × 4 retail/FMCG SBUs (GRAX has its own branches below)
+    // 9 branch locations × 3 retail/FMCG SBUs
     ...LOCATION_SBUS.flatMap((sbu) =>
       LOCS.map((loc) => ({
         name: `${loc.name} (${sbu})`,
@@ -160,6 +160,21 @@ async function main() {
         sbu_code: sbu,
       })),
     ),
+    // Jara Retail FMCG Store — 14 canonical branches
+    { name: "Lilayi", code: "JARA-LLY", sbu_code: "JARA" },
+    { name: "Kasupe", code: "JARA-KSP", sbu_code: "JARA" },
+    { name: "13 Miles", code: "JARA-13M", sbu_code: "JARA" },
+    { name: "Makeni", code: "JARA-MKN", sbu_code: "JARA" },
+    { name: "Chilanga", code: "JARA-CLG", sbu_code: "JARA" },
+    { name: "Tokyo Way", code: "JARA-TWY", sbu_code: "JARA" },
+    { name: "Woodlands", code: "JARA-WLD", sbu_code: "JARA" },
+    { name: "Buluwe", code: "JARA-BLW", sbu_code: "JARA" },
+    { name: "Main Street", code: "JARA-MST", sbu_code: "JARA" },
+    { name: "3rd Street", code: "JARA-3ST", sbu_code: "JARA" },
+    { name: "Avondale", code: "JARA-AVD", sbu_code: "JARA" },
+    { name: "Great East", code: "JARA-GER", sbu_code: "JARA" },
+    { name: "Ngwerere", code: "JARA-NGW", sbu_code: "JARA" },
+    { name: "Airport", code: "JARA-APT", sbu_code: "JARA" },
     // Grand Access Pharmaceuticals — specific branch locations
     { name: "Buluwe (GRAX)", code: "GRAX-BUL", sbu_code: "GRAX" },
     { name: "Woodlands (GRAX)", code: "GRAX-WL", sbu_code: "GRAX" },
@@ -2080,7 +2095,7 @@ async function main() {
     "Jara Store Staff",
     "UNIT_STAFF",
     sbuMap["JARA"],
-    unitMap["JARA-TP"],
+    unitMap["JARA-LLY"],
   );
 
   // Grand Access
@@ -2248,7 +2263,7 @@ async function main() {
   // PENDING — monthly replenishment
   await insertTransfer(
     sbuMap["JARA"],
-    unitMap["JARA-TP"],
+    unitMap["JARA-LLY"],
     jaraMgrId,
     "PENDING",
     [
@@ -2267,7 +2282,7 @@ async function main() {
   // PENDING_APPROVAL — high-value display equipment
   await insertTransfer(
     sbuMap["JARA"],
-    unitMap["JARA-AV"],
+    unitMap["JARA-AVD"],
     jaraMgrId,
     "PENDING_APPROVAL",
     [

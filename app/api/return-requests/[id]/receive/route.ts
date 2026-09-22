@@ -69,6 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message,
       related_entity_id: id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
     }),
     createNotification({
       user_role: "BU_MANAGER",
@@ -76,6 +77,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message,
       related_entity_id: id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
     }),
   ]);
 

@@ -98,6 +98,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       notes,
     }),
     related_entity_id: (recall as any).id,
+    actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/damage`,
   });
 
   return NextResponse.json({ id: (recall as any).id, status: "PENDING" }, { status: 201 });

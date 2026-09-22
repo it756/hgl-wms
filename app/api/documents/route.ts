@@ -9,6 +9,7 @@ const VALID_TYPES = [
   "grn",
   "supplier_grn",
   "return_request",
+  "purchase_request",
 ] as const;
 
 type TransactionType = (typeof VALID_TYPES)[number];

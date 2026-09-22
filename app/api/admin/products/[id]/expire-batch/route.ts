@@ -142,6 +142,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         notes,
       }),
       related_entity_id: ledgerId,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/expiry`,
     }),
     createNotification({
       user_role: "FINANCE_MANAGER",
@@ -157,6 +158,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         notes,
       }),
       related_entity_id: ledgerId,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/expiry`,
     }),
   ]);
 

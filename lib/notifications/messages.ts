@@ -15,6 +15,8 @@ export interface ProductLineSummary {
   warehouseLocation?: Nullable<string>;
   /** Short annotation appended to the line, e.g. "issued 10, received 8" */
   varianceNote?: Nullable<string>;
+  /** Destination unit label (e.g. "T1 (Store 1)") appended to the line. */
+  destination?: Nullable<string>;
 }
 
 export interface ProfileContact {
@@ -61,6 +63,7 @@ interface QuantityProductLineRow {
   requested_quantity?: Nullable<number>;
   quantity_received?: Nullable<number>;
   quantity_to_return?: Nullable<number>;
+  destination_unit_id?: Nullable<string>;
   products?: Nullable<ProductRow>;
 }
 
@@ -137,6 +140,7 @@ export interface DetailMessageInput {
   supplier?: Nullable<string>;
   invoiceReference?: Nullable<string>;
   invoiceAmount?: Nullable<number>;
+  destinations?: Nullable<string>;
   products?: ProductLineSummary[];
   notes?: Nullable<string>;
 }
@@ -172,7 +176,10 @@ function formatProducts(products: ProductLineSummary[]): string | null {
       const sku = product.sku ? ` (${product.sku})` : "";
       const location = product.warehouseLocation ? ` @ ${product.warehouseLocation}` : "";
       const variance = product.varianceNote ? ` [${product.varianceNote}]` : "";
-      return [quantity, `${product.name}${sku}${location}${variance}`].filter(Boolean).join(" x ");
+      const destination = product.destination ? ` → ${product.destination}` : "";
+      return [quantity, `${product.name}${sku}${location}${destination}${variance}`]
+        .filter(Boolean)
+        .join(" x ");
     });
 
   if (labels.length === 0) return null;
@@ -190,6 +197,7 @@ export function buildDetailMessage(input: DetailMessageInput): string {
     ["Receiver", input.receiverName],
     ["SBU", input.sbu],
     ["Unit", input.unit],
+    ["Destinations", input.destinations],
     ["Location", input.location],
     ["Supplier", input.supplier],
     ["Invoice", input.invoiceReference],
@@ -277,12 +285,36 @@ export async function buildTransferNotificationMessage(opts: {
       `reference_number, raised_by, estimated_value, notes,
        sbus ( name, code ),
        sbu_units ( name, code ),
-       transfer_line_items ( requested_quantity, products ( name, sku, unit_of_measure, warehouse_location ) )`,
+       transfer_line_items ( requested_quantity, destination_unit_id, products ( name, sku, unit_of_measure, warehouse_location ) )`,
     )
     .eq("id", opts.transferId)
     .maybeSingle();
 
   const row = transfer as TransferContextRow | null;
+
+  const destUnitIds = Array.from(
+    new Set(
+      (row?.transfer_line_items ?? [])
+        .map((l) => l.destination_unit_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+
+  const destUnitMap: Record<string, LabelledEntity> = {};
+  if (destUnitIds.length > 0) {
+    const { data: units } = await supabaseAdmin
+      .from("sbu_units")
+      .select("id, name, code")
+      .in("id", destUnitIds);
+    for (const u of (units as ({ id: string } & LabelledEntity)[] | null) ?? []) {
+      destUnitMap[u.id] = { name: u.name, code: u.code };
+    }
+  }
+
+  const distinctDestinationLabels = destUnitIds
+    .map((id) => formatEntityLabel(destUnitMap[id]))
+    .filter((label): label is string => Boolean(label));
+
   return buildDetailMessage({
     headline: opts.headline,
     reference: row?.reference_number,
@@ -291,6 +323,8 @@ export async function buildTransferNotificationMessage(opts: {
     requesterName: formatContact(await getProfileContact(row?.raised_by)),
     sbu: formatEntityLabel(row?.sbus),
     unit: formatEntityLabel(row?.sbu_units),
+    destinations:
+      distinctDestinationLabels.length > 0 ? distinctDestinationLabels.join(", ") : null,
     invoiceAmount: row?.estimated_value,
     products: (row?.transfer_line_items ?? []).map((line) => ({
       name: line.products?.name,
@@ -298,6 +332,9 @@ export async function buildTransferNotificationMessage(opts: {
       quantity: line.requested_quantity,
       unit: line.products?.unit_of_measure,
       warehouseLocation: line.products?.warehouse_location,
+      destination: line.destination_unit_id
+        ? formatEntityLabel(destUnitMap[line.destination_unit_id])
+        : null,
     })),
     notes: opts.notes ?? row?.notes,
   });

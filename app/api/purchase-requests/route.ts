@@ -23,6 +23,7 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
   const status = searchParams.get("status");
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
@@ -31,9 +32,10 @@ export async function GET(req: Request) {
     .from("purchase_requests")
     .select(
       `id, reference_number, status, supplier_name, procurement_email, estimated_total,
+       sbu_id,
        procurement_action, internal_control_action, created_at, updated_at,
        sbus(id, name, code),
-       purchase_request_line_items(id, product_name, sku, quantity_requested, unit_of_measure, unit_cost)`,
+       purchase_request_line_items(id, product_id, product_name, sku, quantity_requested, unit_of_measure, unit_cost)`,
     )
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -51,7 +53,22 @@ export async function GET(req: Request) {
     query = query.eq("sbu_id", profile.sbu_id);
   }
 
-  if (status) query = query.eq("status", status);
+  if (id) {
+    query = query.eq("id", id);
+  }
+
+  if (status) {
+    const statuses = status
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (statuses.length > 1) {
+      query = query.in("status", statuses);
+    } else if (statuses.length === 1) {
+      query = query.eq("status", statuses[0]);
+    }
+  }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

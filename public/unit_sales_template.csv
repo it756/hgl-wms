@@ -1,0 +1,3 @@
+unit_code,product_sku,quantity_sold,unit_price,sale_date
+UNIT-001,SKU-0001,5,25.00,2026-09-01
+UNIT-001,SKU-0002,2,140.50,2026-09-01

@@ -38,16 +38,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const callerMetadata = caller.user_metadata as { role?: string; full_name?: string } | null;
-  const callerRole = callerMetadata?.role ?? "";
-  if (callerRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
-  }
 
   const body = await req.json().catch(() => null);
   const fullName = asTrimmedString(body?.full_name);
   const email = asTrimmedString(body?.email);
   const role = asTrimmedString(body?.role) as UserRole;
   const sbuLabel = asTrimmedString(body?.sbu_label);
+  const unitLabel = asTrimmedString(body?.unit_label);
 
   if (!email || !role) {
     return NextResponse.json({ error: "Email and role are required" }, { status: 400 });
@@ -74,6 +71,7 @@ export async function POST(req: Request) {
          <tr><td style="padding:4px 8px;font-weight:bold;">Email</td><td style="padding:4px 8px;">${escapeHtml(email)}</td></tr>
          <tr><td style="padding:4px 8px;font-weight:bold;">Proposed Role</td><td style="padding:4px 8px;">${escapeHtml(role)}</td></tr>
          <tr><td style="padding:4px 8px;font-weight:bold;">SBU</td><td style="padding:4px 8px;">${escapeHtml(sbuLabel) || "Independent / Cross-cutting"}</td></tr>
+         <tr><td style="padding:4px 8px;font-weight:bold;">Unit</td><td style="padding:4px 8px;">${escapeHtml(unitLabel) || "Unassigned"}</td></tr>
          <tr><td style="padding:4px 8px;font-weight:bold;">Requested By</td><td style="padding:4px 8px;">${escapeHtml(requestedByLabel)}</td></tr>
          <tr><td style="padding:4px 8px;font-weight:bold;">Submitted</td><td style="padding:4px 8px;">${escapeHtml(submittedAt)}</td></tr>
        </table>

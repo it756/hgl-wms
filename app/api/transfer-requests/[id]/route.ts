@@ -44,6 +44,35 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (!Array.isArray(lines) || lines.length === 0)
       return NextResponse.json({ error: "No line items" }, { status: 400 });
 
+    if (lines.some((l: any) => !l.destination_unit_id))
+      return NextResponse.json(
+        { error: "Every line item must have a destination unit selected." },
+        { status: 422 },
+      );
+
+    const destinationUnitIds = Array.from(
+      new Set<string>(lines.map((l: any) => l.destination_unit_id)),
+    );
+    const { data: unitRows, error: unitCheckError } = await supabaseAdmin
+      .from("sbu_units")
+      .select("id, sbu_id, is_active")
+      .in("id", destinationUnitIds);
+    if (unitCheckError) throw unitCheckError;
+
+    const unitMap = new Map((unitRows ?? []).map((u: any) => [u.id, u]));
+    for (const unitId of destinationUnitIds) {
+      const unit = unitMap.get(unitId);
+      if (!unit)
+        return NextResponse.json({ error: "Destination unit not found." }, { status: 422 });
+      if (unit.sbu_id !== (existing as any).sbu_id)
+        return NextResponse.json(
+          { error: "Destination unit does not belong to this request's SBU." },
+          { status: 422 },
+        );
+      if (!unit.is_active)
+        return NextResponse.json({ error: "Destination unit is inactive." }, { status: 422 });
+    }
+
     // Validate stock for each line
     const productIds: string[] = lines.map((l: any) => l.product_id);
     const { data: products, error: stockError } = await supabaseAdmin
@@ -68,10 +97,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           { error: `Requested quantity for "${product.name}" must be greater than zero.` },
           { status: 422 },
         );
-      if (line.requested_quantity > product.stock_quantity)
+    }
+
+    // The same product can target several destinations, so check the sum
+    // requested across all lines against available stock, not each line alone.
+    const requestedTotalsByProduct = new Map<string, number>();
+    for (const line of lines) {
+      requestedTotalsByProduct.set(
+        line.product_id,
+        (requestedTotalsByProduct.get(line.product_id) ?? 0) + line.requested_quantity,
+      );
+    }
+    for (const [productId, totalRequested] of requestedTotalsByProduct) {
+      const product = stockMap.get(productId)!;
+      if (totalRequested > product.stock_quantity)
         return NextResponse.json(
           {
-            error: `Insufficient stock for "${product.name}": requested ${line.requested_quantity}, available ${product.stock_quantity}.`,
+            error: `Insufficient stock for "${product.name}": requested ${totalRequested} across destinations, available ${product.stock_quantity}.`,
           },
           { status: 422 },
         );
@@ -100,6 +142,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       transfer_request_id: id,
       product_id: l.product_id,
       requested_quantity: l.requested_quantity,
+      destination_unit_id: l.destination_unit_id,
     }));
     const { error: insertError } = await supabaseAdmin
       .from("transfer_line_items")
@@ -141,6 +184,34 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Stitch requesting + per-line destination unit info manually — PostgREST
+    // schema cache can lag on newly added FKs so we avoid the embed hint.
+    const unitIds = new Set<string>();
+    if ((data as any).requesting_unit_id) unitIds.add((data as any).requesting_unit_id);
+    for (const line of (data as any).transfer_line_items ?? []) {
+      if (line.destination_unit_id) unitIds.add(line.destination_unit_id);
+    }
+
+    let unitMap: Record<string, { id: string; name: string; code: string }> = {};
+    if (unitIds.size > 0) {
+      const { data: units, error: unitsError } = await supabaseAdmin
+        .from("sbu_units")
+        .select("id, name, code")
+        .in("id", Array.from(unitIds));
+      if (unitsError) throw unitsError;
+      unitMap = Object.fromEntries((units ?? []).map((u: any) => [u.id, u]));
+    }
+
+    (data as any).sbu_units = unitMap[(data as any).requesting_unit_id] ?? null;
+    (data as any).transfer_line_items = ((data as any).transfer_line_items ?? []).map(
+      (line: any) => ({
+        ...line,
+        destination_unit: line.destination_unit_id
+          ? (unitMap[line.destination_unit_id] ?? null)
+          : null,
+      }),
+    );
 
     return NextResponse.json(data);
   } catch (err: any) {

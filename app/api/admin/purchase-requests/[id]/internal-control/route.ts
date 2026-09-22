@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const role = (user.user_metadata as AuthMetadata | null)?.role ?? "";
-  if (role !== "ADMIN") {
+  if (role !== "ADMIN" && role !== "INTERNAL_CONTROL_OFFICER") {
     return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
   }
 

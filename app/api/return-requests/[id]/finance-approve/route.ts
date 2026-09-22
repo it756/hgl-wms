@@ -75,6 +75,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         message: approveMessage,
         related_entity_id: id,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
       }),
       createNotification({
         user_role: "UNIT_STAFF",
@@ -82,6 +83,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         message: approveMessage,
         related_entity_id: id,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
       }),
       createNotification({
         user_role: "WAREHOUSE_MANAGER",
@@ -89,6 +91,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         message: approveMessage,
         related_entity_id: id,
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/returns`,
       }),
     ]);
 
@@ -135,6 +138,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message: rejectMessage,
       related_entity_id: id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/returns`,
     }),
     createNotification({
       user_role: "WAREHOUSE_MANAGER",
@@ -142,6 +146,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       message: rejectMessage,
       related_entity_id: id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/returns`,
     }),
   ]);
 

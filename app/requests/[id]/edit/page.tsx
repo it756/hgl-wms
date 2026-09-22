@@ -47,7 +47,7 @@ export default function EditTransferRequestPage() {
           fetch(`/api/transfer-requests/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("/api/admin/products", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("/api/bu/catalogue", { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
         if (!reqRes.ok) {

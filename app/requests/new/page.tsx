@@ -9,6 +9,9 @@ import Link from "next/link";
 interface LineItem {
   product_id: string;
   requested_quantity: number;
+  // A single UI line can fan out to several destination units. Each entry
+  // becomes its own row in transfer_line_items on submit.
+  destination_unit_ids: string[];
 }
 
 interface Product {
@@ -30,12 +33,14 @@ interface SBUUnit {
 export default function NewTransferRequestPage() {
   const router = useRouter();
   const [sbuId, setSbuId] = useState("");
-  const [requestingUnitId, setRequestingUnitId] = useState("");
+  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([]);
   const [units, setUnits] = useState<SBUUnit[]>([]);
   const [unitsError, setUnitsError] = useState<string | null>(null);
   const [requiredDate, setRequiredDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<LineItem[]>([{ product_id: "", requested_quantity: 0 }]);
+  const [lines, setLines] = useState<LineItem[]>([
+    { product_id: "", requested_quantity: 0, destination_unit_ids: [] },
+  ]);
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -51,7 +56,7 @@ export default function NewTransferRequestPage() {
       // For UNIT_STAFF, auto-fill their assigned unit
       if (role === "UNIT_STAFF") {
         const unitId = localStorage.getItem("user_unit_id") ?? "";
-        if (unitId) setRequestingUnitId(unitId);
+        if (unitId) setSelectedUnitIds([unitId]);
       }
 
       try {
@@ -79,10 +84,25 @@ export default function NewTransferRequestPage() {
     loadProductsAndUnits();
   }, []);
 
+  // Lines that have never been assigned a destination (e.g. the initial row,
+  // or ones created before units finished loading) broadcast to every
+  // currently selected unit as soon as we know what those are.
+  useEffect(() => {
+    if (selectedUnitIds.length === 0) return;
+    setLines((prev) =>
+      prev.map((l) =>
+        l.destination_unit_ids.length === 0
+          ? { ...l, destination_unit_ids: [...selectedUnitIds] }
+          : l,
+      ),
+    );
+  }, [selectedUnitIds]);
+
   const estimatedValue = lines.reduce((sum, line) => {
     const product = products.find((p) => p.id === line.product_id);
     const cost = product?.unit_cost ?? 0;
-    return sum + cost * line.requested_quantity;
+    const destinations = Math.max(1, line.destination_unit_ids.length);
+    return sum + cost * line.requested_quantity * destinations;
   }, 0);
 
   function availableStock(productId: string): number | null {
@@ -90,36 +110,99 @@ export default function NewTransferRequestPage() {
     return product ? (product.stock_quantity ?? 0) : null;
   }
 
+  // The same product can appear on several lines targeting different
+  // destination units, so "exceeds stock" must compare against the sum
+  // requested for that product across all lines and destinations.
+  function totalRequestedForProduct(productId: string): number {
+    return lines
+      .filter((l) => l.product_id === productId)
+      .reduce(
+        (sum, l) => sum + (l.requested_quantity || 0) * Math.max(1, l.destination_unit_ids.length),
+        0,
+      );
+  }
+
   function lineExceedsStock(line: LineItem): boolean {
     const stock = availableStock(line.product_id);
-    return stock !== null && line.requested_quantity > stock;
+    return stock !== null && totalRequestedForProduct(line.product_id) > stock;
   }
 
   const hasOverStockLine = lines.some(lineExceedsStock);
 
+  function toggleUnit(unitId: string) {
+    setSelectedUnitIds((prev) => {
+      const isAdding = !prev.includes(unitId);
+      const next = isAdding ? [...prev, unitId] : prev.filter((id) => id !== unitId);
+      // Keep each line's destinations in sync with the top-level selection:
+      // newly selected units are broadcast to every line by default;
+      // deselected units are dropped from any line still pointing at them.
+      setLines((prevLines) =>
+        prevLines.map((l) => {
+          const filtered = l.destination_unit_ids.filter((id) => next.includes(id));
+          if (isAdding && !filtered.includes(unitId)) filtered.push(unitId);
+          return { ...l, destination_unit_ids: filtered };
+        }),
+      );
+      return next;
+    });
+  }
+
   function addLine() {
-    setLines((prev) => [...prev, { product_id: "", requested_quantity: 0 }]);
+    setLines((prev) => [
+      ...prev,
+      {
+        product_id: "",
+        requested_quantity: 0,
+        // Default a fresh line to fan out to every currently selected unit.
+        destination_unit_ids: [...selectedUnitIds],
+      },
+    ]);
   }
 
   function removeLine(index: number) {
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function updateLine(index: number, field: keyof LineItem, value: string | number) {
+  function updateLine(
+    index: number,
+    field: "product_id" | "requested_quantity",
+    value: string | number,
+  ) {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+  }
+
+  function toggleLineDestination(index: number, unitId: string) {
+    setLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== index) return l;
+        const has = l.destination_unit_ids.includes(unitId);
+        return {
+          ...l,
+          destination_unit_ids: has
+            ? l.destination_unit_ids.filter((id) => id !== unitId)
+            : [...l.destination_unit_ids, unitId],
+        };
+      }),
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!requestingUnitId) {
-      setError("Please select the requesting unit before submitting.");
+    if (selectedUnitIds.length === 0) {
+      setError("Please select at least one destination unit before submitting.");
       return;
     }
 
-    if (lines.some((l) => !l.product_id || l.requested_quantity < 1)) {
-      setError("All line items must have a valid product selected and quantity ≥ 1.");
+    if (
+      lines.some(
+        (l) => !l.product_id || l.requested_quantity < 1 || l.destination_unit_ids.length === 0,
+      )
+    ) {
+      setError(
+        "All line items must have a valid product, at least one destination unit, and quantity ≥ 1.",
+      );
       return;
     }
 
@@ -127,7 +210,7 @@ export default function NewTransferRequestPage() {
     if (overStockLine) {
       const product = products.find((p) => p.id === overStockLine.product_id);
       setError(
-        `"${product?.name}" only has ${product?.stock_quantity} in stock — reduce the quantity before submitting.`,
+        `"${product?.name}" only has ${product?.stock_quantity} in stock across all destinations — reduce the quantity or drop a destination before submitting.`,
       );
       return;
     }
@@ -138,25 +221,35 @@ export default function NewTransferRequestPage() {
     // navigate to the list page immediately. The actual POST is performed by
     // the list page so the user sees their new request as a SUBMITTING row
     // straight away. On failure, the list page surfaces Retry / Discard.
-    const unit = units.find((u) => u.id === requestingUnitId) ?? null;
+    const selectedUnits = units.filter((u) => selectedUnitIds.includes(u.id));
     const clientId =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    // Fan each UI line out to one API line per selected destination so the
+    // backend records the transfer against every requested unit.
+    const expandedLines = lines.flatMap((l) =>
+      l.destination_unit_ids.map((destination_unit_id) => ({
+        product_id: l.product_id,
+        requested_quantity: l.requested_quantity,
+        destination_unit_id,
+      })),
+    );
 
     const optimistic = {
       clientId,
       status: "SUBMITTING" as const,
       created_at: new Date().toISOString(),
       payload: {
-        requesting_unit_id: requestingUnitId,
+        requesting_unit_id: selectedUnitIds[0],
         required_date: requiredDate || undefined,
         estimated_value: estimatedValue > 0 ? estimatedValue : undefined,
         notes: notes || undefined,
-        lines,
+        lines: expandedLines,
       },
       snapshot: {
-        unit: unit ? { id: unit.id, name: unit.name, code: unit.code } : null,
+        units: selectedUnits.map((u) => ({ id: u.id, name: u.name, code: u.code })),
         estimated_value: estimatedValue > 0 ? estimatedValue : null,
         required_date: requiredDate || null,
       },
@@ -205,32 +298,41 @@ export default function NewTransferRequestPage() {
               Request Parameters
             </h3>
 
-            {/* Requesting Unit */}
+            {/* Destination Units (multi-select) */}
             <div className="flex flex-col gap-1.5">
-              <label
-                className="text-xs font-bold text-slate-600 uppercase tracking-wider"
-                htmlFor="requesting_unit"
-              >
-                Requesting Unit <span className="text-rose-500">*</span>
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Destination Units <span className="text-rose-500">*</span>
               </label>
               {unitsError ? (
                 <p className="text-xs text-rose-600 font-semibold">{unitsError}</p>
               ) : (
-                <select
-                  id="requesting_unit"
-                  required
-                  value={requestingUnitId}
-                  onChange={(e) => setRequestingUnitId(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer font-semibold text-slate-700"
-                >
-                  <option value="">Select Unit...</option>
+                <div className="border border-outline-variant rounded-lg bg-white max-h-40 overflow-y-auto divide-y divide-outline-variant/60">
+                  {units.length === 0 && (
+                    <p className="text-xs text-slate-400 font-semibold p-3">No units available.</p>
+                  )}
                   {units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.code})
-                    </option>
+                    <label
+                      key={u.id}
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedUnitIds.includes(u.id)}
+                        onChange={() => toggleUnit(u.id)}
+                        className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary/20"
+                      />
+                      <span>
+                        {u.name}{" "}
+                        <span className="text-slate-400 font-mono text-xs">({u.code})</span>
+                      </span>
+                    </label>
                   ))}
-                </select>
+                </div>
               )}
+              <p className="text-[10px] text-slate-400 leading-normal font-semibold">
+                Every unit ticked here becomes a destination choice for each line item. Line items
+                broadcast to all ticked units by default — untick a chip on a line to skip it.
+              </p>
             </div>
 
             {/* Required Date */}
@@ -323,7 +425,7 @@ export default function NewTransferRequestPage() {
               key={i}
               className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50/40 border border-slate-100 rounded-xl p-4 relative group"
             >
-              <div className="sm:col-span-8 flex flex-col gap-1">
+              <div className="sm:col-span-5 flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
                   Product
                 </label>
@@ -352,6 +454,46 @@ export default function NewTransferRequestPage() {
                     </option>
                   )}
                 </select>
+              </div>
+
+              <div className="sm:col-span-3 flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                  Destinations
+                </label>
+                {selectedUnitIds.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 font-semibold py-2">
+                    Select a destination unit above first.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {units
+                      .filter((u) => selectedUnitIds.includes(u.id))
+                      .map((u) => {
+                        const active = line.destination_unit_ids.includes(u.id);
+                        return (
+                          <button
+                            type="button"
+                            key={u.id}
+                            onClick={() => toggleLineDestination(i, u.id)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                              active
+                                ? "bg-primary/10 border-primary/40 text-primary"
+                                : "bg-white border-outline-variant text-slate-500 hover:bg-slate-50"
+                            }`}
+                            title={`${u.name} (${u.code})`}
+                          >
+                            {u.name}{" "}
+                            <span className="font-mono text-[10px] opacity-70">({u.code})</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+                {line.destination_unit_ids.length > 1 && (
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    Qty is applied to each of the {line.destination_unit_ids.length} destinations.
+                  </p>
+                )}
               </div>
 
               <div className="sm:col-span-3 flex flex-col gap-1">

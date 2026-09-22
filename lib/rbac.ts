@@ -47,6 +47,11 @@ export function isBuManager(user: any): boolean {
   return hasRole(user, "BU_MANAGER");
 }
 
+/** Returns true if the user is an Internal Control Officer */
+export function isInternalControlOfficer(user: any): boolean {
+  return hasRole(user, "INTERNAL_CONTROL_OFFICER");
+}
+
 export default {
   hasRole,
   hasAnyRole,
@@ -56,4 +61,5 @@ export default {
   isFinanceManager,
   isAdmin,
   isBuManager,
+  isInternalControlOfficer,
 };
