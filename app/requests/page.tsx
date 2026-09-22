@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
@@ -29,6 +29,11 @@ interface TransferRequest {
   estimated_value: number | null;
   requires_finance_approval: boolean;
   sbu_units: { id: string; name: string; code: string } | null;
+  transfer_line_items: {
+    id: string;
+    destination_unit_id: string | null;
+    destination: { id: string; name: string; code: string } | null;
+  }[];
 }
 
 // Optimistic pending entry written by /requests/new before navigating here.
@@ -161,7 +166,13 @@ function RequestsListContent() {
     setPending(null);
   }
 
+  // Guards against React StrictMode's double-invocation of mount effects in dev.
+  const bootstrappedRef = useRef(false);
+
   useEffect(() => {
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
+
     void fetchRequests();
 
     // Pick up any optimistic pending entry left by /requests/new.
@@ -353,7 +364,7 @@ function RequestsListContent() {
             <Table className="w-full border-collapse text-left">
               <TableHead>
                 <Th pinned>Reference</Th>
-                <Th>Unit</Th>
+                <Th>Destinations</Th>
                 <Th>Status</Th>
                 <Th>Required Date</Th>
                 <Th>Est. Value</Th>
@@ -376,7 +387,7 @@ function RequestsListContent() {
                     <td className="px-6 py-3.5 text-sm font-semibold text-slate-500">
                       {pending.snapshot.units.length > 0 ? (
                         <span className="inline-flex flex-wrap items-center gap-1">
-                          {pending.snapshot.units.map((u) => (
+                          {pending.snapshot.units.slice(0, 2).map((u) => (
                             <span
                               key={u.id}
                               className="inline-flex items-center gap-1 font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
@@ -384,6 +395,17 @@ function RequestsListContent() {
                               {u.code}
                             </span>
                           ))}
+                          {pending.snapshot.units.length > 2 && (
+                            <span
+                              className="inline-flex items-center bg-slate-200 border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-600 font-mono"
+                              title={pending.snapshot.units
+                                .slice(2)
+                                .map((u) => `${u.name} (${u.code})`)
+                                .join(", ")}
+                            >
+                              +{pending.snapshot.units.length - 2}
+                            </span>
+                          )}
                         </span>
                       ) : (
                         "—"
@@ -446,16 +468,55 @@ function RequestsListContent() {
                       </span>
                     </Td>
                     <td className="px-6 py-3.5 text-sm font-semibold text-slate-500">
-                      {r.sbu_units ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                            {r.sbu_units.code}
-                          </span>
-                          <span>{r.sbu_units.name}</span>
-                        </span>
-                      ) : (
-                        "—"
-                      )}
+                      {(() => {
+                        const seen = new Set<string>();
+                        const destinations = (r.transfer_line_items ?? [])
+                          .map((l) => l.destination)
+                          .filter((d): d is { id: string; name: string; code: string } => {
+                            if (!d || seen.has(d.id)) return false;
+                            seen.add(d.id);
+                            return true;
+                          });
+                        if (destinations.length === 0) {
+                          return r.sbu_units ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                                {r.sbu_units.code}
+                              </span>
+                              <span>{r.sbu_units.name}</span>
+                            </span>
+                          ) : (
+                            "—"
+                          );
+                        }
+                        return (
+                          <div className="flex flex-wrap gap-1">
+                            {destinations.slice(0, 2).map((d) => (
+                              <span
+                                key={d.id}
+                                className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5"
+                                title={`${d.name} (${d.code})`}
+                              >
+                                <span className="font-mono text-[10px] text-slate-600">
+                                  {d.code}
+                                </span>
+                                <span className="text-xs text-slate-600">{d.name}</span>
+                              </span>
+                            ))}
+                            {destinations.length > 2 && (
+                              <span
+                                className="inline-flex items-center bg-slate-200 border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-600 font-mono"
+                                title={destinations
+                                  .slice(2)
+                                  .map((d) => `${d.name} (${d.code})`)
+                                  .join(", ")}
+                              >
+                                +{destinations.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-3.5">
                       <span
