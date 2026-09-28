@@ -228,6 +228,32 @@ export default function WarehouseDashboardPage() {
             </div>
           </div>
 
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4">
+              Ledgers & History
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[
+                { href: "/warehouse/expected-orders", label: "Expected Orders" },
+                { href: "/warehouse/returns", label: "Returns Incoming" },
+                { href: "/warehouse/intra-transfer", label: "Intra Transfers" },
+                { href: "/warehouse/losses", label: "Loss Account" },
+                { href: "/admin/damage", label: "Damage Ledger" },
+                { href: "/admin/expiry", label: "Expiry Ledger" },
+                { href: "/admin/products", label: "Product Catalogue" },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-xs font-extrabold text-slate-600 transition hover:border-primary/60 hover:bg-slate-50 hover:text-primary"
+                >
+                  {item.label}
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              ))}
+            </div>
+          </div>
+
           {/* Compliance Banner */}
           <div className="bg-amber-50 border border-amber-200 text-[#904D00] rounded-xl p-4 flex gap-3.5 items-start">
             <div className="p-1.5 bg-amber-100 rounded-lg shrink-0">

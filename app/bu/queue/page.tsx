@@ -32,6 +32,7 @@ interface PendingRequest {
   sbu_name?: string;
   unit_name?: string;
   unit_code?: string;
+  destinations?: Array<{ id: string; name: string; code: string }>;
   items?: Array<{
     name: string;
     sku: string;
@@ -51,6 +52,10 @@ export default function BuApprovalQueuePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [approvedToday, setApprovedToday] = useState(0);
   const [rejectedToday, setRejectedToday] = useState(0);
+  const [processingAction, setProcessingAction] = useState<{
+    requestId: string;
+    action: "approve" | "reject";
+  } | null>(null);
   const { currency, rate, fetching: rateFetching, rateError, toggleCurrency, fmt } = useCurrency();
 
   async function loadQueue() {
@@ -64,19 +69,31 @@ export default function BuApprovalQueuePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load approvals queue");
 
-      const normalized = (data.transfer_requests ?? []).map((t: any) => ({
-        ...t,
-        sbu_name: t.sbus?.name ?? t.sbu_id,
-        unit_name: t.sbu_units?.name ?? null,
-        unit_code: t.sbu_units?.code ?? null,
-        items: (t.transfer_line_items ?? []).map((l: any) => ({
-          name: l.products?.name ?? `Product ${l.product_id}`,
-          sku: l.products?.sku ?? "",
-          quantity: l.requested_quantity,
-          unit_cost: l.products?.unit_cost ?? null,
-          total: l.requested_quantity * (l.products?.unit_cost ?? 0),
-        })),
-      }));
+      const normalized = (data.transfer_requests ?? []).map((t: any) => {
+        const seen = new Set<string>();
+        const destinations: Array<{ id: string; name: string; code: string }> = [];
+        for (const l of t.transfer_line_items ?? []) {
+          const d = l.destination_unit;
+          if (d && !seen.has(d.id)) {
+            seen.add(d.id);
+            destinations.push({ id: d.id, name: d.name, code: d.code });
+          }
+        }
+        return {
+          ...t,
+          sbu_name: t.sbus?.name ?? t.sbu_id,
+          unit_name: t.sbu_units?.name ?? null,
+          unit_code: t.sbu_units?.code ?? null,
+          destinations,
+          items: (t.transfer_line_items ?? []).map((l: any) => ({
+            name: l.products?.name ?? `Product ${l.product_id}`,
+            sku: l.products?.sku ?? "",
+            quantity: l.requested_quantity,
+            unit_cost: l.products?.unit_cost ?? null,
+            total: l.requested_quantity * (l.products?.unit_cost ?? 0),
+          })),
+        };
+      });
 
       setRequests(normalized);
       setApprovedToday(data.approved_today ?? 0);
@@ -95,6 +112,7 @@ export default function BuApprovalQueuePage() {
   async function handleAction(requestId: string, action: "approve" | "reject") {
     setError(null);
     setSuccess(null);
+    setProcessingAction({ requestId, action });
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
       const res = await fetch("/api/bu/approvals", {
@@ -123,6 +141,8 @@ export default function BuApprovalQueuePage() {
       await loadQueue();
     } catch (err: any) {
       setError(err.message || "Action failed. Please try again.");
+    } finally {
+      setProcessingAction(null);
     }
   }
 
@@ -316,12 +336,42 @@ export default function BuApprovalQueuePage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500 font-medium flex-wrap mt-0.5">
-                        {item.unit_code && (
-                          <span className="font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px]">
-                            {item.unit_code}
-                          </span>
+                        {item.destinations && item.destinations.length > 0 ? (
+                          <>
+                            {item.destinations.slice(0, 2).map((d) => (
+                              <span
+                                key={d.id}
+                                className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5"
+                                title={`${d.name} (${d.code})`}
+                              >
+                                <span className="font-mono text-[10px] text-slate-600">
+                                  {d.code}
+                                </span>
+                                <span className="text-xs text-slate-600">{d.name}</span>
+                              </span>
+                            ))}
+                            {item.destinations.length > 2 && (
+                              <span
+                                className="inline-flex items-center bg-slate-200 border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-600 font-mono"
+                                title={item.destinations
+                                  .slice(2)
+                                  .map((d) => `${d.name} (${d.code})`)
+                                  .join(", ")}
+                              >
+                                +{item.destinations.length - 2}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {item.unit_code && (
+                              <span className="font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px]">
+                                {item.unit_code}
+                              </span>
+                            )}
+                            {item.unit_name && <span>{item.unit_name}</span>}
+                          </>
                         )}
-                        {item.unit_name && <span>{item.unit_name}</span>}
                         {item.sbu_name && <span className="text-slate-400">· {item.sbu_name}</span>}
                       </div>
                       <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1">
@@ -362,154 +412,203 @@ export default function BuApprovalQueuePage() {
         <div className="lg:sticky lg:top-6">
           {selectedItem ? (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col gap-5 p-5">
-              {/* Detail header */}
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
-                    Transfer Request
-                  </p>
-                  <h2 className="font-extrabold text-primary font-mono text-base">
-                    {selectedItem.reference_number}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedItem(null)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              {(() => {
+                const isProcessingSelected = processingAction?.requestId === selectedItem.id;
+                const isRejecting = isProcessingSelected && processingAction?.action === "reject";
+                const isApproving = isProcessingSelected && processingAction?.action === "approve";
 
-              {/* Metadata */}
-              <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 flex flex-col gap-2 border border-slate-100">
-                {selectedItem.unit_name && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-400 font-semibold">Unit</span>
-                    <span className="font-bold text-right">
-                      {selectedItem.unit_code && (
-                        <span className="font-mono bg-slate-200 text-slate-600 px-1 rounded mr-1 text-[10px]">
-                          {selectedItem.unit_code}
-                        </span>
-                      )}
-                      {selectedItem.unit_name}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.sbu_name && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-400 font-semibold">SBU</span>
-                    <span className="font-bold">{selectedItem.sbu_name}</span>
-                  </div>
-                )}
-                <div className="flex justify-between gap-2">
-                  <span className="text-slate-400 font-semibold">Submitted</span>
-                  <span className="font-bold">
-                    {new Date(selectedItem.created_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
-                {selectedItem.required_date && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-400 font-semibold">Required By</span>
-                    <span className="font-bold">
-                      {new Date(selectedItem.required_date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between gap-2">
-                  <span className="text-slate-400 font-semibold">Est. Value</span>
-                  <span className="font-extrabold text-[#029184]">
-                    {fmt(selectedItem.estimated_value ?? 0)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Notes from requester */}
-              {selectedItem.notes && (
-                <div className="text-xs text-slate-600 bg-blue-50 border border-blue-100 rounded-lg p-3">
-                  <p className="font-bold text-slate-500 mb-1 uppercase tracking-wider text-[10px]">
-                    Requester Notes
-                  </p>
-                  <p className="leading-relaxed">{selectedItem.notes}</p>
-                </div>
-              )}
-
-              {/* Line Items */}
-              {selectedItem.items && selectedItem.items.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                    Line Items ({selectedItem.items.length})
-                  </p>
-                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-                    {selectedItem.items.map((item, i) => (
-                      <div
-                        key={i}
-                        className="px-3 py-2 flex items-center justify-between gap-2 bg-white hover:bg-slate-50 text-xs"
+                return (
+                  <>
+                    {/* Detail header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+                          Transfer Request
+                        </p>
+                        <h2 className="font-extrabold text-primary font-mono text-base">
+                          {selectedItem.reference_number}
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedItem(null)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                        aria-label="Close"
                       >
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-slate-700 truncate">{item.name}</span>
-                          {item.sku && (
-                            <span className="font-mono text-slate-400 text-[10px]">{item.sku}</span>
-                          )}
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 flex flex-col gap-2 border border-slate-100">
+                      {selectedItem.destinations && selectedItem.destinations.length > 1 ? (
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-slate-400 font-semibold">
+                            Requesting Units ({selectedItem.destinations.length})
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedItem.destinations.map((d) => (
+                              <span
+                                key={d.id}
+                                className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 py-0.5"
+                                title={`${d.name} (${d.code})`}
+                              >
+                                <span className="font-mono text-[10px] text-slate-500">
+                                  {d.code}
+                                </span>
+                                <span className="text-[11px] font-bold text-slate-700">
+                                  {d.name}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex flex-col items-end shrink-0">
-                          <span className="font-bold text-slate-700">×{item.quantity}</span>
-                          {item.total != null && item.total > 0 && (
-                            <span className="font-mono text-slate-400 text-[10px]">
-                              {fmt(item.total)}
+                      ) : (
+                        selectedItem.unit_name && (
+                          <div className="flex justify-between gap-2">
+                            <span className="text-slate-400 font-semibold">Unit</span>
+                            <span className="font-bold text-right">
+                              {selectedItem.unit_code && (
+                                <span className="font-mono bg-slate-200 text-slate-600 px-1 rounded mr-1 text-[10px]">
+                                  {selectedItem.unit_code}
+                                </span>
+                              )}
+                              {selectedItem.unit_name}
                             </span>
-                          )}
+                          </div>
+                        )
+                      )}
+                      {selectedItem.sbu_name && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-400 font-semibold">SBU</span>
+                          <span className="font-bold">{selectedItem.sbu_name}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-2">
+                        <span className="text-slate-400 font-semibold">Submitted</span>
+                        <span className="font-bold">
+                          {new Date(selectedItem.created_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      {selectedItem.required_date && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-400 font-semibold">Required By</span>
+                          <span className="font-bold">
+                            {new Date(selectedItem.required_date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-2">
+                        <span className="text-slate-400 font-semibold">Est. Value</span>
+                        <span className="font-extrabold text-[#029184]">
+                          {fmt(selectedItem.estimated_value ?? 0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Notes from requester */}
+                    {selectedItem.notes && (
+                      <div className="text-xs text-slate-600 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                        <p className="font-bold text-slate-500 mb-1 uppercase tracking-wider text-[10px]">
+                          Requester Notes
+                        </p>
+                        <p className="leading-relaxed">{selectedItem.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Line Items */}
+                    {selectedItem.items && selectedItem.items.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                          Line Items ({selectedItem.items.length})
+                        </p>
+                        <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                          {selectedItem.items.map((item, i) => (
+                            <div
+                              key={i}
+                              className="px-3 py-2 flex items-center justify-between gap-2 bg-white hover:bg-slate-50 text-xs"
+                            >
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-semibold text-slate-700 truncate">
+                                  {item.name}
+                                </span>
+                                {item.sku && (
+                                  <span className="font-mono text-slate-400 text-[10px]">
+                                    {item.sku}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-col items-end shrink-0">
+                                <span className="font-bold text-slate-700">×{item.quantity}</span>
+                                {item.total != null && item.total > 0 && (
+                                  <span className="font-mono text-slate-400 text-[10px]">
+                                    {fmt(item.total)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    )}
 
-              {/* Approval notes */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                  Your Notes (optional)
-                </label>
-                <textarea
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none resize-none bg-slate-50/50"
-                  rows={3}
-                  placeholder="Add remarks or reasons for your decision…"
-                  value={notes[selectedItem.id] ?? ""}
-                  onChange={(e) =>
-                    setNotes((prev) => ({ ...prev, [selectedItem.id]: e.target.value }))
-                  }
-                />
-              </div>
+                    {/* Approval notes */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Your Notes (optional)
+                      </label>
+                      <textarea
+                        disabled={isProcessingSelected}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none resize-none bg-slate-50/50"
+                        rows={3}
+                        placeholder="Add remarks or reasons for your decision…"
+                        value={notes[selectedItem.id] ?? ""}
+                        onChange={(e) =>
+                          setNotes((prev) => ({ ...prev, [selectedItem.id]: e.target.value }))
+                        }
+                      />
+                    </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleAction(selectedItem.id, "reject")}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-all cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAction(selectedItem.id, "approve")}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  Approve & Forward
-                </button>
-              </div>
+                    {/* Action buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleAction(selectedItem.id, "reject")}
+                        disabled={isProcessingSelected}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isRejecting ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <X className="w-4 h-4" />
+                        )}
+                        {isRejecting ? "Rejecting..." : "Reject"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAction(selectedItem.id, "approve")}
+                        disabled={isProcessingSelected}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isApproving ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                        {isApproving ? "Verifying & Forwarding..." : "Approve & Forward"}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-center gap-3 text-slate-400">

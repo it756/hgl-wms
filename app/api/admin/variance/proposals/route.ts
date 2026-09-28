@@ -157,6 +157,7 @@ export async function POST(req: Request) {
     message,
     related_entity_id: proposalId,
     dispatchChannels: true,
+    actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
   });
 
   await writeAuditLog({

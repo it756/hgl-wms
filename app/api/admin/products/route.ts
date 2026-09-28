@@ -274,6 +274,7 @@ export async function POST(req: Request) {
       }),
       related_entity_id: data.id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/products`,
     });
   }
 

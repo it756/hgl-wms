@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import {
   ClipboardList,
   Clock,
@@ -39,6 +39,8 @@ interface PendingRequest {
   transfer_line_items: {
     product_id: string;
     requested_quantity: number;
+    destination_unit_id: string;
+    destination?: { id: string; name: string; code: string } | null;
     product_name?: string;
     sku?: string;
     stock_qty?: number;
@@ -60,6 +62,8 @@ interface IssuanceItem {
   product_name: string;
   sku: string;
   location: string;
+  destination_unit_id: string;
+  destination_name: string;
   requested: number;
   stock: number;
   quantity_issued: number;
@@ -169,6 +173,8 @@ export default function WarehouseQueuePage() {
           product_name: l.product_name || "Unknown Product",
           sku: l.sku || "SKU-UNKNOWN",
           location: l.location || "—",
+          destination_unit_id: l.destination_unit_id,
+          destination_name: l.destination?.name ?? l.destination?.code ?? "Unknown unit",
           requested: requested,
           stock: stock,
           quantity_issued: initialQty,
@@ -243,6 +249,7 @@ export default function WarehouseQueuePage() {
       const payloadItems = issuanceItems.map((item) => ({
         product_id: item.product_id,
         quantity_issued: item.quantity_issued,
+        destination_unit_id: item.destination_unit_id,
         shortfall_reason: item.quantity_issued < item.requested ? item.shortfall_reason : undefined,
       }));
 
@@ -562,7 +569,7 @@ export default function WarehouseQueuePage() {
               </div>
             ) : (
               <HScrollArea>
-                <table className="w-full text-left border-collapse">
+                <Table className="w-full text-left border-collapse">
                   <TableHead>
                     <Th pinned>Reference</Th>
                     <Th>SBU / Dept</Th>
@@ -590,9 +597,52 @@ export default function WarehouseQueuePage() {
                             <p className="font-extrabold text-slate-800 text-xs leading-snug">
                               {r.sbu_name || r.sbu_id}
                             </p>
-                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                              Harvest Ops Node
-                            </p>
+                            {(() => {
+                              const seen = new Set<string>();
+                              const destinations = (r.transfer_line_items ?? [])
+                                .map((l) => l.destination)
+                                .filter((d): d is { id: string; name: string; code: string } => {
+                                  if (!d || seen.has(d.id)) return false;
+                                  seen.add(d.id);
+                                  return true;
+                                });
+                              if (destinations.length === 0) {
+                                return (
+                                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                    Harvest Ops Node
+                                  </p>
+                                );
+                              }
+                              return (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {destinations.slice(0, 2).map((d) => (
+                                    <span
+                                      key={d.id}
+                                      className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5"
+                                      title={`${d.name} (${d.code})`}
+                                    >
+                                      <span className="font-mono text-[9px] text-slate-500">
+                                        {d.code}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-slate-600">
+                                        {d.name}
+                                      </span>
+                                    </span>
+                                  ))}
+                                  {destinations.length > 2 && (
+                                    <span
+                                      className="inline-flex items-center bg-slate-200 border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-600 font-mono"
+                                      title={destinations
+                                        .slice(2)
+                                        .map((d) => `${d.name} (${d.code})`)
+                                        .join(", ")}
+                                    >
+                                      +{destinations.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-3.5">
                             <p className="font-bold text-slate-700">
@@ -669,7 +719,7 @@ export default function WarehouseQueuePage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </Table>
               </HScrollArea>
             )}
           </div>
@@ -850,7 +900,7 @@ export default function WarehouseQueuePage() {
               </div>
 
               <HScrollArea>
-                <table className="w-full text-left border-collapse">
+                <Table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)] whitespace-nowrap border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       <th className="sticky left-0 z-20 bg-slate-50 py-3.5 pl-4 pr-4 w-12 text-center">
@@ -859,6 +909,7 @@ export default function WarehouseQueuePage() {
                       <th className="py-3.5 pr-4">Product / Description</th>
                       <th className="py-3.5 px-4 font-mono">Sku ID</th>
                       <th className="py-3.5 px-3 text-center">Location</th>
+                      <th className="py-3.5 px-3 text-center">Destination</th>
                       <th className="py-3.5 px-4 text-center">Requested</th>
                       <th className="py-3.5 px-4 text-center">Stock</th>
                       <th className="py-3.5 px-4 text-left w-36">Issue Qty</th>
@@ -914,6 +965,11 @@ export default function WarehouseQueuePage() {
                           <td className="py-4 px-3 text-center">
                             <span className="inline-flex items-center justify-center w-9 h-6 rounded font-mono font-extrabold text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 tracking-wider">
                               {item.location}
+                            </span>
+                          </td>
+                          <td className="py-4 px-3 text-center">
+                            <span className="inline-flex items-center justify-center px-2 h-6 rounded font-bold text-[11px] bg-slate-100 border border-slate-200 text-slate-700 whitespace-nowrap">
+                              {item.destination_name}
                             </span>
                           </td>
                           <td className="py-4 px-4 text-center font-mono font-bold text-slate-600">
@@ -1004,7 +1060,7 @@ export default function WarehouseQueuePage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </Table>
               </HScrollArea>
 
               {/* Shortfall Warnings Banner */}

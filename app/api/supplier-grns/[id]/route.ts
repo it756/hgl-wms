@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     .from("supplier_grns")
     .select(
       `*, supplier_grn_line_items(
-        id, product_id, quantity_received, unit_cost,
+        id, product_id, quantity_received, unit_cost, expiry_date,
         products(id, name, sku, unit_of_measure, unit_cost)
       )`,
     )

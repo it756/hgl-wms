@@ -43,7 +43,10 @@ describe("core-task-02-transfer-lifecycle", () => {
   it("creates a multi-line transfer request with validation and a TRF reference", async () => {
     const notificationChain = makeChain({ data: { id: "n-001" }, error: null });
     const profileChain = makeChain({ data: { sbu_id: "sbu-001" }, error: null });
-    const unitChain = makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
+    const unitChain = makeChain({
+      data: [{ id: "unit-001", sbu_id: "sbu-001", is_active: true }],
+      error: null,
+    });
     const productsChain = makeChain({
       data: [
         { id: "prod-001", name: "Product One", stock_quantity: 10, unit_cost: 300 },
@@ -86,8 +89,8 @@ describe("core-task-02-transfer-lifecycle", () => {
           notes: "Core task transfer",
           estimated_value: 1500,
           lines: [
-            { product_id: "prod-001", requested_quantity: 2 },
-            { product_id: "prod-002", requested_quantity: 3 },
+            { product_id: "prod-001", requested_quantity: 2, destination_unit_id: "unit-001" },
+            { product_id: "prod-002", requested_quantity: 3, destination_unit_id: "unit-001" },
           ],
         }),
       }),
@@ -105,8 +108,18 @@ describe("core-task-02-transfer-lifecycle", () => {
       }),
     ]);
     expect(lineItemsChain.insert).toHaveBeenCalledWith([
-      { transfer_request_id: "tr-001", product_id: "prod-001", requested_quantity: 2 },
-      { transfer_request_id: "tr-001", product_id: "prod-002", requested_quantity: 3 },
+      {
+        transfer_request_id: "tr-001",
+        product_id: "prod-001",
+        requested_quantity: 2,
+        destination_unit_id: "unit-001",
+      },
+      {
+        transfer_request_id: "tr-001",
+        product_id: "prod-002",
+        requested_quantity: 3,
+        destination_unit_id: "unit-001",
+      },
     ]);
   });
 
@@ -130,7 +143,10 @@ describe("core-task-02-transfer-lifecycle", () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === "profiles") return makeChain({ data: { sbu_id: "sbu-001" }, error: null });
       if (table === "sbu_units")
-        return makeChain({ data: { sbu_id: "sbu-001", is_active: true }, error: null });
+        return makeChain({
+          data: [{ id: "unit-001", sbu_id: "sbu-001", is_active: true }],
+          error: null,
+        });
       if (table === "products")
         return makeChain({
           data: [{ id: "prod-001", name: "Product One", stock_quantity: 1, unit_cost: 10 }],
@@ -146,7 +162,9 @@ describe("core-task-02-transfer-lifecycle", () => {
         headers: { "Content-Type": "application/json", Authorization: "Bearer token" },
         body: JSON.stringify({
           requesting_unit_id: "unit-001",
-          lines: [{ product_id: "prod-001", requested_quantity: 5 }],
+          lines: [
+            { product_id: "prod-001", requested_quantity: 5, destination_unit_id: "unit-001" },
+          ],
         }),
       }),
     );
@@ -174,6 +192,10 @@ describe("core-task-02-transfer-lifecycle", () => {
       error: null,
     });
     const lineItemsChain = makeChain({ data: null, error: null });
+    const unitChain = makeChain({
+      data: [{ id: "unit-001", sbu_id: "sbu-001", is_active: true }],
+      error: null,
+    });
     let transferRequestCalls = 0;
 
     mockFrom.mockImplementation((table: string) => {
@@ -183,6 +205,7 @@ describe("core-task-02-transfer-lifecycle", () => {
       }
       if (table === "products") return productsChain;
       if (table === "transfer_line_items") return lineItemsChain;
+      if (table === "sbu_units") return unitChain;
       return makeChain({ data: null, error: null });
     });
 
@@ -195,7 +218,9 @@ describe("core-task-02-transfer-lifecycle", () => {
           required_date: "2026-07-25",
           notes: "Updated before issue",
           estimated_value: 250,
-          lines: [{ product_id: "prod-001", requested_quantity: 4 }],
+          lines: [
+            { product_id: "prod-001", requested_quantity: 4, destination_unit_id: "unit-001" },
+          ],
         }),
       }),
       { params: Promise.resolve({ id: "tr-001" }) },
@@ -213,7 +238,12 @@ describe("core-task-02-transfer-lifecycle", () => {
     );
     expect(lineItemsChain.delete).toHaveBeenCalled();
     expect(lineItemsChain.insert).toHaveBeenCalledWith([
-      { transfer_request_id: "tr-001", product_id: "prod-001", requested_quantity: 4 },
+      {
+        transfer_request_id: "tr-001",
+        product_id: "prod-001",
+        requested_quantity: 4,
+        destination_unit_id: "unit-001",
+      },
     ]);
   });
 
