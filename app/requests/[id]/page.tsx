@@ -218,10 +218,50 @@ export default function TransferRequestDetailPage() {
               />
               <InfoRow label="SBU" value={request.sbus?.name ?? "—"} />
               <InfoRow
-                label="Requesting Unit"
-                value={
-                  request.sbu_units ? `${request.sbu_units.name} (${request.sbu_units.code})` : "—"
-                }
+                label={(() => {
+                  const seen = new Set<string>();
+                  const count = (request.transfer_line_items ?? []).reduce((n, l) => {
+                    if (l.destination_unit && !seen.has(l.destination_unit.id)) {
+                      seen.add(l.destination_unit.id);
+                      return n + 1;
+                    }
+                    return n;
+                  }, 0);
+                  return count > 1 ? "Requesting Units" : "Requesting Unit";
+                })()}
+                value={(() => {
+                  const seen = new Set<string>();
+                  const destinations = (request.transfer_line_items ?? [])
+                    .map((l) => l.destination_unit)
+                    .filter((d): d is SBUUnit => {
+                      if (!d || seen.has(d.id)) return false;
+                      seen.add(d.id);
+                      return true;
+                    });
+                  if (destinations.length === 0) {
+                    return request.sbu_units
+                      ? `${request.sbu_units.name} (${request.sbu_units.code})`
+                      : "—";
+                  }
+                  if (destinations.length === 1) {
+                    const d = destinations[0];
+                    return `${d.name} (${d.code})`;
+                  }
+                  return (
+                    <span className="flex flex-wrap gap-1 mt-0.5">
+                      {destinations.map((d) => (
+                        <span
+                          key={d.id}
+                          className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5"
+                          title={`${d.name} (${d.code})`}
+                        >
+                          <span className="font-mono text-[10px] text-slate-600">{d.code}</span>
+                          <span className="text-xs text-slate-600">{d.name}</span>
+                        </span>
+                      ))}
+                    </span>
+                  );
+                })()}
               />
               <InfoRow
                 label="Required Date"

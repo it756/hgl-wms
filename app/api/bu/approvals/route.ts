@@ -57,8 +57,37 @@ export async function GET(req: Request) {
       .gte("bu_approved_at", todayStart.toISOString()),
   ]);
 
+  // Stitch per-line destination units — PostgREST FK embed for
+  // sbu_units!destination_unit_id can lag hosted schema cache, so we resolve
+  // ids in a second query the same way /api/transfer-requests does.
+  const rows = pendingResult.data ?? [];
+  const destUnitIds = Array.from(
+    new Set(
+      rows.flatMap((t: any) =>
+        (t.transfer_line_items ?? []).map((l: any) => l.destination_unit_id).filter(Boolean),
+      ),
+    ),
+  ) as string[];
+
+  let unitMap: Record<string, { id: string; name: string; code: string }> = {};
+  if (destUnitIds.length > 0) {
+    const { data: unitRows } = await supabaseAdmin
+      .from("sbu_units")
+      .select("id, name, code")
+      .in("id", destUnitIds);
+    unitMap = Object.fromEntries((unitRows ?? []).map((u: any) => [u.id, u]));
+  }
+  for (const t of rows as any[]) {
+    t.transfer_line_items = (t.transfer_line_items ?? []).map((line: any) => ({
+      ...line,
+      destination_unit: line.destination_unit_id
+        ? (unitMap[line.destination_unit_id] ?? null)
+        : null,
+    }));
+  }
+
   return NextResponse.json({
-    transfer_requests: pendingResult.data ?? [],
+    transfer_requests: rows,
     approved_today: approvedTodayResult.count ?? 0,
     rejected_today: rejectedTodayResult.count ?? 0,
   });

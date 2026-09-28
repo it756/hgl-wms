@@ -597,9 +597,52 @@ export default function WarehouseQueuePage() {
                             <p className="font-extrabold text-slate-800 text-xs leading-snug">
                               {r.sbu_name || r.sbu_id}
                             </p>
-                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                              Harvest Ops Node
-                            </p>
+                            {(() => {
+                              const seen = new Set<string>();
+                              const destinations = (r.transfer_line_items ?? [])
+                                .map((l) => l.destination)
+                                .filter((d): d is { id: string; name: string; code: string } => {
+                                  if (!d || seen.has(d.id)) return false;
+                                  seen.add(d.id);
+                                  return true;
+                                });
+                              if (destinations.length === 0) {
+                                return (
+                                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                    Harvest Ops Node
+                                  </p>
+                                );
+                              }
+                              return (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {destinations.slice(0, 2).map((d) => (
+                                    <span
+                                      key={d.id}
+                                      className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5"
+                                      title={`${d.name} (${d.code})`}
+                                    >
+                                      <span className="font-mono text-[9px] text-slate-500">
+                                        {d.code}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-slate-600">
+                                        {d.name}
+                                      </span>
+                                    </span>
+                                  ))}
+                                  {destinations.length > 2 && (
+                                    <span
+                                      className="inline-flex items-center bg-slate-200 border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-600 font-mono"
+                                      title={destinations
+                                        .slice(2)
+                                        .map((d) => `${d.name} (${d.code})`)
+                                        .join(", ")}
+                                    >
+                                      +{destinations.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-3.5">
                             <p className="font-bold text-slate-700">

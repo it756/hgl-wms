@@ -97,6 +97,11 @@ function RequestsListContent() {
   // Search & Filters state
   const [searchRef, setSearchRef] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [isUnitStaff, setIsUnitStaff] = useState(false);
+
+  useEffect(() => {
+    setIsUnitStaff((localStorage.getItem("user_role") ?? "") === "UNIT_STAFF");
+  }, []);
 
   async function fetchRequests() {
     try {
@@ -236,6 +241,16 @@ function RequestsListContent() {
                     ? "View in USD"
                     : "View in ZMW"}
               </button>
+              <Link
+                href="/requests/new/multi"
+                className={`flex items-center gap-1.5 px-4 py-2.5 border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer active:scale-[0.98] ${
+                  isUnitStaff ? "hidden" : ""
+                }`}
+                title="Raise a single request that spans several destination units"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Multi-station
+              </Link>
               <Link
                 href="/requests/new"
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
