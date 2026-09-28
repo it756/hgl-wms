@@ -44,11 +44,13 @@ export default function NewTransferRequestPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isUnitStaff, setIsUnitStaff] = useState(false);
 
   useEffect(() => {
     async function loadProductsAndUnits() {
       const token = localStorage.getItem("access_token");
       const role = localStorage.getItem("user_role") ?? "";
+      setIsUnitStaff(role === "UNIT_STAFF");
 
       // Pre-fill SBU from localStorage
       setSbuId(localStorage.getItem("user_sbu_id") ?? "");
@@ -289,6 +291,23 @@ export default function NewTransferRequestPage() {
         title="New Transfer Request"
         description="Initiate internal stock movement between sub-units or warehouses."
       />
+
+      <div
+        className={`bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 text-xs font-semibold text-primary flex items-center justify-between gap-3 ${
+          isUnitStaff ? "hidden" : ""
+        }`}
+      >
+        <span>
+          Ordering for several stations at once? Try the destination-first flow — one collapsible
+          section per station.
+        </span>
+        <Link
+          href="/requests/new/multi"
+          className="whitespace-nowrap px-3 py-1.5 bg-white border border-primary/30 text-primary hover:bg-primary/10 rounded-md text-xs font-bold cursor-pointer"
+        >
+          Multi-station form →
+        </Link>
+      </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Column: Form parameters */}
