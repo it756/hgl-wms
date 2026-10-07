@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import CatalogueProductPicker from "@/components/CatalogueProductPicker";
+import type { CatalogueProduct } from "@/lib/catalogue";
 import {
   Plus,
   Trash,
@@ -11,19 +13,9 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronRight,
-  Search,
   Copy,
   X,
 } from "lucide-react";
-
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  uom: string;
-  unit_cost: number | null;
-  stock_quantity: number;
-}
 
 interface SBUUnit {
   id: string;
@@ -41,7 +33,6 @@ interface DestinationCard {
   unitId: string;
   products: DestinationProduct[];
   collapsed: boolean;
-  search: string;
   copyOpenFor: string | null;
   copyTargets: string[];
 }
@@ -53,8 +44,7 @@ export default function NewMultiStationRequestPage() {
 
   const [units, setUnits] = useState<SBUUnit[]>([]);
   const [unitsError, setUnitsError] = useState<string | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productsError, setProductsError] = useState<string | null>(null);
+  const [products, setProducts] = useState<CatalogueProduct[]>([]);
   const [pickerUnitId, setPickerUnitId] = useState("");
   const [destinations, setDestinations] = useState<DestinationCard[]>([]);
   const [requiredDate, setRequiredDate] = useState("");
@@ -74,15 +64,9 @@ export default function NewMultiStationRequestPage() {
       setIsUnitStaff(role === "UNIT_STAFF");
       setHomeUnitId(home);
       try {
-        const [prodRes, unitsRes] = await Promise.all([
-          fetch("/api/bu/catalogue", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("/api/bu/units", { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-        if (prodRes.ok) {
-          setProducts((await prodRes.json()) || []);
-        } else {
-          setProductsError("Could not load catalogue.");
-        }
+        const unitsRes = await fetch("/api/bu/units", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (unitsRes.ok) {
           const list: SBUUnit[] = (await unitsRes.json()) || [];
           setUnits(list);
@@ -111,7 +95,7 @@ export default function NewMultiStationRequestPage() {
   }, []);
 
   const productById = useMemo(() => {
-    const m = new Map<string, Product>();
+    const m = new Map<string, CatalogueProduct>();
     for (const p of products) m.set(p.id, p);
     return m;
   }, [products]);
@@ -172,7 +156,6 @@ export default function NewMultiStationRequestPage() {
       unitId,
       products: [],
       collapsed: false,
-      search: "",
       copyOpenFor: null,
       copyTargets: [],
     };
@@ -197,10 +180,6 @@ export default function NewMultiStationRequestPage() {
     setDestinations((prev) =>
       prev.map((d) => (d.unitId === unitId ? { ...d, collapsed: !d.collapsed } : d)),
     );
-  }
-
-  function setSearch(unitId: string, value: string) {
-    setDestinations((prev) => prev.map((d) => (d.unitId === unitId ? { ...d, search: value } : d)));
   }
 
   function toggleProduct(unitId: string, productId: string) {
@@ -560,9 +539,6 @@ export default function NewMultiStationRequestPage() {
                   </button>
                 </div>
               )}
-              {productsError && (
-                <p className="text-xs text-rose-600 font-semibold">{productsError}</p>
-              )}
             </div>
           )}
 
@@ -581,14 +557,6 @@ export default function NewMultiStationRequestPage() {
             const isPrimary = idx === 0;
             const isLocked = isUnitStaff && dest.unitId === homeUnitId;
             const otherDestinations = destinations.filter((d) => d.unitId !== dest.unitId);
-            const searchLower = dest.search.trim().toLowerCase();
-            const filteredProducts = searchLower
-              ? products.filter(
-                  (p) =>
-                    p.name.toLowerCase().includes(searchLower) ||
-                    p.sku.toLowerCase().includes(searchLower),
-                )
-              : products;
 
             return (
               <div
@@ -654,56 +622,20 @@ export default function NewMultiStationRequestPage() {
                 {!dest.collapsed && (
                   <div className="p-5 flex flex-col gap-4">
                     {/* Search + picker */}
-                    <div className="flex flex-col gap-2">
-                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                        Add products
-                      </label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                        <input
-                          type="text"
-                          value={dest.search}
-                          onChange={(e) => setSearch(dest.unitId, e.target.value)}
-                          placeholder="Search catalogue by name or SKU…"
-                          className="w-full pl-9 pr-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400 font-medium"
-                        />
-                      </div>
-                      <div className="border border-outline-variant rounded-lg bg-white max-h-52 overflow-y-auto divide-y divide-outline-variant/60">
-                        {filteredProducts.length === 0 && (
-                          <p className="text-xs text-slate-400 font-semibold p-3">
-                            No products match this search.
-                          </p>
-                        )}
-                        {filteredProducts.map((p) => {
-                          const checked = dest.products.some((row) => row.product_id === p.id);
-                          const outOfStock = (p.stock_quantity ?? 0) <= 0;
-                          return (
-                            <label
-                              key={p.id}
-                              className={`flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-50 ${
-                                outOfStock ? "opacity-50 cursor-not-allowed" : ""
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                disabled={outOfStock && !checked}
-                                onChange={() => toggleProduct(dest.unitId, p.id)}
-                                className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary/20"
-                              />
-                              <span className="flex-1 min-w-0 truncate">
-                                {p.name}{" "}
-                                <span className="text-slate-400 font-mono text-xs">({p.sku})</span>
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                                {p.uom} ·{" "}
-                                {outOfStock ? "out of stock" : `${p.stock_quantity} in stock`}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <CatalogueProductPicker
+                      label={`Products for ${unit?.name ?? "destination"}`}
+                      value={null}
+                      requireStock
+                      selectedIds={dest.products.map((row) => row.product_id)}
+                      onChange={(product) => {
+                        if (!product) return;
+                        setProducts((previous) => [
+                          ...previous.filter((p) => p.id !== product.id),
+                          product,
+                        ]);
+                        toggleProduct(dest.unitId, product.id);
+                      }}
+                    />
 
                     {/* Selected products */}
                     {dest.products.length > 0 && (

@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/bu/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Active SBU catalogue products, including zero-stock items. BU_MANAGER and UNIT_STAFF are scoped to their authenticated profile. Privileged roles must supply sbu_id. Cursor order is (name, id). */
+        get: operations["searchSbuCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/transfer-requests": {
         parameters: {
             query?: never;
@@ -56,6 +73,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CatalogueProduct: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            sku: string;
+            uom: string;
+            unit_cost: number | null;
+            stock_quantity: number;
+        };
+        CataloguePage: {
+            items: components["schemas"]["CatalogueProduct"][];
+            nextCursor: string | null;
+            hasMore: boolean;
+        };
         CreateTransferRequest: {
             /** Format: uuid */
             requesting_unit_id: string;
@@ -108,6 +139,67 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    searchSbuCatalogue: {
+        parameters: {
+            query?: {
+                search?: string;
+                limit?: number;
+                /** @description Opaque continuation token, bound to SBU and search. */
+                cursor?: string;
+                sbu_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bounded catalogue page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CataloguePage"];
+                };
+            };
+            /** @description Invalid query or cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden role */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid account SBU assignment */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalogue retrieval failed */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listTransferRequests: {
         parameters: {
             query?: never;
