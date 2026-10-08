@@ -14,7 +14,7 @@
 import "dotenv/config";
 import path from "path";
 import fs from "fs";
-import * as XLSX from "xlsx";
+import * as XLSX from "./workbook";
 import { createClient } from "@supabase/supabase-js";
 
 const DEFAULT_EXCEL_PATH = path.resolve("scripts/seed/ejabali_inventory.xlsx");
