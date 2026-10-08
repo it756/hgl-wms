@@ -82,9 +82,32 @@ If you need stricter delivery guarantees, consider offloading sends to a dedicat
 
 ### 1. Install dependencies
 
+Use Node.js 22 or newer to meet the locked Supabase SDK's runtime requirement
+(Next.js requires 20.9+ and Nodemailer 10 requires 20+). Install the locked dependencies:
+
 ```bash
-npm install
+npm ci
 ```
+
+SheetJS is pinned to its official 0.20.3 tarball on `cdn.sheetjs.com`, since the
+`xlsx` package on npm does not contain the security fixes. The lockfile records
+the tarball integrity; installation requires access to that CDN.
+
+ESLint uses direct React, React Hooks, accessibility, import, and TypeScript
+plugins. Next.js-specific lint rules are intentionally not enabled: the Next.js
+ESLint plugin currently pulls in the vulnerable `braces` dependency. Reassess
+restoring those rules when a patched upstream dependency chain is available.
+
+Check both development and production dependencies with `npm audit` and
+`npm audit --omit=dev`. Do not use `npm audit fix --force` blindly: it can
+downgrade the Next.js lint configuration across major versions.
+
+The pre-push hook validates the lockfile using `npm ci --dry-run`, without
+replacing installed dependencies. This avoids Windows file-lock errors on native
+modules such as Lightning CSS while a development server is running. CI still
+performs a real `npm ci` in its dedicated install step. If an earlier failed
+install left dependencies incomplete, stop the project's development server and
+run `npm ci` once before retrying the push.
 
 ### 2. Set up the database
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileText, Image, Paperclip, Trash2, Upload, X } from "lucide-react";
+import { FileText, Image as ImageIcon, Paperclip, Trash2, Upload, X } from "lucide-react";
 
 export type TransactionType =
   | "transfer_request"
@@ -9,6 +9,7 @@ export type TransactionType =
   | "grn"
   | "supplier_grn"
   | "return_request"
+  | "purchase_request"
   | "variance_proposal";
 
 export interface TransactionDocument {
@@ -52,7 +53,7 @@ function formatBytes(bytes: number | null): string {
 }
 
 function FileIcon({ mime }: { mime: string }) {
-  if (mime.startsWith("image/")) return <Image className="w-4 h-4 flex-shrink-0" />;
+  if (mime.startsWith("image/")) return <ImageIcon className="w-4 h-4 flex-shrink-0" />;
   return <FileText className="w-4 h-4 flex-shrink-0" />;
 }
 
@@ -74,7 +75,6 @@ export default function DocumentUpload({
   // ── Fetch existing documents ──────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
-    setLoadingDocs(true);
 
     fetch(`/api/documents?transaction_type=${transactionType}&transaction_id=${transactionId}`, {
       headers: { Authorization: `Bearer ${token}` },

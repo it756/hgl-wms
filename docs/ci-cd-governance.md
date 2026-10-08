@@ -83,9 +83,9 @@ The jobs use GitHub Environments:
 `.github/workflows/qa-security.yml` runs on pull requests into `QA` and pushes to
 `QA`. QA runs deeper validation than `dev`, including a focused smoke pack,
 Gitleaks secret scanning, Semgrep SAST, production dependency vulnerability
-scanning, Bridgecrew Checkov IaC scanning, and Aqua Trivy filesystem scanning.
-Terraform branch protection marks these QA security jobs as required checks on
-the `QA` branch only.
+scanning, and Aqua Trivy filesystem dependency vulnerability scanning. Terraform
+branch protection marks these QA security jobs as required checks on the `QA`
+branch only.
 
 ### Emergency Hotfixes
 

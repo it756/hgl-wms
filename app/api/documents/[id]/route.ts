@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getUserFromAuthHeader } from "../../../../lib/supabaseServer";
 
-const BUCKET = "wms-documents";
+const BUCKET = "hgl-wms";
 
 // Statuses in which a document may still be deleted by the uploader.
 // Once a transaction moves past these stages it is considered finalised.
@@ -11,7 +11,20 @@ const DELETABLE_STATUSES: Record<string, string[]> = {
   grn: [], // GRNs are final — no deletion allowed
   supplier_grn: ["AWAITING_FINANCE_APPROVAL"],
   return_request: ["PENDING_APPROVAL"],
+  purchase_request: ["DRAFT", "PROCUREMENT_CHANGES_REQUESTED", "PENDING_PROCUREMENT_APPROVAL"],
 };
+
+interface StatusRow {
+  status?: string | null;
+}
+
+interface TransactionDocumentRow {
+  id: string;
+  storage_path: string;
+  uploaded_by: string | null;
+  transaction_type: string;
+  transaction_id: string;
+}
 
 async function getTransactionStatus(
   transactionType: string,
@@ -23,6 +36,7 @@ async function getTransactionStatus(
     grn: "grns",
     supplier_grn: "supplier_grns",
     return_request: "return_requests",
+    purchase_request: "purchase_requests",
   };
 
   const table = tableMap[transactionType];
@@ -35,7 +49,7 @@ async function getTransactionStatus(
     .single();
 
   if (error || !data) return null;
-  return (data as any)?.status ?? null;
+  return (data as StatusRow).status ?? null;
 }
 // ─── DELETE /api/documents/[id] ──────────────────────────────────────────────
 
@@ -57,12 +71,14 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
+    const document = doc as TransactionDocumentRow;
+
     // Only the original uploader may delete
-    if ((doc as any).uploaded_by !== user.id) {
+    if (document.uploaded_by !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { transaction_type, transaction_id } = doc as any;
+    const { transaction_type, transaction_id } = document;
 
     // Check whether deletion is allowed for this transaction type
     const allowedStatuses = DELETABLE_STATUSES[transaction_type] ?? [];
@@ -84,7 +100,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     // Remove from storage first; if it fails we leave the DB row intact (safer)
     const { error: storageError } = await supabaseAdmin.storage
       .from(BUCKET)
-      .remove([(doc as any).storage_path]);
+      .remove([document.storage_path]);
 
     if (storageError) {
       console.error("Storage remove error:", storageError);

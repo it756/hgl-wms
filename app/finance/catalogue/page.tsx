@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DamageWriteOffModal from "@/components/DamageWriteOffModal";
 import { Layers, Search, Flame, Plus, CheckCircle, Package } from "lucide-react";
+import { Table } from "@/components/Table";
 
 interface Product {
   id: string;
@@ -302,7 +303,7 @@ export default function FinanceCataloguePage() {
         )}
 
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full text-xs">
+          <Table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase text-[10px]">
               <tr>
                 <th className="px-4 py-2 text-left">Product</th>
@@ -349,7 +350,7 @@ export default function FinanceCataloguePage() {
                 ))
               )}
             </tbody>
-          </table>
+          </Table>
         </div>
       </div>
 

@@ -4,14 +4,8 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash, ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
-
-interface CatalogueProduct {
-  id: string;
-  name: string;
-  sku: string;
-  uom: string;
-  unit_cost: number | null;
-}
+import CatalogueProductPicker from "@/components/CatalogueProductPicker";
+import type { CatalogueProduct } from "@/lib/catalogue";
 
 interface LineItem {
   product_id: string;
@@ -33,6 +27,12 @@ const defaultLine = (): LineItem => ({
   notes: "",
 });
 
+function normalizeQuantity(value: string | number): number {
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity)) return 1;
+  return Math.max(1, Math.round(quantity));
+}
+
 function NewPurchaseRequestContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,29 +43,20 @@ function NewPurchaseRequestContent() {
   const [supplierEmail, setSupplierEmail] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineItem[]>([defaultLine()]);
-  const [products, setProducts] = useState<CatalogueProduct[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  const [requestLoading, setRequestLoading] = useState(Boolean(editId));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     async function init() {
       const token = localStorage.getItem("access_token");
+      if (!editId) return;
+      setRequestLoading(true);
       try {
-        const res = await fetch("/api/bu/catalogue", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) setProducts((await res.json()) ?? []);
-      } catch {
-        // catalogue load failure is non-fatal; user will see an empty dropdown
-      } finally {
-        setProductsLoading(false);
-      }
-
-      if (editId) {
         const pr = await fetch(`/api/purchase-requests/${editId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!pr.ok) throw new Error("Could not load the purchase request.");
         if (pr.ok) {
           const data = await pr.json();
           setProcurementEmail(data.procurement_email ?? "");
@@ -99,19 +90,32 @@ function NewPurchaseRequestContent() {
             );
           }
         }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not load the purchase request.");
+      } finally {
+        setRequestLoading(false);
       }
     }
     init();
   }, [editId]);
 
-  function getProduct(id: string): CatalogueProduct | undefined {
-    return products.find((p) => p.id === id);
+  function getProduct(line: LineItem): CatalogueProduct | null {
+    return line.product_id
+      ? {
+          id: line.product_id,
+          name: line.product_name,
+          sku: line.sku,
+          uom: line.unit_of_measure,
+          unit_cost: line.unit_cost,
+          stock_quantity: 0,
+        }
+      : null;
   }
 
-  const estimatedTotal = lines.reduce((sum, l) => {
-    const cost = getProduct(l.product_id)?.unit_cost ?? 0;
-    return sum + l.quantity_requested * cost;
-  }, 0);
+  const estimatedTotal = lines.reduce(
+    (sum, line) => sum + line.quantity_requested * (line.unit_cost ?? 0),
+    0,
+  );
 
   function addLine() {
     setLines((prev) => [...prev, defaultLine()]);
@@ -126,18 +130,25 @@ function NewPurchaseRequestContent() {
       prev.map((l, i) => {
         if (i !== index) return l;
         const updated = { ...l, [field]: value };
-        // When product changes, refresh the snapshot from the catalogue
-        if (field === "product_id") {
-          const prod = products.find((p) => p.id === value);
-          if (prod) {
-            updated.product_name = prod.name;
-            updated.sku = prod.sku;
-            updated.unit_cost = prod.unit_cost;
-            updated.unit_of_measure = prod.uom;
-          }
-        }
         return updated;
       }),
+    );
+  }
+
+  function selectProduct(index: number, product: CatalogueProduct | null) {
+    setLines((previous) =>
+      previous.map((line, i) =>
+        i !== index
+          ? line
+          : {
+              ...line,
+              product_id: product?.id ?? "",
+              product_name: product?.name ?? "",
+              sku: product?.sku ?? "",
+              unit_cost: product?.unit_cost ?? null,
+              unit_of_measure: product?.uom ?? "",
+            },
+      ),
     );
   }
 
@@ -168,14 +179,13 @@ function NewPurchaseRequestContent() {
         supplier_email: supplierEmail.trim() || undefined,
         notes: notes.trim() || undefined,
         lines: lines.map((l) => {
-          const prod = getProduct(l.product_id);
           return {
             product_id: l.product_id,
-            product_name: prod?.name ?? l.product_name ?? l.product_id,
-            sku: prod?.sku ?? l.sku ?? undefined,
-            quantity_requested: Number(l.quantity_requested),
-            unit_cost: prod?.unit_cost ?? l.unit_cost ?? undefined,
-            unit_of_measure: prod?.uom ?? l.unit_of_measure ?? "units",
+            product_name: l.product_name,
+            sku: l.sku || undefined,
+            quantity_requested: normalizeQuantity(l.quantity_requested),
+            unit_cost: l.unit_cost ?? undefined,
+            unit_of_measure: l.unit_of_measure || "units",
             notes: l.notes.trim() || undefined,
           };
         }),
@@ -225,7 +235,7 @@ function NewPurchaseRequestContent() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="w-full max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Link
           href="/purchase-requests"
@@ -283,18 +293,6 @@ function NewPurchaseRequestContent() {
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Supplier Email
-              </label>
-              <input
-                type="email"
-                value={supplierEmail}
-                onChange={(e) => setSupplierEmail(e.target.value)}
-                placeholder="supplier@example.com"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              />
-            </div>
           </div>
 
           <div>
@@ -323,17 +321,12 @@ function NewPurchaseRequestContent() {
             </button>
           </div>
 
-          {productsLoading ? (
-            <p className="text-sm text-slate-400">Loading product catalogue…</p>
-          ) : products.length === 0 ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm">
-              No products found in your SBU catalogue. Contact your Warehouse Manager to ensure
-              products have been added to the inventory.
-            </div>
+          {requestLoading ? (
+            <p className="text-sm text-slate-600">Loading purchase request...</p>
           ) : (
             <div className="space-y-3">
               {lines.map((line, index) => {
-                const selectedProduct = getProduct(line.product_id);
+                const selectedProduct = getProduct(line);
                 return (
                   <div
                     key={index}
@@ -341,22 +334,11 @@ function NewPurchaseRequestContent() {
                   >
                     {/* Product select */}
                     <div className="col-span-12 sm:col-span-5">
-                      <label className="block text-xs text-slate-500 mb-1">
-                        Product <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={line.product_id}
-                        onChange={(e) => updateLine(index, "product_id", e.target.value)}
+                      <CatalogueProductPicker
+                        value={selectedProduct}
+                        onChange={(product) => selectProduct(index, product)}
                         required
-                        className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
-                      >
-                        <option value="">Select product…</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({p.sku})
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
 
                     {/* Auto-filled product info */}
@@ -371,7 +353,7 @@ function NewPurchaseRequestContent() {
                       />
                     </div>
                     <div className="col-span-6 sm:col-span-2">
-                      <label className="block text-xs text-slate-500 mb-1">Unit Cost (KES)</label>
+                      <label className="block text-xs text-slate-500 mb-1">Unit Cost (ZMW)</label>
                       <input
                         type="text"
                         readOnly
@@ -434,7 +416,7 @@ function NewPurchaseRequestContent() {
             <div className="flex justify-end pt-2 border-t border-slate-100">
               <span className="text-sm text-slate-500">
                 Estimated Total:{" "}
-                <strong className="text-slate-800">KES {estimatedTotal.toLocaleString()}</strong>
+                <strong className="text-slate-800">ZMW {estimatedTotal.toLocaleString()}</strong>
               </span>
             </div>
           )}
@@ -450,14 +432,14 @@ function NewPurchaseRequestContent() {
           </Link>
           <button
             type="submit"
-            disabled={submitting || productsLoading}
+            disabled={submitting || requestLoading}
             className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
           >
             Save as Draft
           </button>
           <button
             type="button"
-            disabled={submitting || productsLoading}
+            disabled={submitting || requestLoading}
             onClick={(e) => handleSubmit(e as unknown as React.FormEvent, true)}
             className="bg-primary hover:bg-primary/95 text-white rounded-lg px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer active:scale-[0.98]"
           >

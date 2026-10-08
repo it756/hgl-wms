@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Warehouse, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import type { UserRole } from "@/lib/models/user";
+import { routeForRole, type UserRole } from "@/lib/models/user";
 
 interface AuthSessionProfile {
   full_name: string | null;
@@ -16,14 +16,6 @@ interface AuthSessionProfile {
   license_type: string | null;
   license_issued_at: string | null;
   license_expires_at: string | null;
-}
-
-function routeForRole(role: UserRole): string {
-  if (role === "ADMIN") return "/admin";
-  if (role === "BU_MANAGER" || role === "UNIT_STAFF") return "/requests";
-  if (role === "WAREHOUSE_MANAGER") return "/warehouse/queue";
-  if (role === "FINANCE_MANAGER") return "/finance/queue";
-  return "/requests";
 }
 
 export default function LoginPage() {

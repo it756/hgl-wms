@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DocumentUpload from "@/components/DocumentUpload";
+import { Table, TableHead, Td, Th, Tr } from "@/components/Table";
 import { CheckCircle, XCircle, ChevronDown, ChevronUp, FileText } from "lucide-react";
 
 interface PurchaseRequest {
@@ -14,6 +16,9 @@ interface PurchaseRequest {
   procurement_notes: string | null;
   procurement_actioned_at: string | null;
   procurement_document_url: string | null;
+  internal_control_action: string | null;
+  internal_control_notes: string | null;
+  internal_control_actioned_at: string | null;
   notes: string | null;
   created_at: string;
   sbus: { name: string; code: string } | null;
@@ -27,6 +32,30 @@ interface PurchaseRequest {
   }[];
 }
 
+const PENDING_STATUS = "PENDING_INTERNAL_CONTROL_APPROVAL";
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Draft",
+  PENDING_PROCUREMENT_APPROVAL: "Awaiting Procurement",
+  PROCUREMENT_CHANGES_REQUESTED: "Changes Requested",
+  PENDING_INTERNAL_CONTROL_APPROVAL: "Awaiting Internal Control",
+  INTERNAL_CONTROL_REJECTED: "Rejected (Internal Control)",
+  APPROVED_FOR_PURCHASE: "Approved",
+  EXPECTED_ORDER: "Expected Order",
+  PARTIALLY_RECEIVED: "Partially Received",
+  RECEIVED: "Received",
+  CANCELLED: "Cancelled",
+  REJECTED: "Rejected",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  PENDING_INTERNAL_CONTROL_APPROVAL: "bg-blue-50 text-blue-700 border-blue-200",
+  INTERNAL_CONTROL_REJECTED: "bg-rose-50 text-rose-700 border-rose-200",
+  EXPECTED_ORDER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  PARTIALLY_RECEIVED: "bg-purple-50 text-purple-700 border-purple-200",
+  RECEIVED: "bg-green-50 text-green-700 border-green-200",
+};
+
 export default function AdminPurchaseRequestsPage() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,23 +64,22 @@ export default function AdminPurchaseRequestsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [actionNotes, setActionNotes] = useState<Record<string, string>>({});
   const [actioning, setActioning] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
-  useEffect(() => {
-    fetchQueue();
-  }, []);
-
-  async function fetchQueue() {
+  async function fetchRequests() {
     setLoading(true);
+    setError(null);
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        "/api/admin/purchase-requests?status=PENDING_INTERNAL_CONTROL_APPROVAL",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      setAuthToken(token);
+      const res = await fetch("/api/admin/purchase-requests?scope=all&limit=200", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load queue");
+      if (!res.ok) throw new Error(data.error || "Failed to load purchase requests");
       setRequests(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -59,6 +87,10 @@ export default function AdminPurchaseRequestsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    void Promise.resolve().then(fetchRequests);
+  }, []);
 
   async function handleAction(id: string, action: "approve" | "reject") {
     setActioning(id);
@@ -77,7 +109,7 @@ export default function AdminPurchaseRequestsPage() {
       const req = requests.find((r) => r.id === id);
       const label = action === "approve" ? "approved" : "rejected";
       setBanner(`${req?.reference_number} has been ${label}.`);
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      await fetchRequests();
       setExpanded(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -86,13 +118,75 @@ export default function AdminPurchaseRequestsPage() {
     }
   }
 
+  const queueRequests = requests.filter((r) => r.status === PENDING_STATUS);
+  const historyStatuses = Array.from(new Set(requests.map((r) => r.status)));
+  const visibleRequests = (activeTab === "queue" ? queueRequests : requests).filter((r) => {
+    const matchesSearch =
+      !search ||
+      r.reference_number.toLowerCase().includes(search.toLowerCase()) ||
+      (r.supplier_name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (r.sbus?.name ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = activeTab === "queue" || statusFilter === "All" || r.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
-    <div className="p-6 space-y-4">
+    <div className="flex w-full flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Internal Control — Purchase Requests</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Review purchase requests approved by procurement and apply internal control approval.
+          Review pending purchase requests and keep a searchable history of internal control outcomes.
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("queue")}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              activeTab === "queue"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Pending Review ({queueRequests.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              activeTab === "history"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            All History ({requests.length})
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by reference, SBU, or supplier..."
+            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {activeTab === "history" && (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All Statuses</option>
+              {historyStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {STATUS_LABELS[status] ?? status}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       {banner && (
@@ -108,16 +202,17 @@ export default function AdminPurchaseRequestsPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-slate-500 text-sm">Loading queue…</div>
-      ) : requests.length === 0 ? (
+        <div className="text-center py-12 text-slate-500 text-sm">Loading purchase requests…</div>
+      ) : visibleRequests.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-sm">
-          No purchase requests pending internal control review.
+          {activeTab === "queue"
+            ? "No purchase requests pending internal control review."
+            : "No purchase requests match this history view."}
         </div>
       ) : (
         <div className="space-y-3">
-          {requests.map((r) => (
+          {visibleRequests.map((r) => (
             <div key={r.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              {/* Header row */}
               <button
                 type="button"
                 className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
@@ -134,9 +229,14 @@ export default function AdminPurchaseRequestsPage() {
                   )}
                   {r.estimated_total != null && (
                     <span className="text-sm font-medium text-slate-600">
-                      KES {r.estimated_total.toLocaleString()}
+                      ZMW {r.estimated_total.toLocaleString()}
                     </span>
                   )}
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[r.status] ?? "border-slate-200 bg-slate-100 text-slate-500"}`}
+                  >
+                    {STATUS_LABELS[r.status] ?? r.status}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-slate-400">
@@ -150,14 +250,12 @@ export default function AdminPurchaseRequestsPage() {
                 </div>
               </button>
 
-              {/* Expanded detail */}
               {expanded === r.id && (
                 <div className="border-t border-slate-100 px-5 py-4 space-y-4">
-                  {/* Procurement outcome */}
                   <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm space-y-1">
                     <p className="font-medium text-blue-700">Procurement Review</p>
                     <p className="text-blue-600">
-                      Action: <strong>{r.procurement_action}</strong>
+                      Action: <strong>{r.procurement_action ?? "Pending"}</strong>
                       {r.procurement_actioned_at &&
                         ` on ${new Date(r.procurement_actioned_at).toLocaleString()}`}
                     </p>
@@ -176,46 +274,76 @@ export default function AdminPurchaseRequestsPage() {
                           View Procurement Document
                         </a>
                       )}
+                    {authToken && (
+                      <div className="pt-2">
+                        <p className="text-xs font-semibold uppercase text-blue-500 mb-2">
+                          Procurement Documents
+                        </p>
+                        <DocumentUpload
+                          transactionType="purchase_request"
+                          transactionId={r.id}
+                          token={authToken}
+                          canDelete={false}
+                          readOnly
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  {/* Line items */}
+                  {r.status !== PENDING_STATUS && (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      <p className="font-medium text-slate-700">Internal Control Outcome</p>
+                      <p>
+                        {r.internal_control_action?.replace(/_/g, " ") ??
+                          "No internal control action recorded"}
+                        {r.internal_control_actioned_at &&
+                          ` on ${new Date(r.internal_control_actioned_at).toLocaleString()}`}
+                      </p>
+                      {r.internal_control_notes && <p>Notes: {r.internal_control_notes}</p>}
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-xs font-medium text-slate-500 uppercase mb-2">
                       Requested Items
                     </p>
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Item</th>
-                          <th className="px-3 py-2 text-center">Qty</th>
-                          <th className="px-3 py-2 text-right">Unit Cost</th>
-                          <th className="px-3 py-2 text-right">Line Total</th>
-                        </tr>
-                      </thead>
+                    <Table>
+                      <TableHead>
+                        <Th className="px-3 py-2">Item</Th>
+                        <Th align="center" className="px-3 py-2">
+                          Qty
+                        </Th>
+                        <Th align="right" className="px-3 py-2">
+                          Unit Cost
+                        </Th>
+                        <Th align="right" className="px-3 py-2">
+                          Line Total
+                        </Th>
+                      </TableHead>
                       <tbody className="divide-y divide-slate-100">
                         {r.purchase_request_line_items.map((l) => (
-                          <tr key={l.id}>
-                            <td className="px-3 py-2">
+                          <Tr key={l.id}>
+                            <Td className="px-3 py-2">
                               {l.product_name}
                               {l.sku && (
                                 <span className="ml-1 text-slate-400 text-xs">({l.sku})</span>
                               )}
-                            </td>
-                            <td className="px-3 py-2 text-center">
+                            </Td>
+                            <Td align="center" className="px-3 py-2">
                               {l.quantity_requested} {l.unit_of_measure}
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              {l.unit_cost != null ? `KES ${l.unit_cost.toLocaleString()}` : "—"}
-                            </td>
-                            <td className="px-3 py-2 text-right font-medium">
+                            </Td>
+                            <Td align="right" className="px-3 py-2">
+                              {l.unit_cost != null ? `ZMW ${l.unit_cost.toLocaleString()}` : "—"}
+                            </Td>
+                            <Td align="right" className="px-3 py-2 font-medium">
                               {l.unit_cost != null
-                                ? `KES ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
+                                ? `ZMW ${(l.unit_cost * l.quantity_requested).toLocaleString()}`
                                 : "—"}
-                            </td>
-                          </tr>
+                            </Td>
+                          </Tr>
                         ))}
                       </tbody>
-                    </table>
+                    </Table>
                   </div>
 
                   {r.notes && (
@@ -224,39 +352,40 @@ export default function AdminPurchaseRequestsPage() {
                     </p>
                   )}
 
-                  {/* Action area */}
-                  <div className="space-y-2 pt-2 border-t border-slate-100">
-                    <label className="block text-sm font-medium text-slate-700">
-                      Internal Control Notes (optional)
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={actionNotes[r.id] ?? ""}
-                      onChange={(e) =>
-                        setActionNotes((prev) => ({ ...prev, [r.id]: e.target.value }))
-                      }
-                      placeholder="Add notes for this decision…"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    />
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => handleAction(r.id, "approve")}
-                        disabled={actioning === r.id}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        {actioning === r.id ? "Processing…" : "Approve"}
-                      </button>
-                      <button
-                        onClick={() => handleAction(r.id, "reject")}
-                        disabled={actioning === r.id}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Reject
-                      </button>
+                  {r.status === PENDING_STATUS && (
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <label className="block text-sm font-medium text-slate-700">
+                        Internal Control Notes (optional)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={actionNotes[r.id] ?? ""}
+                        onChange={(e) =>
+                          setActionNotes((prev) => ({ ...prev, [r.id]: e.target.value }))
+                        }
+                        placeholder="Add notes for this decision…"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleAction(r.id, "approve")}
+                          disabled={actioning === r.id}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          {actioning === r.id ? "Processing…" : "Approve"}
+                        </button>
+                        <button
+                          onClick={() => handleAction(r.id, "reject")}
+                          disabled={actioning === r.id}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Reject
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

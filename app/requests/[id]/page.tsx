@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   ArrowLeft,
@@ -35,6 +35,8 @@ interface LineItem {
   id: string;
   product_id: string;
   requested_quantity: number;
+  destination_unit_id: string | null;
+  destination_unit: SBUUnit | null;
   products: Product | null;
 }
 
@@ -216,10 +218,50 @@ export default function TransferRequestDetailPage() {
               />
               <InfoRow label="SBU" value={request.sbus?.name ?? "—"} />
               <InfoRow
-                label="Requesting Unit"
-                value={
-                  request.sbu_units ? `${request.sbu_units.name} (${request.sbu_units.code})` : "—"
-                }
+                label={(() => {
+                  const seen = new Set<string>();
+                  const count = (request.transfer_line_items ?? []).reduce((n, l) => {
+                    if (l.destination_unit && !seen.has(l.destination_unit.id)) {
+                      seen.add(l.destination_unit.id);
+                      return n + 1;
+                    }
+                    return n;
+                  }, 0);
+                  return count > 1 ? "Requesting Units" : "Requesting Unit";
+                })()}
+                value={(() => {
+                  const seen = new Set<string>();
+                  const destinations = (request.transfer_line_items ?? [])
+                    .map((l) => l.destination_unit)
+                    .filter((d): d is SBUUnit => {
+                      if (!d || seen.has(d.id)) return false;
+                      seen.add(d.id);
+                      return true;
+                    });
+                  if (destinations.length === 0) {
+                    return request.sbu_units
+                      ? `${request.sbu_units.name} (${request.sbu_units.code})`
+                      : "—";
+                  }
+                  if (destinations.length === 1) {
+                    const d = destinations[0];
+                    return `${d.name} (${d.code})`;
+                  }
+                  return (
+                    <span className="flex flex-wrap gap-1 mt-0.5">
+                      {destinations.map((d) => (
+                        <span
+                          key={d.id}
+                          className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5"
+                          title={`${d.name} (${d.code})`}
+                        >
+                          <span className="font-mono text-[10px] text-slate-600">{d.code}</span>
+                          <span className="text-xs text-slate-600">{d.name}</span>
+                        </span>
+                      ))}
+                    </span>
+                  );
+                })()}
               />
               <InfoRow
                 label="Required Date"
@@ -302,11 +344,12 @@ export default function TransferRequestDetailPage() {
               </div>
             ) : (
               <HScrollArea>
-                <table className="w-full border-collapse text-left">
+                <Table className="w-full border-collapse text-left">
                   <TableHead>
                     <Th pinned>#</Th>
                     <Th>Product</Th>
                     <Th>SKU</Th>
+                    <Th>Destination</Th>
                     <Th>UOM</Th>
                     <Th align="right">Qty Requested</Th>
                     <Th align="right">Unit Cost</Th>
@@ -334,6 +377,18 @@ export default function TransferRequestDetailPage() {
                           <td className="px-6 py-3.5 text-xs font-mono text-slate-500">
                             {item.products?.sku ?? "—"}
                           </td>
+                          <td className="px-6 py-3.5 text-xs font-semibold text-slate-600">
+                            {item.destination_unit ? (
+                              <>
+                                {item.destination_unit.name}{" "}
+                                <span className="text-slate-400 font-mono text-[10px]">
+                                  ({item.destination_unit.code})
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
                           <td className="px-6 py-3.5 text-xs text-slate-500">
                             {item.products?.unit_of_measure ?? "—"}
                           </td>
@@ -354,7 +409,7 @@ export default function TransferRequestDetailPage() {
                     <tfoot className="border-t-2 border-outline-variant bg-slate-50/60">
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={7}
                           className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right"
                         >
                           Total Est. Value
@@ -365,7 +420,7 @@ export default function TransferRequestDetailPage() {
                       </tr>
                     </tfoot>
                   )}
-                </table>
+                </Table>
               </HScrollArea>
             )}
           </div>

@@ -1,8 +1,7 @@
 import { defineConfig } from "vitest/config";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  resolve: { tsconfigPaths: true },
   test: {
     environment: "jsdom",
     globals: true,
@@ -11,6 +10,6 @@ export default defineConfig({
       reporter: ["text", "lcov"],
     },
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
-    setupFiles: [],
+    setupFiles: ["./tests/setup.ts"],
   },
 });

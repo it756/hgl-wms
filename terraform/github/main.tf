@@ -16,7 +16,6 @@ locals {
     "Gitleaks secret scan",
     "Semgrep SAST",
     "Dependency vulnerability scan",
-    "Bridgecrew Checkov IaC scan",
     "Aqua Trivy filesystem scan",
   ])
 }

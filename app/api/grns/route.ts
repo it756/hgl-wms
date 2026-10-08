@@ -6,6 +6,49 @@ import {
   buildTransferNotificationMessage,
 } from "../../../lib/notifications/messages";
 
+export async function GET(req: Request) {
+  try {
+    const user = await getUserFromAuthHeader(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const role = (user.user_metadata as any)?.role || "";
+    if (!["UNIT_STAFF", "BU_MANAGER", "WAREHOUSE_MANAGER", "ADMIN"].includes(role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const sbuId = (user.user_metadata as any)?.sbu_id || null;
+    const url = new URL(req.url);
+    const mineOnly = url.searchParams.get("mine") === "true";
+
+    let query = supabaseAdmin
+      .from("grns")
+      .select(
+        `id, transfer_request_id, received_by, date_received, condition_notes, has_variance, created_at,
+         transfer_requests ( id, reference_number, sbu_id, status, sbus ( id, name, code ) ),
+         grn_line_items (
+           id, product_id, issued_quantity, quantity_received,
+           products ( id, name, sku, unit_of_measure )
+         )`,
+      )
+      .order("created_at", { ascending: false });
+
+    if (role === "UNIT_STAFF" || mineOnly) {
+      query = query.eq("received_by", user.id);
+    } else if (role === "BU_MANAGER") {
+      if (!sbuId) return NextResponse.json([], { status: 200 });
+      query = query.eq("transfer_requests.sbu_id", sbuId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return NextResponse.json(data ?? []);
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json({ error: err.message || "Internal" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const user = await getUserFromAuthHeader(req);
@@ -19,6 +62,33 @@ export async function POST(req: Request) {
 
     if (!Array.isArray(items) || items.length === 0)
       return NextResponse.json({ error: "No items" }, { status: 400 });
+
+    // Never trust a client-sent unit_id — resolve the caller's own unit and
+    // scope this GRN to it. A single transfer request may fan out to several
+    // destination units; each unit submits its own independent GRN.
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("unit_id")
+      .eq("id", user.id)
+      .single();
+    if (profileError || !profile?.unit_id)
+      return NextResponse.json(
+        { error: "Your account has no unit assigned. Contact an administrator." },
+        { status: 422 },
+      );
+    const unitId = profile.unit_id;
+
+    const { data: existingGrn } = await supabaseAdmin
+      .from("grns")
+      .select("id")
+      .eq("transfer_request_id", transfer_request_id)
+      .eq("unit_id", unitId)
+      .maybeSingle();
+    if (existingGrn)
+      return NextResponse.json(
+        { error: "Your unit has already submitted a GRN for this transfer." },
+        { status: 409 },
+      );
 
     // determine variance
     let hasVariance = false;
@@ -34,6 +104,7 @@ export async function POST(req: Request) {
       .insert([
         {
           transfer_request_id,
+          unit_id: unitId,
           received_by: user.id,
           date_received,
           condition_notes,
@@ -61,8 +132,33 @@ export async function POST(req: Request) {
       throw liError;
     }
 
-    // update transfer status
-    const newStatus = hasVariance ? "COMPLETED_WITH_VARIANCE" : "COMPLETED";
+    // update transfer status: only mark the request as fully COMPLETED once
+    // every distinct destination unit on it has submitted its own GRN; until
+    // then it sits at PARTIALLY_RECEIVED. Variance from any unit's GRN taints
+    // the whole request once complete.
+    const { data: destinationRows, error: destinationsError } = await supabaseAdmin
+      .from("transfer_line_items")
+      .select("destination_unit_id")
+      .eq("transfer_request_id", transfer_request_id);
+    if (destinationsError) throw destinationsError;
+    const totalDestinations = new Set(
+      (destinationRows ?? []).map((r: any) => r.destination_unit_id),
+    ).size;
+
+    const { data: submittedGrns, error: submittedGrnsError } = await supabaseAdmin
+      .from("grns")
+      .select("has_variance")
+      .eq("transfer_request_id", transfer_request_id);
+    if (submittedGrnsError) throw submittedGrnsError;
+    const submittedCount = submittedGrns?.length ?? 0;
+    const anyVariance = (submittedGrns ?? []).some((g: any) => g.has_variance);
+
+    const newStatus =
+      submittedCount < totalDestinations
+        ? "PARTIALLY_RECEIVED"
+        : anyVariance
+          ? "COMPLETED_WITH_VARIANCE"
+          : "COMPLETED";
     await supabaseAdmin
       .from("transfer_requests")
       .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -83,6 +179,7 @@ export async function POST(req: Request) {
         message: grnVarianceMessage,
         user_role: "WAREHOUSE_MANAGER",
         dispatchChannels: true,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/warehouse/queue`,
       });
 
       // Auto-raise a variance proposal so Finance can see and act on the variance
@@ -144,6 +241,7 @@ export async function POST(req: Request) {
                 message: proposalMessage,
                 user_role: "FINANCE_MANAGER",
                 dispatchChannels: true,
+                actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/finance/queue`,
               });
             }
           } else if (propError) {

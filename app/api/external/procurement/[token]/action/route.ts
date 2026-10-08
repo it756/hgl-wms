@@ -8,7 +8,6 @@ import { supabaseAdmin } from "../../../../../../lib/supabaseServer";
 interface ActionBody {
   action?: string;
   notes?: string;
-  document_url?: string;
 }
 
 const VALID_ACTIONS = ["APPROVE", "REJECT", "CHANGES_REQUESTED"] as const;
@@ -74,21 +73,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     );
   }
 
-  // document_url requires explicit UPLOAD permission in the token
-  if (body.document_url && !token.allowed_actions.includes("UPLOAD")) {
-    return NextResponse.json(
-      { error: "Document upload is not permitted for this token." },
-      { status: 403 },
-    );
-  }
-
   const serviceAction =
     action === "APPROVE" ? "APPROVED" : action === "REJECT" ? "REJECTED" : "CHANGES_REQUESTED";
 
   try {
     const updated = await applyProcurementAction(token.entity_id, serviceAction, {
       notes: body.notes,
-      documentUrl: body.document_url,
       actorEmail: token.actor_email,
     });
 
@@ -112,7 +102,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
           actor_email: token.actor_email,
           actor_type: token.actor_type,
           notes: body.notes ?? null,
-          document_url: body.document_url ?? null,
         },
         ip_address: ip,
       });

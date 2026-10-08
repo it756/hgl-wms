@@ -156,6 +156,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }),
       related_entity_id: id,
       dispatchChannels: true,
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/admin/products`,
     });
   }
 

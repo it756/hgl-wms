@@ -5,20 +5,14 @@ import { useRouter, useParams } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import { Plus, Trash, CheckCircle2, HelpCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import CatalogueProductPicker from "@/components/CatalogueProductPicker";
+import type { CatalogueProduct } from "@/lib/catalogue";
 
 const EDITABLE_STATUSES = ["PENDING", "PENDING_APPROVAL", "PENDING_BU_APPROVAL"];
 
 interface LineItem {
   product_id: string;
   requested_quantity: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  uom: string;
-  unit_cost: number | null;
 }
 
 export default function EditTransferRequestPage() {
@@ -33,7 +27,7 @@ export default function EditTransferRequestPage() {
   const [requiredDate, setRequiredDate] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineItem[]>([{ product_id: "", requested_quantity: 0 }]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CatalogueProduct[]>([]);
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -43,12 +37,9 @@ export default function EditTransferRequestPage() {
     async function loadData() {
       try {
         const token = localStorage.getItem("access_token");
-        const [reqRes, prodRes] = await Promise.all([
-          fetch(`/api/transfer-requests/${id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch("/api/admin/products", { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
+        const reqRes = await fetch(`/api/transfer-requests/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         if (!reqRes.ok) {
           const d = await reqRes.json();
@@ -72,7 +63,27 @@ export default function EditTransferRequestPage() {
           })),
         );
 
-        if (prodRes.ok) setProducts((await prodRes.json()) || []);
+        const selectedProducts: CatalogueProduct[] = (reqData.transfer_line_items ?? []).flatMap(
+          (line: {
+            products: {
+              id: string;
+              name: string;
+              sku: string;
+              unit_of_measure: string;
+              unit_cost: number | null;
+              stock_quantity: number;
+            } | null;
+          }) =>
+            line.products
+              ? [
+                  {
+                    ...line.products,
+                    uom: line.products.unit_of_measure,
+                  },
+                ]
+              : [],
+        );
+        setProducts(selectedProducts);
       } catch (err: any) {
         setLoadError(err.message);
       } finally {
@@ -272,28 +283,19 @@ export default function EditTransferRequestPage() {
                 className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50/40 border border-slate-100 rounded-xl p-4 relative group"
               >
                 <div className="sm:col-span-8 flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                    Product
-                  </label>
-                  <select
+                  <CatalogueProductPicker
                     required
-                    value={line.product_id}
-                    onChange={(e) => updateLine(i, "product_id", e.target.value)}
-                    className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer font-semibold text-slate-700"
-                  >
-                    <option value="">Select Product...</option>
-                    {products
-                      .filter(
-                        (p) =>
-                          p.id === line.product_id ||
-                          !lines.some((l, j) => j !== i && l.product_id === p.id),
-                      )
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.sku}) — {p.uom}
-                        </option>
-                      ))}
-                  </select>
+                    value={products.find((p) => p.id === line.product_id) ?? null}
+                    excludeIds={lines.filter((_, j) => j !== i).map((l) => l.product_id)}
+                    onChange={(product) => {
+                      if (product)
+                        setProducts((previous) => [
+                          ...previous.filter((p) => p.id !== product.id),
+                          product,
+                        ]);
+                      updateLine(i, "product_id", product?.id ?? "");
+                    }}
+                  />
                 </div>
 
                 <div className="sm:col-span-3 flex flex-col gap-1">

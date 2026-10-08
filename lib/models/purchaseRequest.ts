@@ -38,6 +38,8 @@ export interface PurchaseRequest {
   internal_control_action: "APPROVED" | "REJECTED" | null;
   internal_control_notes: string | null;
 
+  printed_at: string | null;
+
   created_at: string;
   updated_at: string;
 }

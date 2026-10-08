@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Tr, Td } from "@/components/Table";
+import { Table, TableHead, Th, Tr, Td } from "@/components/Table";
 import { useCurrency } from "@/lib/hooks/useCurrency";
 import {
   Flame,
@@ -271,7 +271,7 @@ export default function DamageLedgerPage() {
       ) : (
         <div className="bg-white border border-slate-200/90 rounded-xl shadow-sm overflow-hidden">
           <HScrollArea>
-            <table className="min-w-full divide-y divide-slate-100 text-xs">
+            <Table className="min-w-full divide-y divide-slate-100 text-xs">
               <TableHead>
                 <Th pinned>Product</Th>
                 <Th>Qty</Th>
@@ -386,7 +386,7 @@ export default function DamageLedgerPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
           </HScrollArea>
         </div>
       )}

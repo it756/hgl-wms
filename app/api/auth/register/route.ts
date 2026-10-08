@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { email, password, full_name, role, sbu_id, whatsapp_number } = body;
+  const { email, password, full_name, role, sbu_id, unit_id, whatsapp_number } = body;
 
   if (!email || !password || !role) {
     return NextResponse.json({ error: "email, password and role are required" }, { status: 400 });
@@ -69,10 +69,25 @@ export async function POST(req: Request) {
     full_name: full_name ?? null,
     role,
     sbu_id: sbu_id ?? null,
+    unit_id: unit_id ?? null,
     whatsapp_number: whatsapp_number ?? null,
     is_active: true,
     updated_at: new Date().toISOString(),
   });
+
+  // Give the user a matching role assignment as their initial active context
+  // (lets an admin grant them further roles/SBUs later without re-provisioning).
+  const { data: assignment } = await supabaseAdmin
+    .from("user_role_assignments")
+    .insert({ user_id: userId, role, sbu_id: sbu_id ?? null, unit_id: unit_id ?? null })
+    .select("id")
+    .single();
+  if (assignment) {
+    await supabaseAdmin
+      .from("profiles")
+      .update({ active_assignment_id: assignment.id })
+      .eq("id", userId);
+  }
 
   return NextResponse.json({ id: userId, email, role }, { status: 201 });
 }

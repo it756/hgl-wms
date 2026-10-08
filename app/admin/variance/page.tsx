@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import HScrollArea from "@/components/HScrollArea";
-import { TableHead, Th, Td } from "@/components/Table";
+import { Table, TableHead, Th, Td } from "@/components/Table";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -256,7 +256,7 @@ export default function AdminVarianceRegistryPage() {
                       className="rounded-xl border border-slate-100"
                       maxHeightClassName="max-h-[40vh]"
                     >
-                      <table className="min-w-full divide-y divide-slate-100 text-xs">
+                      <Table className="min-w-full divide-y divide-slate-100 text-xs">
                         <TableHead>
                           <Th pinned>Product</Th>
                           <Th align="center">Issued</Th>
@@ -321,7 +321,7 @@ export default function AdminVarianceRegistryPage() {
                             );
                           })}
                         </tbody>
-                      </table>
+                      </Table>
                     </HScrollArea>
 
                     {/* Resolution legend */}
