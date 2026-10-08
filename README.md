@@ -102,6 +102,13 @@ Check both development and production dependencies with `npm audit` and
 `npm audit --omit=dev`. Do not use `npm audit fix --force` blindly: it can
 downgrade the Next.js lint configuration across major versions.
 
+The pre-push hook validates the lockfile using `npm ci --dry-run`, without
+replacing installed dependencies. This avoids Windows file-lock errors on native
+modules such as Lightning CSS while a development server is running. CI still
+performs a real `npm ci` in its dedicated install step. If an earlier failed
+install left dependencies incomplete, stop the project's development server and
+run `npm ci` once before retrying the push.
+
 ### 2. Set up the database
 
 In the Supabase dashboard or via the Supabase CLI, run migrations in order:

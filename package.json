@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lockfile:check": "npm ci --ignore-scripts && git diff --exit-code -- package-lock.json",
+    "lockfile:check": "npm ci --dry-run --ignore-scripts --no-audit --no-fund && git diff --exit-code -- package-lock.json",
     "migrations:check": "node scripts/check-migrations.mjs",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint",
@@ -41,7 +41,7 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
     "lucide-react": "^1.16.0",
-    "next": "16.3.6",
+    "next": "16.3.8",
     "nodemailer": "^10.0.16",
     "react": "19.2.4",
     "react-dom": "19.2.4"
