@@ -38,6 +38,54 @@ Obtained client-side via `supabase.auth.signInWithPassword(...)` (`lib/supabaseC
 | `transfer-requests/*`            | Inter-unit/SBU transfer CRUD                                                    | BU_MANAGER, UNIT_STAFF                         |
 | `warehouse/*`                    | Stats, intra-warehouse transfers, losses                                        | WAREHOUSE_MANAGER                              |
 
+## Paginated SBU catalogue
+
+`GET /api/bu/catalogue?search=<name-or-SKU>&limit=50&cursor=<opaque-token>`
+returns `{ items, nextCursor, hasMore }`, not an array of all products.
+`limit` defaults to 50 and accepts 1 through 100. Search is case-insensitive,
+trimmed, and limited to 100 characters; `%` and `_` are literal search characters.
+Continuation tokens are bound to the effective SBU and search text. Restart
+pagination whenever the search or SBU changes.
+
+BU managers and unit staff always use their authenticated profile's SBU;
+administrators, warehouse managers and finance managers must supply `sbu_id`.
+Accounts without a valid SBU assignment receive `422`, rather than an empty
+success response. Retrieval errors receive `500` and are displayed with Retry
+in the shared product selector. Responses are private and not cached.
+
+The `search_sbu_catalogue` RPC performs membership filtering in PostgreSQL,
+using approved supplier GRNs or membership in `sbu_stock`, orders by `(name, id)`,
+and returns one extra row to determine whether another page exists. It is
+executable only by `service_role`; the API enforces user scope before calling it.
+Active zero-stock products remain available for procurement. Transfer selectors
+retain their existing stock restrictions. All request selectors use debounced
+server search, cancellable requests and explicit Load more; selected product
+details remain available when search results change.
+Partial B-tree indexes support ordering and GRN membership. Partial trigram
+GIN indexes support substring name/SKU search; the migration enables `pg_trgm`
+without relocating it if the extension is already installed.
+
+### Deployment order
+
+Apply `supabase/migrations/046_paginated_sbu_catalogue.sql` before deploying
+the updated API and frontend together. The migration adds indexes and a
+read-only RPC, and reloads the PostgREST schema cache; it does not reseed or
+change stock records. Without the migration the API deliberately reports an
+error; there is no fallback to the oversized ID-list query.
+Index creation runs inside the migration transaction and can block writes
+while building; schedule the migration in a suitable deployment window.
+
+After deployment, sign in as the affected manager and search for an EJBL SKU
+outside the first catalogue page. Verify selection, unit/cost autofill, editing
+an existing request, and selection of a zero-stock product for procurement.
+The separate `/api/bu/stock` endpoint is unchanged by this catalogue fix.
+
+`npm run test:catalogue:sql` runs the migration and executable SQL assertions
+in a disposable PostgreSQL 17 Docker container with synthetic fixtures, no
+published ports, and no production credentials. Docker must be running; the
+Supabase PostgreSQL image is downloaded if it is not already cached. The
+fixture tests catalogue membership, not the stock view's quantity calculation.
+
 ## External (tokenized, non-login) API
 
 `app/api/external/procurement/[token]/route.ts` (GET — redacted view) and `.../action/route.ts` (POST — approve/reject/request-changes). Backed by `lib/services/externalTokenService.ts`:

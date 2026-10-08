@@ -11,6 +11,40 @@
     }
   ],
   "paths": {
+    "/bu/catalogue": {
+      "get": {
+        "operationId": "searchSbuCatalogue",
+        "description": "Active SBU catalogue products, including zero-stock items. BU_MANAGER and UNIT_STAFF are scoped to their authenticated profile. Privileged roles must supply sbu_id. Cursor order is (name, id).",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string", "maxLength": 100 } },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque continuation token, bound to SBU and search.",
+            "schema": { "type": "string" }
+          },
+          { "name": "sbu_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded catalogue page",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CataloguePage" } }
+            }
+          },
+          "400": { "description": "Invalid query or cursor" },
+          "401": { "description": "Unauthenticated" },
+          "403": { "description": "Forbidden role" },
+          "422": { "description": "Missing or invalid account SBU assignment" },
+          "500": { "description": "Catalogue retrieval failed" }
+        }
+      }
+    },
     "/transfer-requests": {
       "get": {
         "operationId": "listTransferRequests",
@@ -99,6 +133,30 @@
   },
   "components": {
     "schemas": {
+      "CatalogueProduct": {
+        "type": "object",
+        "required": ["id", "name", "sku", "uom", "unit_cost", "stock_quantity"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "sku": { "type": "string" },
+          "uom": { "type": "string" },
+          "unit_cost": { "type": ["number", "null"] },
+          "stock_quantity": { "type": "integer" }
+        }
+      },
+      "CataloguePage": {
+        "type": "object",
+        "required": ["items", "nextCursor", "hasMore"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CatalogueProduct" }
+          },
+          "nextCursor": { "type": ["string", "null"] },
+          "hasMore": { "type": "boolean" }
+        }
+      },
       "CreateTransferRequest": {
         "type": "object",
         "required": ["requesting_unit_id", "lines"],
